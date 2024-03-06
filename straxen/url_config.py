@@ -742,7 +742,7 @@ def alphabetize_url_kwargs(url: str):
         if url != URLConfig.format_url_kwargs(url) and WARN:
             warnings.warn(
                 "From straxen version 2.1.0 onward, URLConfig parameters"
-                "will be sorted alphabetically before being passed to the plugins,"
+                " will be sorted alphabetically before being passed to the plugins,"
                 " this will change the lineage hash for non-sorted URLs. To load"
                 " data processed with non-sorted URLs, you will need to use an"
                 " older version."
