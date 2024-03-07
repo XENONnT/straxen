@@ -8,6 +8,14 @@ export, __all__ = strax.exporter()
 
 @export
 class LEDAfterpulseProcessing(strax.Plugin):
+    """
+    Plugin for processing LED afterpulses.
+
+    Detect LED pulses and afterpulses (APs) in raw_records waveforms. Compute 
+    the AP datatype.
+
+    """
+
     __version__ = "0.6.0"
     depends_on = "raw_records"
     data_kind = "afterpulses"
@@ -41,7 +49,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
     LED_window_width = straxen.URLConfig(
         default=20,
         infer_type=False,
-        help="Right boundary of sample range for LED pulse integration",
+        help="Width of the window in which hits are merged into the LED hit after the first hit",
     )
 
     baseline_samples = straxen.URLConfig(
@@ -132,6 +140,41 @@ def find_ap(
     hit_left_extension, 
     hit_right_extension
 ):
+    """
+    Find afterpulses (APs) in the given hits data within specified LED hit 
+    boundaries and extensions.
+
+    Parameters
+    ----------
+    hits :
+        Array containing hit data.
+    records :
+        Array containing record data.
+    LED_hit_left_boundary :
+        Left boundary of the LED hit window. 
+    LED_hit_right_boundary :
+        Right boundary of the LED hit window.
+    LED_window_width :
+        Extension to the right of the first hit found in the LED hit window 
+        within which hits are merged into the LED hit.
+    hit_left_extension :
+        Extension to the left of the hit window.
+    hit_right_extension :
+        Extension to the right of the hit window.
+
+    Returns
+    -------
+    Array containing afterpulse data. 
+
+    Notes
+    -----
+    - Hits to the left of the LED_hit_left_boundary are ignored.
+    - If no hit is found between LED_hit_left_boundary and LED_hit_right_boundary
+    the record is skipped.
+    - The merged LED hits are also saved and can be selected for by having 
+    t_delay = 0 by definition.
+    """
+    
     buffer = np.zeros(len(hits), dtype=dtype_afterpulses())
 
     if not len(hits):
@@ -263,7 +306,13 @@ def _find_ap(
         res = buffer[offset]
 
         fill_hitpars(
-            res, h, hit_left_extension, hit_right_extension, record_data, record_len, baseline_fpart
+            res, 
+            h, 
+            hit_left_extension, 
+            hit_right_extension, 
+            record_data, 
+            record_len, 
+            baseline_fpart
         )
 
         res["tdelay"] = res["sample_10pc_area"] - t_LED
@@ -274,7 +323,28 @@ def _find_ap(
 @export
 @numba.jit(nopython=True, nogil=True, cache=True)
 def get_sample_area_quantile(data, quantile, baseline_fpart):
-    """Returns first sample index in hit where integrated area of hit is above total area."""
+
+    """
+    Return the index of the first sample in the hit where the integrated area 
+    of the hit to that index is above the specified quantile of the total area.
+
+    Parameters:
+    - data : 
+        Array containing the baselined waveform data of the hit.
+    - quantile : 
+        The quantile (0 to 1) representing the threshold for the area.
+    - baseline_fpart : 
+        Fractional part of the baseline (baseline % 1) of the record
+
+    Return:
+    - int: The index of the first sample where the area exceeds the quantile of the total area.
+           If no such sample is found, returns 0.
+
+    Notes:
+    - If no quantile is found where the area exceeds the threshold, it returns 0. This is
+    usually caused by real events in the baseline window, which can result in a negative
+    area.
+    """
 
     area = 0
     area_tot = data.sum() + len(data) * baseline_fpart
@@ -339,7 +409,11 @@ def fill_hitpars(
 
 @export
 def dtype_afterpulses():
-    # define new data type for afterpulse data
+    """The afterpulse datatype
+
+    Return:
+    - The afterpulse datatype
+    """
     dtype_ap = [
         (("Channel/PMT number", "channel"), "<i2"),
         (("Time resolution in ns", "dt"), "<i2"),

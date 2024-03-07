@@ -1,7 +1,10 @@
 """
 Dear nT analyser,
 if you want to complain please contact:
-    chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
+    chiara@physik.uzh.ch, 
+    gvolta@physik.uzh.ch, 
+    kazama@isee.nagoya-u.ac.jp
+    torben.flehmke@fysik.su.se
 """
 
 from immutabledict import immutabledict
@@ -105,9 +108,11 @@ class LEDCalibration(strax.Plugin):
     ]
 
     def compute(self, raw_records):
-        """The data for LED calibration are build for those PMT which belongs to channel list.
+        """The data for LED calibration are build for those PMT which belongs to 
+        channel list.
 
-        This is used for the different ligh levels. As defaul value all the PMTs are considered.
+        This is used for the different ligh levels. As defaul value all the PMTs 
+        are considered.
 
         """
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
@@ -172,7 +177,13 @@ def get_records(raw_records, baseline_window):
     return records
 
 
-def get_led_windows(records, default_window, led_hit_extension, hit_min_amplitude, hit_min_height_over_noise):
+def get_led_windows(
+    records, 
+    default_window, 
+    led_hit_extension, 
+    hit_min_amplitude, 
+    hit_min_height_over_noise
+):
     """ Searches for hits in the records, if a hit is found, returns an interval
         around the hit given by led_hit_extension. If no hit is found in the
         record, returns the default window.
@@ -190,14 +201,7 @@ def get_led_windows(records, default_window, led_hit_extension, hit_min_amplitud
 
 
 @numba.jit(nopython=True)
-def _get_led_windows(hits, default_windows, led_hit_extension):
-    """ Searches for hits in the records, if a hit is found, returns an interval
-        around the hit given by led_hit_extension. If no hit is found in the
-        record, returns the default window.
-
-    :return (len(records), 2) array: Integration window for each record
-
-    """    
+def _get_led_windows(hits, default_windows, led_hit_extension): 
     windows = default_windows
     # max_window = np.array([96, 150])
     last = -1
