@@ -9,7 +9,6 @@ from .daq_waveforms import group_by_daq
 from .records_matrix import DEFAULT_MAX_SAMPLES
 
 export, __all__ = strax.exporter()
-__all__.extend(["plot_wf"])
 
 
 @straxen.mini_analysis()
