@@ -10,6 +10,7 @@ from typing import List, Literal, Callable, Union, Optional
 from textwrap import dedent
 
 import numpy as np
+from numpy.core.multiarray import interp as compiled_interp
 from scipy.spatial import cKDTree
 from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
 
@@ -24,7 +25,7 @@ class InterpolateAndExtrapolate:
     """Linearly interpolate- and extrapolate using inverse-distance weighted averaging between
     nearby points."""
 
-    def __init__(self, points, values, neighbours_to_use=None, array_valued=False):
+    def __init__(self, points, values, neighbours_to_use=None, array_valued=False, rotated=False):
         """
         :param points: array (n_points, n_dims) of coordinates
         :param values: array (n_points) of values
@@ -39,9 +40,13 @@ class InterpolateAndExtrapolate:
         self.array_valued = array_valued
         if array_valued:
             self.n_dim = self.values.shape[-1]
+        self.rotated = rotated
 
     def __call__(self, points):
         points = np.asarray(points)
+        if self.rotated:
+            assert points.shape[1] == 2, "InterpolateAndExtrapolate roated expects points of dimension 2"
+            points = np.array(straxen.rotate_perp_wires(points[:,0], points[:,1])).T
 
         # kdtree doesn't grok NaNs
         # Start with all Nans, then overwrite for the finite points
@@ -109,6 +114,7 @@ class InterpolatingMap:
         "irregular",
         "compressed",
         "quantized",
+        "rotated",
     ]
 
     def __init__(self, data, method="WeightedNearestNeighbors", **kwargs):
@@ -130,6 +136,8 @@ class InterpolatingMap:
         if "quantized" in self.data:
             self.data["map"] = self.data["quantized"] * self.data["map"].astype(np.float32)
             del self.data["quantized"]
+        if "rotated" in self.data:
+            rotated = True
 
         csys = self.data["coordinate_system"]
         if not len(csys):
@@ -181,7 +189,11 @@ class InterpolatingMap:
                 itp_fun = self._regular_grid_interpolator(csys, map_data, array_valued, **kwargs)
 
             elif method == "WeightedNearestNeighbors":
-                itp_fun = self._weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs)
+                itp_fun = self._weighted_nearest_neighbors(csys, map_data, array_valued, rotated, **kwargs)
+
+            elif method == "Linear1Din2D":
+                assert rotated, "Linear1Din2D interpolate maps should be in rotated coordinates"
+                itp_fun = self._linear_1d_in_2d(csys, map_data, array_valued, rotated, **kwargs)
 
             else:
                 raise ValueError(f"Interpolation method {method} is not supported")
@@ -196,6 +208,36 @@ class InterpolatingMap:
 
         """
         return self.interpolators[map_name](*args)
+
+    @staticmethod
+    def _linear_1d_in_2d(csys, map_data, array_valued, rotated=False, **kwargs):
+        """Linear interpolator along the x-axis and nearest value along the y-axis
+        """
+        dimensions = len(csys[0])
+        grid = [np.unique(csys[:, i]) for i in range(dimensions)]
+
+        assert dimensions == 2, "Linear1Din2D interpolate maps of dimension 2"
+        assert array_valued, "Linear1Din2D does not support interpolating point values"
+
+        def interp(X, Y):
+            # convert regular coordinates (X,Y) into rotated space (x,y)
+            if rotated:
+                x, y = straxen.rotate_perp_wires(X, Y)
+            else:
+                x, y = X, Y
+
+            # find nearest y-position
+            yp = (np.searchsorted(grid[1], y) - 1)[0]
+
+            # interpolate linearly over x along the y axis (along the wires) for each PMT
+            return np.array([[compiled_interp(xp, grid[0], map_data[:,yp,i]) for i in range(map_data.shape[-1])] for xp in x])
+
+        def arg_formated_interp(positions):
+                if isinstance(positions, list):
+                    positions = np.array(positions)
+                return interp(positions[:, 0], positions[:, 1])
+
+        return arg_formated_interp
 
     @staticmethod
     def _rect_bivariate_spline(csys, map_data, array_valued, **kwargs):
@@ -234,13 +276,13 @@ class InterpolatingMap:
         return RegularGridInterpolator(tuple(grid), map_data, **config)
 
     @staticmethod
-    def _weighted_nearest_neighbors(csys, map_data, array_valued, **kwargs):
+    def _weighted_nearest_neighbors(csys, map_data, array_valued, rotated=False, **kwargs):
         if array_valued:
             map_data = map_data.reshape((-1, map_data.shape[-1]))
         else:
             map_data = map_data.flatten()
         kwargs = straxen.filter_kwargs(InterpolateAndExtrapolate, kwargs)
-        return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, **kwargs)
+        return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, rotated=rotated, **kwargs)
 
     def scale_coordinates(self, scaling_factor, map_name="map"):
         """Scales the coordinate system by the specified factor.
