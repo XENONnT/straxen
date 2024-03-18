@@ -138,6 +138,8 @@ class InterpolatingMap:
             del self.data["quantized"]
         if "rotated" in self.data:
             rotated = True
+        else:
+            rotated = False
 
         csys = self.data["coordinate_system"]
         if not len(csys):
