@@ -69,12 +69,12 @@ def url_attr_check(url: str):
             URLWarning)
 
 
-@check_urls.register(r".*")
-def url_version_check(url: str):
-    if not ("version" in url):
-        warnings.warn(
-            f"A URL without a 'version' argument was given, as a result, to use a url protocol to get a correction a version of said correcection is requiered. url: {url}",
-            URLWarning)
+#@check_urls.register(r".*")
+#def url_version_check(url: str):
+#    if not ("version" in url):
+#        warnings.warn(
+#            f"A URL without a 'version' argument was given, as a result, to use a url protocol to get a correction a version of said correcection is requiered. url: {url}",
+#            URLWarning)
 
 
 @check_urls.register(r".*fdc_maps.*")

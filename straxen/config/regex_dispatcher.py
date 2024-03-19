@@ -90,15 +90,11 @@ class RegexDispatcher(object):
         return funcs
 
     def __call__(self, s, *args, **kwargs):
-        if isinstance(s, str) and ('xedocs' in s):
+        if isinstance(s, str):
             funcs = self.dispatch(s)
             for func in funcs:
                 func(s, *args, **kwargs)
 
-        elif isinstance(s, str) and ('xedocs' not in s):
-            funcs = self.dispatch(s)
-            for func in funcs:
-                func(s, *args, **kwargs)
 
     @property
     def __doc__(self):
