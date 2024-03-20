@@ -46,6 +46,7 @@ class InterpolateAndExtrapolate:
         # kdtree doesn't grok NaNs
         # Start with all Nans, then overwrite for the finite points
         result = np.empty(len(points))
+        # fill method slightly faster than multiplication of np.ones with nan
         result.fill(float("nan"))
 
         if self.array_valued:
@@ -58,14 +59,15 @@ class InterpolateAndExtrapolate:
         # Get values and weights for inverse distance weighted interpolation
         values = self.values[indices]
         weights = 1 / np.clip(distances, 1e-6, float("inf"))
-        if self.array_valued:
-            weights = np.repeat(weights, self.n_dim).reshape(values.shape)
 
         if (values.ndim == 3) and (self.array_valued):
             # faster shortcut for large S1/S2 maps, avoids caching by direct summation
-            result[valid] = np.einsum('ijk,ijk->ik', values, weights) / weights.sum(axis=1)
+            result[valid] = np.einsum('ijk, ij->ik', values, weights)/weights.sum(axis=-1)[:, np.newaxis]
         else:
+            if self.array_valued:
+                weights = np.repeat(weights, self.n_dim).reshape(values.shape)
             result[valid] = np.average(values, weights=weights, axis=-2 if self.array_valued else -1)
+
         return result
 
 
