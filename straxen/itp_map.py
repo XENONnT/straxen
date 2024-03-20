@@ -43,15 +43,18 @@ class InterpolateAndExtrapolate:
     def __call__(self, points):
         points = np.asarray(points)
 
-        # kdtree doesn't grok NaNs
-        # Start with all Nans, then overwrite for the finite points
-        result = np.empty(len(points))
-        # fill method slightly faster than multiplication of np.ones with nan
-        result.fill(float("nan"))
-
+        # Prepare result array in order to fill with valid values and masked nan
         if self.array_valued:
-            result = np.repeat(result.reshape(-1, 1), self.n_dim, axis=1)
+            result = np.empty((len(points), self.n_dim))
+        else:
+            result = np.empty(len(points))
+        
+        # kdtree doesn't grok NaNs, mask valid values
         valid = np.all(np.isfinite(points), axis=-1)
+
+        # fill non valid values with nan and compute the others
+        # fill method slightly faster than multiplication of np.ones with nan
+        result[~valid].fill(float("nan"))
 
         # Get distances to neighbours_to_use nearest neighbours
         distances, indices = self.kdtree.query(points[valid], self.neighbours_to_use)
@@ -60,18 +63,19 @@ class InterpolateAndExtrapolate:
         values = self.values[indices]
         weights = 1 / np.clip(distances, 1e-6, float("inf"))
 
+        # Faster shortcut for large S1/S2 maps, avoids caching by direct summation
         if (values.ndim == 3) and (self.array_valued):
-            # faster shortcut for large S1/S2 maps, avoids caching by direct summation
             result[valid] = np.einsum(
                 "ijk, ij->ik", values, weights / weights.sum(axis=-1)[:, np.newaxis]
             )
+        # Default map handling
         else:
             if self.array_valued:
                 weights = np.repeat(weights, self.n_dim).reshape(values.shape)
             result[valid] = np.average(
                 values, weights=weights, axis=-2 if self.array_valued else -1
             )
-
+        
         return result
 
 
