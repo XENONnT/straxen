@@ -360,8 +360,8 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(p.test_config, "fake://url?version=v0")
 
     def test_sort_url_kwargs(self):
-        """URLConfig preprocessor to rearange the order of arguments given buy a 
-        url to ensure the same url with a different hash order gives the same hash"""
+        """URLConfig preprocessor to rearange the order of arguments given buy a url to ensure the
+        same url with a different hash order gives the same hash."""
         url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
         intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
         preprocessed_url = straxen.config.preprocessors.sort_url_kwargs(url)
@@ -419,15 +419,15 @@ class TestURLConfig(unittest.TestCase):
 
     def test_regex_url_warnings(self):
 
-        url = "xedocs://electron_lifetimes?verion=v5&att=value" #url with typos
-        self.st.set_config({'test_config': url})
+        url = "xedocs://electron_lifetimes?verion=v5&att=value"  # url with typos
+        self.st.set_config({"test_config": url})
 
         with warnings.catch_warnings(record=True) as w:
             # Cause all warnings to always be triggered.
             warnings.simplefilter("always")
-        
+
             # Trigger a warning.
-            result = self.st.get_single_plugin(nt_test_run_id, 'test_data')
+            result = self.st.get_single_plugin(nt_test_run_id, "test_data")
 
             # Verify the warning
             assert len(w) != 0, "Error, warning dispatcher not working"
@@ -442,4 +442,3 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(len(p.test_config), 8)
         self.assertEqual(p.test_config[0], 0)
         self.assertEqual(p.test_config[-1], 0)
-

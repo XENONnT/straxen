@@ -522,4 +522,3 @@ class URLConfig(strax.Config):
                 )
 
         return cls.eval(url)
-
