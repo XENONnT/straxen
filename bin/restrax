@@ -124,7 +124,7 @@ def main():
 
             # This usually only takes a minute or two
             time.sleep(60)
-            re_temp.warning("Restarting main loop")
+            re_temp.log_warning("Restarting main loop")
 
 
 def run_restrax(args):
