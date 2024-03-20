@@ -6,6 +6,7 @@ import straxen
 import inspect
 
 import warnings
+from typing import Any, Dict, Optional, Container, Mapping, Union, Iterable
 
 import pandas as pd
 
@@ -14,6 +15,7 @@ from urllib.parse import urlparse, parse_qs
 from ast import literal_eval
 from strax.config import OMITTED
 from straxen.misc import filter_kwargs
+
 from typing import Mapping, Union
 
 from .config_tests import check_urls
@@ -24,7 +26,7 @@ from pydantic.config import get_config
 
 export, __all__ = strax.exporter()
 
-_CACHES = {}
+_CACHES: Dict[int, Any] = {}
 
 
 @export
@@ -39,10 +41,8 @@ def config_cache_size_mb():
 
 
 def parse_val(val: str):
-    """Attempt to parse a string value as
-    a python literal, falls back to returning just
-    the original string if cant be parsed.
-    """
+    """Attempt to parse a string value as a python literal, falls back to returning just the
+    original string if cant be parsed."""
     try:
         val = literal_eval(val)
     except ValueError:
@@ -55,11 +55,12 @@ def parse_val(val: str):
 @export
 class URLConfig(strax.Config):
     """Dispatch on URL protocol.
-    unrecognized protocol returns identity
-    inspired by dasks Dispatch and fsspec fs protocols.
+
+    unrecognized protocol returns identity inspired by dasks Dispatch and fsspec fs protocols.
+
     """
 
-    _LOOKUP = {}
+    _LOOKUP: Dict[str, Any] = {}
     _PREPROCESSORS = ()
 
     SCHEME_SEP = "://"
@@ -91,8 +92,7 @@ class URLConfig(strax.Config):
 
     @classmethod
     def register(cls, protocol, func=None):
-        """Register dispatch of `func` on urls
-        starting with protocol name `protocol`"""
+        """Register dispatch of `func` on urls starting with protocol name `protocol`"""
 
         def wrapper(func):
             if isinstance(protocol, tuple):
@@ -112,9 +112,7 @@ class URLConfig(strax.Config):
 
     @classmethod
     def preprocessor(cls, func=None, precedence=0):
-        """Register a new processor to modify the config values
-        before they are used.
-        """
+        """Register a new processor to modify the config values before they are used."""
 
         def wrapper(func):
             entry = (precedence, func)
@@ -126,16 +124,19 @@ class URLConfig(strax.Config):
         return wrapper(func) if func is not None else wrapper
 
     @classmethod
-    def eval(cls, protocol: str, arg: Union[str, tuple] = None, kwargs: dict = None):
-        """Evaluate a URL/AST by recusively dispatching protocols by name
-            with argument arg and keyword arguments kwargs
-           and return the value. If protocol does not exist, returnes arg
+    def eval(
+        cls, protocol: str, arg: Optional[Union[str, tuple]] = None, kwargs: Optional[dict] = None
+    ):
+        """Evaluate a URL/AST by recusively dispatching protocols by name with argument arg and
+        keyword arguments kwargs and return the value.
+
+        If protocol does not exist, returnes arg
         :param protocol: name of the protocol or a URL
-        :param arg: argument to pass to protocol, can be another (sub-protocol,
-            arg, kwargs) tuple, in which case sub-protocol will be evaluated
-            and passed to protocol
+        :param arg: argument to pass to protocol, can be another (sub-protocol, arg, kwargs) tuple,
+            in which case sub-protocol will be evaluated and passed to protocol
         :param kwargs: keyword arguments to be passed to the protocol
         :return: (Any) The return value of the protocol on these arguments
+
         """
 
         if protocol is not None and arg is None:
@@ -159,7 +160,7 @@ class URLConfig(strax.Config):
 
     @classmethod
     def split_url_kwargs(cls, url):
-        """split a url into path and kwargs"""
+        """Split a url into path and kwargs."""
         path, _, _ = url.partition(cls.QUERY_SEP)
         kwargs = {}
         for k, v in parse_qs(urlparse(url).query).items():
@@ -182,7 +183,9 @@ class URLConfig(strax.Config):
     @classmethod
     def format_url_kwargs(cls, url, **kwargs):
         """Add keyword arguments to a URL.
+
         Sorts all arguments by key for hash consistency
+
         """
         url, extra_kwargs = cls.split_url_kwargs(url)
         kwargs = dict(extra_kwargs, **kwargs)
@@ -199,13 +202,13 @@ class URLConfig(strax.Config):
 
     @classmethod
     def lookup_value(cls, value, **namespace):
-        """Optionally fetch an attribute from namespace
-        if value is a string with cls.NAMESPACE_SEP in
-        it, the string is split and the first part is used
-        to lookup an object in namespace and the second part
-        is used to lookup the value in the object.
-        If the value is not a string or the target object is
-        not in the namesapce, the value is returned as is.
+        """Optionally fetch an attribute from namespace if value is a string with cls.NAMESPACE_SEP
+        in it, the string is split and the first part is used to lookup an object in namespace and
+        the second part is used to lookup the value in the object.
+
+        If the value is not a string or the target object is not in the namesapce, the value is
+        returned as is.
+
         """
 
         if isinstance(value, list):
@@ -224,7 +227,7 @@ class URLConfig(strax.Config):
 
     @classmethod
     def deref_ast(cls, protocol, arg, kwargs, **namespace):
-        """Dereference an AST by looking up values in namespace"""
+        """Dereference an AST by looking up values in namespace."""
         if isinstance(arg, tuple):
             arg = cls.deref_ast(*arg, **namespace)
         else:
@@ -239,11 +242,12 @@ class URLConfig(strax.Config):
         run_defaults=None,
         set_defaults=True,
     ):
-        """This method is called by the context on plugin initialization
-        at this stage, the run_id and context config are already known but the
-        config values are not yet set on the plugin. Therefore its the perfect
-        place to run any preprocessors on the config values to make any needed
-        changes before the configs are hashed.
+        """This method is called by the context on plugin initialization at this stage, the run_id
+        and context config are already known but the config values are not yet set on the plugin.
+
+        Therefore its the perfect place to run any preprocessors on the config values to make any
+        needed changes before the configs are hashed.
+
         """
         super().validate(config, run_id, run_defaults, set_defaults)
 
@@ -271,37 +275,35 @@ class URLConfig(strax.Config):
             self.validate_type(cfg)
 
     def validate_type(self, value):
-        """Validate the type of a value against its intended type"""
+        """Validate the type of a value against its intended type."""
         msg = (
             f"Invalid type for option {self.name}. "
             f"Expected a {self.final_type} instance, got {type(value)}"
-            )
-        
+        )
+
         if self.final_type is not OMITTED:
             # Use pydantic to validate the type
             # its validation is more flexible than isinstance
             # it will coerce standard equivalent types
             cfg = get_config(dict(arbitrary_types_allowed=True))
             if isinstance(self.final_type, tuple):
-                validators = [ v for t in self.final_type for v in find_validators(t, config=cfg)]
+                validators = [v for t in self.final_type for v in find_validators(t, config=cfg)]
             else:
                 validators = find_validators(self.final_type, config=cfg)
             for validator in validators:
                 try:
                     validator(value)
                     break
-                except:
+                except Exception:
                     pass
             else:
                 raise TypeError(msg)
-    
+
         return value
 
     def fetch(self, plugin):
-        """override the Config.fetch method
-        this is called when the attribute is accessed
-        from withing the Plugin instance
-        """
+        """Override the Config.fetch method this is called when the attribute is accessed from
+        withing the Plugin instance."""
         # first fetch the user-set value
 
         # from the config dictionary
@@ -324,9 +326,7 @@ class URLConfig(strax.Config):
         run_id = getattr(plugin, "run_id", "000000")
 
         # construct a deterministic hash key from AST
-        key = strax.deterministic_hash(
-            (plugin.config, run_id, protocol, arg, kwargs)
-        )
+        key = strax.deterministic_hash((plugin.config, run_id, protocol, arg, kwargs))
 
         # fetch from cache if exists
         value = self.cache.get(key, None)
@@ -348,10 +348,10 @@ class URLConfig(strax.Config):
     def ast_to_url(
         cls,
         protocol: Union[str, tuple],
-        arg: Union[str, tuple] = None,
-        kwargs: dict = None,
+        arg: Optional[Union[str, tuple]] = None,
+        kwargs: Optional[dict] = None,
     ):
-        """Convert a protocol abstract syntax tree to a valid URL"""
+        """Convert a protocol abstract syntax tree to a valid URL."""
 
         if isinstance(protocol, tuple):
             protocol, arg, kwargs = protocol
@@ -386,7 +386,7 @@ class URLConfig(strax.Config):
 
     @classmethod
     def url_to_ast(cls, url, **kwargs):
-        """Convert a URL to a protocol abstract syntax tree"""
+        """Convert a URL to a protocol abstract syntax tree."""
         if not isinstance(url, str):
             raise TypeError(f"URL must be a string, got {type(url)}")
 
@@ -486,10 +486,8 @@ class URLConfig(strax.Config):
 
     @classmethod
     def evaluate_dry(cls, url: str, **kwargs):
-        """
-        Utility function to quickly test and evaluate URL configs,
-        without the initialization of plugins (so no plugin attributes).
-        plugin attributes can be passed as keyword arguments.
+        """Utility function to quickly test and evaluate URL configs, without the initialization of
+        plugins (so no plugin attributes). plugin attributes can be passed as keyword arguments.
 
         example::
 
@@ -508,6 +506,7 @@ class URLConfig(strax.Config):
         :param url: URL to evaluate, see above for example.
         :keyword: any additional kwargs are passed to self.dispatch (see example)
         :return: evaluated value of the URL.
+
         """
         url = cls.format_url_kwargs(url, **kwargs)
         _, combined_kwargs = cls.split_url_kwargs(url)
@@ -521,7 +520,6 @@ class URLConfig(strax.Config):
                     f"Try passing {k} as a keyword argument. "
                     f"e.g.: `URLConfig.evaluate_dry({url}, {k}=SOME_VALUE)`."
                 )
-        
-        return cls.eval(url)
 
+        return cls.eval(url)
 

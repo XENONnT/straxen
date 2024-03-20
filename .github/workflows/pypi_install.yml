@@ -13,12 +13,12 @@ jobs:
     steps:
       # Setup steps
       - name: Setup python
-        uses: actions/setup-python@v4.7.0
+        uses: actions/setup-python@v5.0.0
         with:
-          python-version: '3.8'
+          python-version: '3.9'
 
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: pip install wheel
