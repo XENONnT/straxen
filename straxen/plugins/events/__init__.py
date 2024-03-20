@@ -72,3 +72,10 @@ from .event_basics_som import *
 
 from . import event_nearest_triggering
 from .event_nearest_triggering import *
+
+# Only for testing!
+from . import event_s2_fwhm
+from .event_s2_fwhm import *
+
+from . import event_nans
+from .event_nans import *
