@@ -48,7 +48,7 @@ class InterpolateAndExtrapolate:
             result = np.empty((len(points), self.n_dim))
         else:
             result = np.empty(len(points))
-        
+
         # kdtree doesn't grok NaNs, mask valid values
         valid = np.all(np.isfinite(points), axis=-1)
 
@@ -75,7 +75,7 @@ class InterpolateAndExtrapolate:
             result[valid] = np.average(
                 values, weights=weights, axis=-2 if self.array_valued else -1
             )
-        
+
         return result
 
 
