@@ -246,3 +246,9 @@ def read_rundoc(path, run_id=None, default=None):
         else:
             raise ValueError(f'No path {path} found in rundoc for run {run_id}')
     return rundoc
+
+
+@URLConfig.register("pad-array")
+def get_paded_array(arr: np.ndarray, pad_value=0, pad_left=0, pad_right=0):
+    """Pad the array with pad_value on the left and right side."""
+    return np.pad(arr, (pad_left, pad_right), constant_values=pad_value)

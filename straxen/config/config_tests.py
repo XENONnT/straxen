@@ -19,16 +19,18 @@ def confirm_xedocs_schema_exists_check(url: str):
         warnings.warn(f"You tried to use a schema that is not part of the xedocs database. url: {url}", URLWarning)
 
 
-@check_urls.register(r".*(list-to-array|'objects-to-dict').*")
+#@check_urls.register(r".*(list-to-array|'objects-to-dict').*")
+@check_urls.register(r"(.*)(.*xedocs.*)")
 def data_as_list_check(url: str):
-    if not straxen.URLConfig.kwarg_from_url(url, "as_list"):
-        warnings.warn(
-            f"When using the list-to-array or objects-to-dict protocol, you must include an as_list=True in the URL arguments. url: {url}",
-            URLWarning)
-    if not ("sort" in url):
-        warnings.warn(
-            f"When using the list-to-array or objects-to-dict protocol, you must include a sort argument in the URL. url: {url}",
-            URLWarning)
+    if "list-to-array" or "objects-to-dict" in url:
+        if not straxen.URLConfig.kwarg_from_url(url, "as_list"):
+            warnings.warn(
+                f"When using the list-to-array or objects-to-dict protocol, you must include an as_list=True in the URL arguments. url: {url}",
+                URLWarning)
+        if not ("sort" in url):
+            warnings.warn(
+                f"When using the list-to-array or objects-to-dict protocol, you must include a sort argument in the URL. url: {url}",
+                URLWarning)
 
 
 @check_urls.register(r"(.*)(.*xedocs.*)")
@@ -69,16 +71,16 @@ def url_attr_check(url: str):
             URLWarning)
 
 
-#@check_urls.register(r".*")
-#def url_version_check(url: str):
-#    if not ("version" in url):
-#        warnings.warn(
-#            f"A URL without a 'version' argument was given, as a result, to use a url protocol to get a correction a version of said correcection is requiered. url: {url}",
-#            URLWarning)
+@check_urls.register(r"(.*)(.*xedocs.*)")
+def url_version_check(url: str):
+    if not ("version" in url):
+        warnings.warn(
+            f"A URL without a 'version' argument was given, as a result, to use a url protocol to get a correction a version of said correcection is requiered. url: {url}",
+            URLWarning)
 
 
 @check_urls.register(r".*fdc_maps.*")
-def url_fdc__check(url: str):
+def url_fdc_check(url: str):
     if not ("scale_coordinates" in url):
         warnings.warn(
             f"A URL for fdc was given without a [scale_coordinates] argument. This could lead to issues when reprocessing data. Please include the scaling in the URL. url: {url}",
