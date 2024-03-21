@@ -1,7 +1,7 @@
 import re
 
 
-_pattern_type = type(re.compile(''))
+_pattern_type = type(re.compile(""))
 
 
 def normalize(r):
@@ -20,12 +20,11 @@ def normalize(r):
     """
     if isinstance(r, _pattern_type):
         r = r.pattern
-    return re.compile(r.lstrip('^').rstrip('$'))
+    return re.compile(r.lstrip("^").rstrip("$"))
 
 
 class RegexDispatcher(object):
-    """
-    Regular Expression Dispatcher
+    """Regular Expression Dispatcher.
 
     >>> f = RegexDispatcher('f')
 
@@ -49,13 +48,15 @@ class RegexDispatcher(object):
 
     >>> type(f('123.456'))
     float
+
     """
+
     def __init__(self, name):
         self.name = name
         self.funcs = {}
 
     def add(self, regex, func):
-        #self.funcs[normalize(regex)] = func
+        # self.funcs[normalize(regex)] = func
         norm_regex = normalize(regex)
         if norm_regex not in self.funcs:
             self.funcs[norm_regex] = []
@@ -77,15 +78,18 @@ class RegexDispatcher(object):
         decorator : callable
             A decorator that registers the function with this RegexDispatcher
             but otherwise returns the function unchanged.
+
         """
+
         def _(func):
             self.add(regex, func)
             return func
+
         return _
 
     def dispatch(self, s):
-        #funcs = [func for r, func in self.funcs.items() if r.match(s)]
-        #return funcs
+        # funcs = [func for r, func in self.funcs.items() if r.match(s)]
+        # return funcs
         funcs = [f for r, funcs in self.funcs.items() if r.match(s) for f in funcs]
         return funcs
 
@@ -94,7 +98,6 @@ class RegexDispatcher(object):
             funcs = self.dispatch(s)
             for func in funcs:
                 func(s, *args, **kwargs)
-
 
     @property
     def __doc__(self):

@@ -25,55 +25,45 @@ def get_item_or_attr(obj, key, default=None):
     return getattr(obj, key, default)
 
 
-@URLConfig.register('cmt')
-def get_correction(name: str,
-                   run_id: str = None,
-                   version: str = 'ONLINE',
-                   detector: str = 'nt',
-                   **kwargs):
-    """Get value for name from CMT"""
+@URLConfig.register("cmt")
+def get_correction(
+    name: str, run_id: str = None, version: str = "ONLINE", detector: str = "nt", **kwargs
+):
+    """Get value for name from CMT."""
 
     if run_id is None:
-        raise ValueError('Attempting to fetch a correction without a run id.')
+        raise ValueError("Attempting to fetch a correction without a run id.")
 
-    return straxen.get_correction_from_cmt(run_id, (name, version, detector == 'nt'))
+    return straxen.get_correction_from_cmt(run_id, (name, version, detector == "nt"))
 
 
-@URLConfig.register('resource')
-def get_resource(name: str,
-                 fmt: str = 'text',
-                 **kwargs):
-    """
-    Fetch a straxen resource
-    Allow a direct download using <fmt='abs_path'> otherwise kwargs are
-    passed directly to straxen.get_resource.
-    """
-    if fmt == 'abs_path':
+@URLConfig.register("resource")
+def get_resource(name: str, fmt: str = "text", **kwargs):
+    """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+    passed directly to straxen.get_resource."""
+    if fmt == "abs_path":
         downloader = straxen.MongoDownloader()
         return downloader.download_single(name)
     return straxen.get_resource(name, fmt=fmt)
 
 
-@URLConfig.register('fsspec')
+@URLConfig.register("fsspec")
 def read_file(path: str, **kwargs):
-    """Support fetching files from arbitrary filesystems
-    """
+    """Support fetching files from arbitrary filesystems."""
     with fsspec.open(path, **kwargs) as f:
         content = f.read()
     return content
 
 
-@URLConfig.register('json')
+@URLConfig.register("json")
 def read_json(content: str, **kwargs):
-    """Load json string as a python object
-    """
+    """Load json string as a python object."""
     return json.loads(content)
 
 
-@URLConfig.register('take')
+@URLConfig.register("take")
 def get_key(container: Container, take=None, **kwargs):
-    """return a single element of a container
-    """
+    """Return a single element of a container."""
     if take is None:
         return container
     if not isinstance(take, list):
@@ -87,81 +77,77 @@ def get_key(container: Container, take=None, **kwargs):
     return container
 
 
-@URLConfig.register('format')
+@URLConfig.register("format")
 def format_arg(arg: str, **kwargs):
-    """apply pythons builtin format function to a string"""
+    """Apply pythons builtin format function to a string."""
     return arg.format(**kwargs)
 
 
-@URLConfig.register('itp_map')
-def load_map(some_map, method='WeightedNearestNeighbors', scale_coordinates=None, **kwargs):
-    """Make an InterpolatingMap"""
+@URLConfig.register("itp_map")
+def load_map(some_map, method="WeightedNearestNeighbors", scale_coordinates=None, **kwargs):
+    """Make an InterpolatingMap."""
     itp_map = straxen.InterpolatingMap(some_map, method=method, **kwargs)
     if scale_coordinates is not None:
         itp_map.scale_coordinates(scale_coordinates)
     return itp_map
 
 
-@URLConfig.register('bodega')
+@URLConfig.register("bodega")
 def load_value(name: str, bodega_version=None):
-    """Load a number from BODEGA file"""
+    """Load a number from BODEGA file."""
     if bodega_version is None:
-        raise ValueError('Provide version see e.g. tests/test_url_config.py')
+        raise ValueError("Provide version see e.g. tests/test_url_config.py")
     nt_numbers = straxen.get_resource("XENONnT_numbers.json", fmt="json")
     return nt_numbers[name][bodega_version]["value"]
 
 
-@URLConfig.register('tf')
+@URLConfig.register("tf")
 def open_neural_net(model_path: str, custom_objects=None, **kwargs):
-    '''Open a tensorflow file and return a keras model.
-    '''
+    """Open a tensorflow file and return a keras model."""
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
     import tensorflow as tf
+
     if not os.path.exists(model_path):
-        raise FileNotFoundError(f'No file at {model_path}')
+        raise FileNotFoundError(f"No file at {model_path}")
     with tempfile.TemporaryDirectory() as tmpdirname:
         tar = tarfile.open(model_path, mode="r:gz")
         tar.extractall(path=tmpdirname)
         return tf.keras.models.load_model(tmpdirname, custom_objects=custom_objects)
 
 
-@URLConfig.register('itp_dict')
-def get_itp_dict(loaded_json,
-                 run_id=None,
-                 time_key='time',
-                 itp_keys='correction',
-                 **kwargs) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
-    """
-    Interpolate a dictionary at the start time that is queried from
-    a run-id.
+@URLConfig.register("itp_dict")
+def get_itp_dict(
+    loaded_json, run_id=None, time_key="time", itp_keys="correction", **kwargs
+) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
+    """Interpolate a dictionary at the start time that is queried from a run-id.
 
     :param loaded_json: a dictionary with a time-series
     :param run_id: run_id
     :param time_key: key that gives the timestamps
-    :param itp_keys: which keys from the dict to read. Should be
-        comma (',') separated!
+    :param itp_keys: which keys from the dict to read. Should be comma (',') separated!
+    :return: Interpolated values of dict at the start time, either returned as an np.ndarray (single
+        value) or as a dict (multiple itp_dict_keys)
 
-    :return: Interpolated values of dict at the start time, either
-        returned as an np.ndarray (single value) or as a dict
-        (multiple itp_dict_keys)
     """
-    keys = strax.to_str_tuple(itp_keys.split(','))
+    keys = strax.to_str_tuple(itp_keys.split(","))
     for key in list(keys) + [time_key]:
         if key not in loaded_json:
-            raise KeyError(f"The json does contain the key '{key}'. Try one of: {loaded_json.keys()}")
+            raise KeyError(
+                f"The json does contain the key '{key}'. Try one of: {loaded_json.keys()}"
+            )
 
     times = loaded_json[time_key]
 
     # get start time of this run. Need to make tz-aware
-    start = xent_collection().find_one({'number': int(run_id)}, {'start': 1})['start']
+    start = xent_collection().find_one({"number": int(run_id)}, {"start": 1})["start"]
     start = pytz.utc.localize(start).timestamp() * 1e9
 
     try:
         if len(strax.to_str_tuple(keys)) > 1:
-            return {key:
-                        interp1d(times, loaded_json[key], bounds_error=True)(start)
-                    for key in keys}
+            return {
+                key: interp1d(times, loaded_json[key], bounds_error=True)(start) for key in keys
+            }
 
         else:
             interp = interp1d(times, loaded_json[keys[0]], bounds_error=True)
@@ -170,17 +156,19 @@ def get_itp_dict(loaded_json,
         raise ValueError(f"Correction is not defined for run {run_id}") from e
 
 
-@URLConfig.register('rekey_dict')
-def rekey_dict(d, replace_keys='', with_keys=''):
-    '''Replace the keys of a dictionary.
+@URLConfig.register("rekey_dict")
+def rekey_dict(d, replace_keys="", with_keys=""):
+    """Replace the keys of a dictionary.
+
     :param d: dictionary that will have its keys renamed
     :param replace_keys: comma-separated string of keys that will be replaced
-    :param with_keys:  comma-separated string of keys that will replace the replace_keys
+    :param with_keys: comma-separated string of keys that will replace the replace_keys
     :return: dictionary with renamed keys
-    '''
+
+    """
     new_dict = d.copy()
-    replace_keys = strax.to_str_tuple(replace_keys.split(','))
-    with_keys = strax.to_str_tuple(with_keys.split(','))
+    replace_keys = strax.to_str_tuple(replace_keys.split(","))
+    with_keys = strax.to_str_tuple(with_keys.split(","))
     if len(replace_keys) != len(with_keys):
         raise RuntimeError("replace_keys and with_keys must have the same length")
     for old_key, new_key in zip(replace_keys, with_keys):
@@ -188,19 +176,21 @@ def rekey_dict(d, replace_keys='', with_keys=''):
     return new_dict
 
 
-@URLConfig.register('objects-to-dict')
-def objects_to_dict(objects: list, key_attr=None, value_attr='value', immutable=False):
-    '''Converts a list of objects/dicts to a single dictionary by taking the
-    key and value from each of the objects/dicts. If key_attr is not provided,
-    the list index is used as the key.
+@URLConfig.register("objects-to-dict")
+def objects_to_dict(objects: list, key_attr=None, value_attr="value", immutable=False):
+    """Converts a list of objects/dicts to a single dictionary by taking the key and value from each
+    of the objects/dicts. If key_attr is not provided, the list index is used as the key.
 
     :param objects: list of objects/dicts that will be converted to a dictionary
     :param key_attr: key/attribute of the objects that will be used as key in the dictionary
     :param value_attr: key/attribute of the objects that will be used as value in the dictionary
-    '''
+
+    """
     if not isinstance(objects, Iterable):
-        raise TypeError(f'The objects-to-dict protocol expects an iterable '
-                        f'of objects but received {type(objects)} instead.')
+        raise TypeError(
+            f"The objects-to-dict protocol expects an iterable "
+            f"of objects but received {type(objects)} instead."
+        )
     result = {}
     for i, obj in enumerate(objects):
         key = i if key_attr is None else get_item_or_attr(obj, key_attr)
@@ -212,31 +202,34 @@ def objects_to_dict(objects: list, key_attr=None, value_attr='value', immutable=
     return result
 
 
-@URLConfig.register('list-to-array')
+@URLConfig.register("list-to-array")
 def objects_to_array(objects: list):
-    '''
-    Converts a list of objects/dicts to a numpy array.
-    :param objects: Any list of objects'''
+    """Converts a list of objects/dicts to a numpy array.
+
+    :param objects: Any list of objects
+
+    """
 
     if not isinstance(objects, Iterable):
-        raise TypeError(f'The list-to-array protocol expects an '
-                        f'iterable but recieved a {type(objects)} instead')
+        raise TypeError(
+            f"The list-to-array protocol expects an "
+            f"iterable but recieved a {type(objects)} instead"
+        )
 
     return np.array(objects)
 
 
-@URLConfig.register('run_doc')
+@URLConfig.register("run_doc")
 def read_rundoc(path, run_id=None, default=None):
-    """Read a path from the rundoc.
-    """
+    """Read a path from the rundoc."""
     if run_id is None:
-        raise ValueError('rundoc protocol: missing run_id.')
+        raise ValueError("rundoc protocol: missing run_id.")
     runs = xent_collection()
-    rundoc = runs.find_one({'number': int(run_id)}, {'_id': 0, path: 1})
+    rundoc = runs.find_one({"number": int(run_id)}, {"_id": 0, path: 1})
     if rundoc is None:
-        raise ValueError(f'No rundoc found for run {run_id}')
+        raise ValueError(f"No rundoc found for run {run_id}")
 
-    for part in path.split('.'):
+    for part in path.split("."):
         if isinstance(rundoc, list) and part.isdigit() and len(rundoc) > int(part):
             rundoc = rundoc[int(part)]
         elif isinstance(rundoc, dict) and part in rundoc:
@@ -244,7 +237,7 @@ def read_rundoc(path, run_id=None, default=None):
         elif default is not None:
             return default
         else:
-            raise ValueError(f'No path {path} found in rundoc for run {run_id}')
+            raise ValueError(f"No path {path} found in rundoc for run {run_id}")
     return rundoc
 
 
