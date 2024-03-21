@@ -54,7 +54,7 @@ class InterpolateAndExtrapolate:
 
         # fill non valid values with nan and compute the others
         # fill method slightly faster than multiplication of np.ones with nan
-        result[~valid].fill(float("nan"))
+        result[~valid] = float("nan")
 
         # Get distances to neighbours_to_use nearest neighbours
         distances, indices = self.kdtree.query(points[valid], self.neighbours_to_use)
