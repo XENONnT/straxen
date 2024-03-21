@@ -45,8 +45,10 @@ class InterpolateAndExtrapolate:
     def __call__(self, points):
         points = np.asarray(points)
         if self.rotated:
-            assert points.shape[1] == 2, "InterpolateAndExtrapolate roated expects points of dimension 2"
-            points = np.array(straxen.rotate_perp_wires(points[:,0], points[:,1])).T
+            assert (
+                points.shape[1] == 2
+            ), "InterpolateAndExtrapolate roated expects points of dimension 2"
+            points = np.array(straxen.rotate_perp_wires(points[:, 0], points[:, 1])).T
 
         # kdtree doesn't grok NaNs
         # Start with all Nans, then overwrite for the finite points
@@ -191,7 +193,9 @@ class InterpolatingMap:
                 itp_fun = self._regular_grid_interpolator(csys, map_data, array_valued, **kwargs)
 
             elif method == "WeightedNearestNeighbors":
-                itp_fun = self._weighted_nearest_neighbors(csys, map_data, array_valued, rotated, **kwargs)
+                itp_fun = self._weighted_nearest_neighbors(
+                    csys, map_data, array_valued, rotated, **kwargs
+                )
 
             elif method == "Linear1Din2D":
                 assert rotated, "Linear1Din2D interpolate maps should be in rotated coordinates"
@@ -213,8 +217,7 @@ class InterpolatingMap:
 
     @staticmethod
     def _linear_1d_in_2d(csys, map_data, array_valued, rotated=False, **kwargs):
-        """Linear interpolator along the x-axis and nearest value along the y-axis
-        """
+        """Linear interpolator along the x-axis and nearest value along the y-axis."""
         dimensions = len(csys[0])
         grid = [np.unique(csys[:, i]) for i in range(dimensions)]
 
@@ -232,12 +235,20 @@ class InterpolatingMap:
             yp = (np.searchsorted(grid[1], y) - 1)[0]
 
             # interpolate linearly over x along the y axis (along the wires) for each PMT
-            return np.array([[compiled_interp(xp, grid[0], map_data[:,yp,i]) for i in range(map_data.shape[-1])] for xp in x])
+            return np.array(
+                [
+                    [
+                        compiled_interp(xp, grid[0], map_data[:, yp, i])
+                        for i in range(map_data.shape[-1])
+                    ]
+                    for xp in x
+                ]
+            )
 
         def arg_formated_interp(positions):
-                if isinstance(positions, list):
-                    positions = np.array(positions)
-                return interp(positions[:, 0], positions[:, 1])
+            if isinstance(positions, list):
+                positions = np.array(positions)
+            return interp(positions[:, 0], positions[:, 1])
 
         return arg_formated_interp
 
@@ -284,7 +295,9 @@ class InterpolatingMap:
         else:
             map_data = map_data.flatten()
         kwargs = straxen.filter_kwargs(InterpolateAndExtrapolate, kwargs)
-        return InterpolateAndExtrapolate(csys, map_data, array_valued=array_valued, rotated=rotated, **kwargs)
+        return InterpolateAndExtrapolate(
+            csys, map_data, array_valued=array_valued, rotated=rotated, **kwargs
+        )
 
     def scale_coordinates(self, scaling_factor, map_name="map"):
         """Scales the coordinate system by the specified factor.
