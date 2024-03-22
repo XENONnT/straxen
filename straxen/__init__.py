@@ -15,7 +15,7 @@ from .misc import *
 
 from .scada import *
 from .bokeh_utils import *
-from .url_config import *
+from .config.url_config import *
 
 from . import legacy
 from .legacy import *
@@ -27,6 +27,8 @@ from . import storage
 from .storage import *
 
 from . import analyses
+
+from . import config
 
 # Do not make all contexts directly available under straxen.
 # Otherwise, we have straxen.demo() etc.
