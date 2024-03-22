@@ -23,18 +23,20 @@ def confirm_xedocs_schema_exists_check(url: str):
         )
 
 
-#@check_urls.register(r".*(list-to-array|'objects-to-dict').*")
+# @check_urls.register(r".*(list-to-array|'objects-to-dict').*")
 @check_urls.register(r"(.*)(.*xedocs.*)")
 def data_as_list_check(url: str):
     if "list-to-array" or "objects-to-dict" in url:
         if not straxen.URLConfig.kwarg_from_url(url, "as_list"):
             warnings.warn(
                 f"When using the list-to-array or objects-to-dict protocol, you must include an as_list=True in the URL arguments. url: {url}",
-                URLWarning)
+                URLWarning,
+            )
         if not ("sort" in url):
             warnings.warn(
                 f"When using the list-to-array or objects-to-dict protocol, you must include a sort argument in the URL. url: {url}",
-                URLWarning)
+                URLWarning,
+            )
 
 
 @check_urls.register(r"(.*)(.*xedocs.*)")
@@ -84,7 +86,8 @@ def url_version_check(url: str):
     if not ("version" in url):
         warnings.warn(
             f"A URL without a 'version' argument was given, as a result, to use a url protocol to get a correction a version of said correcection is requiered. url: {url}",
-            URLWarning)
+            URLWarning,
+        )
 
 
 @check_urls.register(r".*fdc_maps.*")
