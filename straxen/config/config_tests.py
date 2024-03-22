@@ -26,7 +26,6 @@ def confirm_xedocs_schema_exists_check(url: str):
 #@check_urls.register(r".*(list-to-array|'objects-to-dict').*")
 @check_urls.register(r"(.*)(.*xedocs.*)")
 def data_as_list_check(url: str):
-<<<<<<< HEAD
     if "list-to-array" or "objects-to-dict" in url:
         if not straxen.URLConfig.kwarg_from_url(url, "as_list"):
             warnings.warn(
@@ -36,18 +35,6 @@ def data_as_list_check(url: str):
             warnings.warn(
                 f"When using the list-to-array or objects-to-dict protocol, you must include a sort argument in the URL. url: {url}",
                 URLWarning)
-=======
-    if not straxen.URLConfig.kwarg_from_url(url, "as_list"):
-        warnings.warn(
-            f"When using the list-to-array or objects-to-dict protocol, you must include an as_list=True in the URL arguments. url: {url}",
-            URLWarning,
-        )
-    if not ("sort" in url):
-        warnings.warn(
-            f"When using the list-to-array or objects-to-dict protocol, you must include a sort argument in the URL. url: {url}",
-            URLWarning,
-        )
->>>>>>> 6aafce1cb96db41b4af33107b8a60d13f88ba61f
 
 
 @check_urls.register(r"(.*)(.*xedocs.*)")
@@ -92,21 +79,12 @@ def url_attr_check(url: str):
         )
 
 
-<<<<<<< HEAD
 @check_urls.register(r"(.*)(.*xedocs.*)")
 def url_version_check(url: str):
     if not ("version" in url):
         warnings.warn(
             f"A URL without a 'version' argument was given, as a result, to use a url protocol to get a correction a version of said correcection is requiered. url: {url}",
             URLWarning)
-=======
-# @check_urls.register(r".*")
-# def url_version_check(url: str):
-#    if not ("version" in url):
-#        warnings.warn(
-#            f"A URL without a 'version' argument was given, as a result, to use a url protocol to get a correction a version of said correcection is requiered. url: {url}",
-#            URLWarning)
->>>>>>> 6aafce1cb96db41b4af33107b8a60d13f88ba61f
 
 
 @check_urls.register(r".*fdc_maps.*")
