@@ -51,3 +51,6 @@ from .peak_basics_som import *
 
 from . import peak_nearest_triggering
 from .peak_nearest_triggering import *
+
+from . import peak_lone_hits_shadow
+from .peak_lone_hits_shadow import *
