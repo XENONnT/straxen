@@ -29,7 +29,7 @@ class PeakLoneHitsShadow(strax.OverlapWindowPlugin):
     )
 
     lone_hits_shadow_pre_peak_threshold = straxen.URLConfig(
-        default=20000.0,
+        default=2000.0,
         type=float,
         track=True,
         help="Threshold area to check lone hit shadow for the prepeak",
@@ -153,11 +153,18 @@ class PeakLoneHitsShadow(strax.OverlapWindowPlugin):
 
         argsort = np.argsort(peaks["time"], kind="mergesort")
         _peaks = np.sort(peaks, order="time")
+        pre_peaks = _peaks[_peaks["area"] >= self.lone_hits_shadow_pre_peak_threshold]
+
+        _result = self.compute_lone_hits_shadow(pre_peaks, _peaks)
+        _quick_assign(argsort, result, _result)
+
+        return result
+
+    def compute_lone_hits_shadow(self, pre_peaks, _peaks):
+
         _result = np.zeros_like(_peaks, dtype=self.infer_dtype())
         _result["time"] = _peaks["time"]
         _result["endtime"] = strax.endtime(_peaks)
-
-        pre_peaks = _peaks[_peaks["area"] >= self.lone_hits_shadow_pre_peak_threshold]
 
         touching_windows = strax.touching_windows(
             pre_peaks,
@@ -181,6 +188,4 @@ class PeakLoneHitsShadow(strax.OverlapWindowPlugin):
             _result=_result,
         ),
 
-        _quick_assign(argsort, result, _result)
-
-        return result
+        return _result
