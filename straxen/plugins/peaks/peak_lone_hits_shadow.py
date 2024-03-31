@@ -43,7 +43,7 @@ class PeakLoneHitsShadow(strax.OverlapWindowPlugin):
     )
 
     lone_hits_total_density_params = straxen.URLConfig(
-        default=dict(a=0.0015, b=500.0),
+        default=dict(a=0.003, b=400.0),
         type=dict,
         track=True,
         help="Absolute number of lone hits as the function of the prepeak area",
