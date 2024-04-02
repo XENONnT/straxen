@@ -118,7 +118,7 @@ xnt_common_opts.update({
 ##
 
 
-def xenonnt(global_version='global_v11',
+def xenonnt(global_version='global_ONLINE',
             _from_cutax=False, **kwargs):
     """XENONnT context"""
     if not _from_cutax and global_version != 'global_ONLINE':
@@ -130,11 +130,11 @@ def xenonnt(global_version='global_v11',
     return st
 
 
-def xenonnt_som(cmt_version='global_ONLINE', xedocs_version=None,
+def xenonnt_som(global_version='global_ONLINE', xedocs_version=None,
                 _from_cutax=False, **kwargs):
     """XENONnT context for the SOM"""
 
-    st = straxen.contexts.xenonnt(cmt_version=cmt_version, xedocs_version=xedocs_version,
+    st = straxen.contexts.xenonnt(global_version=global_version, xedocs_version=xedocs_version,
                                   _from_cutax=_from_cutax, **kwargs)
     del st._plugin_class_registry['peaklet_classification']
     st.register(PeakletClassificationSOM)
