@@ -129,7 +129,7 @@ xnt_common_opts.update(
 ##
 
 
-def xenonnt(xedocs_version ="global_ONLINE", _from_cutax=False, **kwargs):
+def xenonnt(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
     """XENONnT context."""
     if not _from_cutax and xedocs_version != "global_ONLINE":
         warnings.warn("Don't load a context directly from straxen, " "use cutax instead!")
@@ -139,8 +139,7 @@ def xenonnt(xedocs_version ="global_ONLINE", _from_cutax=False, **kwargs):
     return st
 
 
-def xenonnt_som(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs
-):
+def xenonnt_som(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
     """XENONnT context for the SOM."""
 
     st = straxen.contexts.xenonnt(
@@ -342,7 +341,7 @@ def xenonnt_online(
         )
         st.set_context_config(_context_config_overwrite)
 
-    #if global_version is not None:
+    # if global_version is not None:
     #    st.apply_xedocs_configs(version=global_version, **kwargs)
 
     return st
