@@ -52,20 +52,21 @@ class PeakletsHighEnergy(Peaklets):
 
     hit_min_amplitude_he = straxen.URLConfig(
         default=(
-            'list-to-array:'
-            '//xedocs://hit_thresholds'
-            '?as_list=True'
-            '&sort=pmt'
-            '&attr=value'
-            '&detector=tpc_he'
-            '&run_id=plugin.run_id'
-            '&version=ONLINE'),
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_tpc_pmts, or a number,'
-             'or a string like "pmt_commissioning_initial" which means calling'
-             'hitfinder_thresholds.py'
-             'or a tuple like (correction=str, version=str, nT=boolean),'
-             'which means we are using cmt.',
+            "list-to-array:"
+            "//xedocs://hit_thresholds"
+            "?as_list=True"
+            "&sort=pmt"
+            "&attr=value"
+            "&detector=tpc_he"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+        ),
+        help="Minimum hit amplitude in ADC counts above baseline. "
+        "Specify as a tuple of length n_tpc_pmts, or a number,"
+        'or a string like "pmt_commissioning_initial" which means calling'
+        "hitfinder_thresholds.py"
+        "or a tuple like (correction=str, version=str, nT=boolean),"
+        "which means we are using cmt.",
         track=True,
         infer_type=False,
     )

@@ -98,11 +98,13 @@ class muVETOHitlets(nVETOHitlets):
             "&detector=muon_veto"
             "&run_id=plugin.run_id"
             "&version=ONLINE"
-            "&attr=value"),
+            "&attr=value"
+        ),
         infer_type=False,
         child_option=True,
-        parent_option_name='gain_model_nv',
-        help='PMT gain model. Specify as (model_type, model_config)')
+        parent_option_name="gain_model_nv",
+        help="PMT gain model. Specify as (model_type, model_config)",
+    )
 
     def setup(self):
         self.channel_range = self.channel_map["mv"]

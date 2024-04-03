@@ -116,9 +116,11 @@ class nVETOHitlets(strax.Plugin):
             "&detector=neutron_veto"
             "&run_id=plugin.run_id"
             "&version=ONLINE"
-            "&attr=value"),
+            "&attr=value"
+        ),
         infer_type=False,
-        help='PMT gain model. Specify as (model_type, model_config, nT = True)')
+        help="PMT gain model. Specify as (model_type, model_config, nT = True)",
+    )
 
     def setup(self):
         self.channel_range = self.channel_map["nveto"]

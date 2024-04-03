@@ -16,15 +16,16 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
 
     tf_model_gcn = straxen.URLConfig(
         default=(
-            'tf://'
-            'resource://'
-            'xedocs://posrec_models'
-            '?attr=value'
-            '&fmt=abs_path'
-            '&kind=gcn'
-            '&run_id=plugin.run_id'
-            '&version=ONLINE'),
+            "tf://"
+            "resource://"
+            "xedocs://posrec_models"
+            "?attr=value"
+            "&fmt=abs_path"
+            "&kind=gcn"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+        ),
         help='GCN model. Should be opened using the "tf" descriptor. '
-             'Set to "None" to skip computation',
+        'Set to "None" to skip computation',
         cache=3,
     )

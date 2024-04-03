@@ -39,29 +39,29 @@ xnt_common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
     gain_model="list-to-array://"
-               "xedocs://pmt_area_to_pes"
-               "?as_list=True"
-               "&sort=pmt"
-               "&detector=tpc"
-               "&run_id=plugin.run_id"
-               "&version=ONLINE"
-               "&attr=value",
+    "xedocs://pmt_area_to_pes"
+    "?as_list=True"
+    "&sort=pmt"
+    "&detector=tpc"
+    "&run_id=plugin.run_id"
+    "&version=ONLINE"
+    "&attr=value",
     gain_model_nv="list-to-array://"
-                  "xedocs://pmt_area_to_pes"
-                  "?as_list=True"
-                  "&sort=pmt"
-                  "&detector=neutron_veto"
-                  "&run_id=plugin.run_id"
-                  "&version=ONLINE"
-                  "&attr=value",
+    "xedocs://pmt_area_to_pes"
+    "?as_list=True"
+    "&sort=pmt"
+    "&detector=neutron_veto"
+    "&run_id=plugin.run_id"
+    "&version=ONLINE"
+    "&attr=value",
     gain_model_mv="list-to-array://"
-                  "xedocs://pmt_area_to_pes"
-                  "?as_list=True"
-                  "&sort=pmt"
-                  "&detector=muon_veto"
-                  "&run_id=plugin.run_id"
-                  "&version=ONLINE"
-                  "&attr=value",
+    "xedocs://pmt_area_to_pes"
+    "?as_list=True"
+    "&sort=pmt"
+    "&detector=muon_veto"
+    "&run_id=plugin.run_id"
+    "&version=ONLINE"
+    "&attr=value",
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -78,21 +78,20 @@ xnt_common_config = dict(
     ),
     # Clustering/classification parameters
     # Event level parameters
-    fdc_map='itp_map://'
-            'resource://'
-            'xedocs://fdc_maps'
-            '?algorithm=plugin.default_reconstruction_algorithm'
-            '&version=ONLINE'
-            '&attr=value'
-            '&run_id=plugin.run_id'
-            '&fmt=binary'
-            '&scale_coordinates=plugin.coordinate_scales',
-    z_bias_map='itp_map://'
-               'resource://'
-               'XnT_z_bias_map_chargeup_20230329.json.gz?'
-               'fmt=json.gz'
-               '&method=RegularGridInterpolator',
-
+    fdc_map="itp_map://"
+    "resource://"
+    "xedocs://fdc_maps"
+    "?algorithm=plugin.default_reconstruction_algorithm"
+    "&version=ONLINE"
+    "&attr=value"
+    "&run_id=plugin.run_id"
+    "&fmt=binary"
+    "&scale_coordinates=plugin.coordinate_scales",
+    z_bias_map="itp_map://"
+    "resource://"
+    "XnT_z_bias_map_chargeup_20230329.json.gz?"
+    "fmt=json.gz"
+    "&method=RegularGridInterpolator",
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1,s2 and fd corrections are still problematic
@@ -130,25 +129,28 @@ xnt_common_opts.update(
 ##
 
 
-def xenonnt(global_version='global_ONLINE',
-            _from_cutax=False, **kwargs):
-    """XENONnT context"""
-    if not _from_cutax and global_version != 'global_ONLINE':
-        warnings.warn('Don\'t load a context directly from straxen, '
-                      'use cutax instead!')
-        
+def xenonnt(global_version="global_ONLINE", _from_cutax=False, **kwargs):
+    """XENONnT context."""
+    if not _from_cutax and global_version != "global_ONLINE":
+        warnings.warn("Don't load a context directly from straxen, " "use cutax instead!")
+
     st = straxen.contexts.xenonnt_online(global_version=global_version, **kwargs)
 
     return st
 
 
-def xenonnt_som(global_version='global_ONLINE', xedocs_version='global_ONLINE',
-                _from_cutax=False, **kwargs):
-    """XENONnT context for the SOM"""
+def xenonnt_som(
+    global_version="global_ONLINE", xedocs_version="global_ONLINE", _from_cutax=False, **kwargs
+):
+    """XENONnT context for the SOM."""
 
-    st = straxen.contexts.xenonnt(global_version=global_version, xedocs_version=xedocs_version,
-                                  _from_cutax=_from_cutax, **kwargs)
-    del st._plugin_class_registry['peaklet_classification']
+    st = straxen.contexts.xenonnt(
+        global_version=global_version,
+        xedocs_version=xedocs_version,
+        _from_cutax=_from_cutax,
+        **kwargs,
+    )
+    del st._plugin_class_registry["peaklet_classification"]
     st.register(
         (
             straxen.PeakletClassificationSOM,

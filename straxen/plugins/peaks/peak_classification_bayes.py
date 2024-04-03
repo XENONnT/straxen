@@ -36,13 +36,14 @@ class BayesPeakClassification(strax.Plugin):
     # Descriptor configs
     bayes_config_file = straxen.URLConfig(
         default=(
-            'resource://'
-            'xedocs://bayes_models'
-            '?attr=value'
-            '&fmt=npy'
-            '&run_id=plugin.run_id'
-            '&version=ONLINE'),
-        help='Bayes model, conditional probabilities tables and Bayes discrete bins'
+            "resource://"
+            "xedocs://bayes_models"
+            "?attr=value"
+            "&fmt=npy"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+        ),
+        help="Bayes model, conditional probabilities tables and Bayes discrete bins",
     )
     bayes_n_nodes = straxen.URLConfig(
         default=50, help="Number of attributes(features) per waveform and quantile"

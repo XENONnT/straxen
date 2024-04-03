@@ -18,15 +18,16 @@ class PeakCorrectedAreas(CorrectedAreas):
     provides = "peak_corrections"
 
     electron_drift_velocity = straxen.URLConfig(
-        default='xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE',
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
 
     electron_drift_time_gate = straxen.URLConfig(
-        default='xedocs://electron_drift_time_gates?attr=value&run_id=plugin.run_id&version=ONLINE',
-        help='Electron drift time from the gate in ns',
-        cache=True)
+        default="xedocs://electron_drift_time_gates?attr=value&run_id=plugin.run_id&version=ONLINE",
+        help="Electron drift time from the gate in ns",
+        cache=True,
+    )
 
     def infer_dtype(self):
         dtype = strax.time_fields + [

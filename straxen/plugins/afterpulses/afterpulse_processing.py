@@ -45,17 +45,15 @@ class LEDAfterpulseProcessing(strax.Plugin):
     )
 
     hit_min_amplitude = straxen.URLConfig(
-
         track=True,
         infer_type=False,
-        default='list-to-array://xedocs://hit_thresholds?as_list=True&sort=pmt&attr=value&detector=tpc&run_id=plugin.run_id&version=ONLINE',
-        help='Minimum hit amplitude in ADC counts above baseline. '
-             'Specify as a tuple of length n_tpc_pmts, or a number,'
-             'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
-             'hitfinder_thresholds.py'
-             'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
-             'calling cmt.',
-
+        default="list-to-array://xedocs://hit_thresholds?as_list=True&sort=pmt&attr=value&detector=tpc&run_id=plugin.run_id&version=ONLINE",
+        help="Minimum hit amplitude in ADC counts above baseline. "
+        "Specify as a tuple of length n_tpc_pmts, or a number,"
+        'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
+        "hitfinder_thresholds.py"
+        'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
+        "calling cmt.",
     )
 
     hit_min_height_over_noise = straxen.URLConfig(

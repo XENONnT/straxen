@@ -30,50 +30,55 @@ class CorrectedAreas(strax.Plugin):
 
     # Descriptor configs
     elife = straxen.URLConfig(
-        default='xedocs://electron_lifetimes?attr=value&run_id=plugin.run_id&version=ONLINE',
-        help='electron lifetime in [ns]')
-
+        default="xedocs://electron_lifetimes?attr=value&run_id=plugin.run_id&version=ONLINE",
+        help="electron lifetime in [ns]",
+    )
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
     s1_xyz_map = straxen.URLConfig(
-        default='itp_map://'
-                'resource://'
-                'xedocs://s1_xyz_maps'
-                '?version=ONLINE&run_id=plugin.run_id&attr=value'
-                '&fmt=json&algorithm=plugin.default_reconstruction_algorithm',
-        cache=True)
+        default="itp_map://"
+        "resource://"
+        "xedocs://s1_xyz_maps"
+        "?version=ONLINE&run_id=plugin.run_id&attr=value"
+        "&fmt=json&algorithm=plugin.default_reconstruction_algorithm",
+        cache=True,
+    )
     s2_xy_map = straxen.URLConfig(
-        default='itp_map://'
-                'resource://'
-                'xedocs://s2_xy_maps'
-                '?version=ONLINE&run_id=plugin.run_id&attr=value'
-                '&fmt=json&algorithm=plugin.default_reconstruction_algorithm',
-        cache=True)
+        default="itp_map://"
+        "resource://"
+        "xedocs://s2_xy_maps"
+        "?version=ONLINE&run_id=plugin.run_id&attr=value"
+        "&fmt=json&algorithm=plugin.default_reconstruction_algorithm",
+        cache=True,
+    )
 
     # average SE gain for a given time period. default to the value of this run in ONLINE model
     # thus, by default, there will be no time-dependent correction according to se gain
     avg_se_gain = straxen.URLConfig(
-        default='xedocs://avg_se_gains?run_id=plugin.run_id&version=ONLINE&attr=value',
-        help='Nominal single electron (SE) gain in PE / electron extracted. '
-             'Data will be corrected to this value')
+        default="xedocs://avg_se_gains?run_id=plugin.run_id&version=ONLINE&attr=value",
+        help="Nominal single electron (SE) gain in PE / electron extracted. "
+        "Data will be corrected to this value",
+    )
 
     # se gain for this run, allowing for using CMT. default to online
     se_gain = straxen.URLConfig(
-        default='objects-to-dict://xedocs://se_gains?run_id=plugin.run_id&version=ONLINE&partition=ab&partition=cd&as_list=True&sort=partition&key_attr=partition&value_attr=value',
-        help='Actual SE gain for a given run (allows for time dependence)')
+        default="objects-to-dict://xedocs://se_gains?run_id=plugin.run_id&version=ONLINE&partition=ab&partition=cd&as_list=True&sort=partition&key_attr=partition&value_attr=value",
+        help="Actual SE gain for a given run (allows for time dependence)",
+    )
 
     # relative extraction efficiency which can change with time and modeled by CMT.
     rel_extraction_eff = straxen.URLConfig(
-        default='objects-to-dict://xedocs://rel_extraction_effs?partition=ab&partition=cd&run_id=plugin.run_id&sort=partition&as_list=True&version=ONLINE&key_attr=partition&value_attr=value',
-        help='Relative extraction efficiency for this run (allows for time dependence)')
+        default="objects-to-dict://xedocs://rel_extraction_effs?partition=ab&partition=cd&run_id=plugin.run_id&sort=partition&as_list=True&version=ONLINE&key_attr=partition&value_attr=value",
+        help="Relative extraction efficiency for this run (allows for time dependence)",
+    )
 
     # relative light yield
     # defaults to no correction
     rel_light_yield = straxen.URLConfig(
-        default='xedocs://relative_light_yield?attr=value&run_id=plugin.run_id&version=ONLINE',
-        help='Relative light yield (allows for time dependence)'
+        default="xedocs://relative_light_yield?attr=value&run_id=plugin.run_id&version=ONLINE",
+        help="Relative light yield (allows for time dependence)",
     )
 
     region_linear = straxen.URLConfig(

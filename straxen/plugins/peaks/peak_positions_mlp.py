@@ -15,15 +15,16 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 
     tf_model_mlp = straxen.URLConfig(
         default=(
-            'tf://'
-            'resource://'
-            'xedocs://posrec_models'
-            '?attr=value'
-            '&fmt=abs_path'
-            '&kind=mlp'
-            '&run_id=plugin.run_id'
-            '&version=ONLINE'),
+            "tf://"
+            "resource://"
+            "xedocs://posrec_models"
+            "?attr=value"
+            "&fmt=abs_path"
+            "&kind=mlp"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+        ),
         help='MLP model. Should be opened using the "tf" descriptor. '
-             'Set to "None" to skip computation',
+        'Set to "None" to skip computation',
         cache=3,
     )

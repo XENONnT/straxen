@@ -58,7 +58,7 @@ class nVETORecorder(strax.Plugin):
 
     baseline_samples_nv = straxen.URLConfig(
         infer_type=False,
-        default='xedocs://baseline_samples_nv?attr=value&run_id=plugin.run_id&version=ONLINE',
+        default="xedocs://baseline_samples_nv?attr=value&run_id=plugin.run_id&version=ONLINE",
         track=True,
         help="Number of samples used in baseline rms calculation",
     )

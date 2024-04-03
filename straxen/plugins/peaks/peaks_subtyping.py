@@ -60,7 +60,7 @@ class PeaksSubtypes(strax.Plugin):
     )
 
     electron_drift_velocity = straxen.URLConfig(
-        default='xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE',
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
