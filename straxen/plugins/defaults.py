@@ -1,9 +1,10 @@
-"""Some shared defaults"""
-DEFAULT_POSREC_ALGO = 'mlp'
+"""Some shared defaults."""
+
+DEFAULT_POSREC_ALGO = "mlp"
 
 HE_PREAMBLE = """High energy channels: attenuated signals of the top PMT-array\n"""
 
-MV_PREAMBLE = 'Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n'
+MV_PREAMBLE = "Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n"
 
 NV_HIT_DEFAULTS = {
     'save_outside_hits_nv': (3, 15),

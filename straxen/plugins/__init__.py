@@ -1,3 +1,6 @@
+# temporarily ignored, need to see whther the redefine is necessary
+# mypy: disable-error-code="no-redef"
+
 from . import defaults
 from .defaults import *
 
@@ -42,9 +45,6 @@ from .records_nv import *
 from . import hitlets_nv
 from .hitlets_nv import *
 
-from . import detector_time_offsets
-from .detector_time_offsets import *
-
 from . import events_nv
 from .events_nv import *
 
@@ -83,3 +83,9 @@ from .afterpulses import *
 
 from . import led_cal
 from .led_cal import *
+
+from . import ref_mon_nv
+from .ref_mon_nv import *
+
+from . import gps_syncing
+from .gps_syncing import *
