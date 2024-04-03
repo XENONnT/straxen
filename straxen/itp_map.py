@@ -30,6 +30,7 @@ class InterpolateAndExtrapolate:
         :param values: array (n_points) of values
         :param neighbours_to_use: Number of neighbouring points to use for
         averaging. Default is 2 * dimensions of points.
+        :param array_valued: bool, if true, the results are array-valued, if false they are scalar
         """
         self.kdtree = cKDTree(points)
         self.values = values
