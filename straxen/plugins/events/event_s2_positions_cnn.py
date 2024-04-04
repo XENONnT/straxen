@@ -17,14 +17,14 @@ class EventS2PositionCNN(EventS2PositionBase):
         default=(
             "tf://"
             "resource://"
-            f"cmt://{algorithm}_model"
-            "?version=ONLINE"
-            "&run_id=plugin.run_id"
+            "xedocs://posrec_models"
+            "?attr=value"
             "&fmt=abs_path"
+            "&kind=cnn"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
         ),
-        help=(
-            'CNN model. Should be opened using the "tf" descriptor. '
-            'Set to "None" to skip computation'
-        ),
+        help='CNN model. Should be opened using the "tf" descriptor. '
+        'Set to "None" to skip computation',
         cache=3,
     )

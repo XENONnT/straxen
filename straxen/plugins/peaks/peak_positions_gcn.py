@@ -18,14 +18,14 @@ class PeakPositionsGCN(PeakPositionsBaseNT):
         default=(
             "tf://"
             "resource://"
-            f"cmt://{algorithm}_model"
-            "?version=ONLINE"
-            "&run_id=plugin.run_id"
+            "xedocs://posrec_models"
+            "?attr=value"
             "&fmt=abs_path"
+            "&kind=gcn"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
         ),
-        help=(
-            'GCN model. Should be opened using the "tf" descriptor. '
-            'Set to "None" to skip computation'
-        ),
+        help='GCN model. Should be opened using the "tf" descriptor. '
+        'Set to "None" to skip computation',
         cache=3,
     )
