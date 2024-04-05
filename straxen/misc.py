@@ -424,7 +424,7 @@ def storage_graph(
     - Red: strax.SaveWhen.EXPLICIT
     - Orange: strax.SaveWhen.TARGET
     - Yellow: strax.SaveWhen.ALWAYS
-    - Green: Plugin is stored
+    - Green: Target is stored
 
     """
     save_when_colors = {
