@@ -418,7 +418,7 @@ def storage_graph(
     :param to_dir: str, directory to save the plot
     :param format: str, format of the plot
     :return: all plugins that will be calculated when running self.make(run_id, target)
-    
+
     The colors used in the graph represent the following storage states:
     - Grey: strax.SaveWhen.NEVER
     - Red: strax.SaveWhen.EXPLICIT
