@@ -54,6 +54,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install dependencies
+        run: sudo apt-get install -y graphviz
+
       - name: Install requirements
         run: |
           pip install -r extra_requirements/requirements-tests.txt
