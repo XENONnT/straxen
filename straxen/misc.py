@@ -472,6 +472,6 @@ def storage_graph(
 
     # dump the plot if need
     if dump_plot:
-        fn = os.path.join(to_dir, target)
+        fn = os.path.join(to_dir, target, ".dot")
         graph.render(fn)
     return not_stored

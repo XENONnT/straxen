@@ -81,3 +81,7 @@ class TestBasics(unittest.TestCase):
         """The raw records lineage may NEVER change, if you ever do, doom ensures."""
         st = straxen.contexts.xenonnt_online()
         self.assertTrue(st.key_for("0", "raw_records").lineage_hash == "rfzvpzj4mf")
+
+    def test_storage_graph(self):
+        """Test the storage graph."""
+        self.st.storage_graph(test_run_id_1T, "event_info")
