@@ -1,18 +1,22 @@
+import os
 import sys
 from sys import getsizeof, stderr
 import inspect
 import warnings
 import datetime
+from immutabledict import immutabledict
 import pytz
 from itertools import chain
 from collections import defaultdict, OrderedDict, deque
 from importlib import import_module
 from platform import python_version
 import typing as ty
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 import socket
+import graphviz
 import strax
 import straxen
 from git import Repo, InvalidGitRepositoryError
@@ -393,3 +397,81 @@ def total_size(o, handlers=None, verbose=False):
         return s
 
     return sizeof(o)
+
+
+@strax.Context.add_method
+def storage_graph(
+    st,
+    run_id,
+    target,
+    graph=None,
+    not_stored=None,
+    dump_plot=True,
+    to_dir="./",
+    format="svg",
+):
+    """Plot the dependency graph indicating the storage of the plugins.
+
+    :param target: str of the target plugin to check
+    :param graph: graphviz.graphs.Digraph instance
+    :param not_stored: set of plugins which are not stored
+    :param dump_plot: bool, if True, save the plot to the to_dir
+    :param to_dir: str, directory to save the plot
+    :param format: str, format of the plot
+    :return: all plugins that will be calculated when running self.make(run_id, target)
+
+    """
+    save_when_colors = {
+        strax.SaveWhen.NEVER: "grey",
+        strax.SaveWhen.EXPLICIT: "red",
+        strax.SaveWhen.TARGET: "orange",
+        strax.SaveWhen.ALWAYS: "yellow",
+    }
+    if not_stored is None:
+        not_stored = set()
+    # the set of plugins which are not stored
+    if st.is_stored(run_id, target):
+        # if the plugin is stored, fill in green
+        fillcolor = "green"
+    else:
+        save_when = deepcopy(st._plugin_class_registry[target].save_when)
+        if isinstance(save_when, immutabledict):
+            save_when = save_when[target]
+        # if it is not stored, fill in the color according to save_when
+        fillcolor = save_when_colors[save_when]
+
+    if graph is None:
+        graph = graphviz.Digraph(format=format, strict=False)
+        graph.attr(bgcolor="transparent")
+    else:
+        if not isinstance(graph, graphviz.graphs.Digraph):
+            raise ValueError("graph should be a graphviz.Digraph instance!")
+    # add a node of target
+    graph.node(
+        target,
+        style="filled",
+        fillcolor=fillcolor,
+    )
+    if (not st.is_stored(run_id, target)) and (target not in not_stored):
+        not_stored.add(target)
+        depends_on = deepcopy(st._plugin_class_registry[target].depends_on)
+        depends_on = strax.to_str_tuple(depends_on)
+        for dep in depends_on:
+            # only add the node to the graph but not save the plot
+            not_stored.update(
+                st.storage_graph(
+                    run_id,
+                    dep,
+                    graph=graph,
+                    not_stored=not_stored,
+                    dump_plot=False,
+                    to_dir=to_dir,
+                )
+            )
+            graph.edge(target, dep)
+
+    # dump the plot if need
+    if dump_plot:
+        fn = os.path.join(to_dir, target)
+        graph.render(fn)
+    return not_stored
