@@ -420,10 +420,10 @@ def storage_graph(
     :return: all plugins that will be calculated when running self.make(run_id, target)
     
     The colors used in the graph represent the following storage states:
-    - Grey: SaveWhen.NEVER
-    - Red: SaveWhen.EXPLICIT
-    - Orange: SaveWhen.TARGET
-    - Yellow: SaveWhen.ALWAYS
+    - Grey: strax.SaveWhen.NEVER
+    - Red: strax.SaveWhen.EXPLICIT
+    - Orange: strax.SaveWhen.TARGET
+    - Yellow: strax.SaveWhen.ALWAYS
     - Green: Plugin is stored
 
     """
