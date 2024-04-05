@@ -67,8 +67,10 @@ docs/_build
 .coverage
 
 # graphviz
-*.svg
+*.gv
 *.dot
+*.png
+*.svg
 
 # Documentation files
 docs/source/reference/datastructure*

@@ -1,4 +1,3 @@
-import os
 import sys
 from sys import getsizeof, stderr
 import inspect
@@ -441,7 +440,7 @@ def storage_graph(
         fillcolor = save_when_colors[save_when]
 
     if graph is None:
-        graph = graphviz.Digraph(format=format, strict=False)
+        graph = graphviz.Digraph(name=target, strict=True)
         graph.attr(bgcolor="transparent")
     else:
         if not isinstance(graph, graphviz.graphs.Digraph):
@@ -472,6 +471,5 @@ def storage_graph(
 
     # dump the plot if need
     if dump_plot:
-        fn = os.path.join(to_dir, target, ".dot")
-        graph.render(fn)
+        graph.render(format=format)
     return not_stored
