@@ -29,8 +29,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
       - name: Install dependencies
-        run: apt-get install -y graphviz
-      - name: pre-install requirements
+        run: sudo apt-get install -y graphviz
+      - name: Pre-install requirements
         run: pip install -r requirements.txt
       - name: Install straxen
         run: python setup.py install
