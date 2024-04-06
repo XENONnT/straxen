@@ -447,7 +447,7 @@ def storage_graph(
         fillcolor = save_when_colors[save_when]
 
     if graph is None:
-        graph = graphviz.Digraph(name=f"{run_id}-{target}", strict=True)
+        graph = graphviz.Digraph(name=f"{to_dir}/{run_id}-{target}", strict=True)
         graph.attr(bgcolor="transparent")
     else:
         if not isinstance(graph, graphviz.graphs.Digraph):
