@@ -35,7 +35,7 @@ class TestBasics(unittest.TestCase):
         run_df = st.select_runs(available="raw_records")
         print(run_df)
         run_id = run_df.iloc[0]["name"]
-        assert run_id == test_run_id_1T
+        assert run_id == self.run_id
 
     def test_mini_analysis(self):
         @straxen.mini_analysis(requires=("raw_records",))
@@ -81,3 +81,7 @@ class TestBasics(unittest.TestCase):
         """The raw records lineage may NEVER change, if you ever do, doom ensures."""
         st = straxen.contexts.xenonnt_online()
         self.assertTrue(st.key_for("0", "raw_records").lineage_hash == "rfzvpzj4mf")
+
+    def test_storage_graph(self):
+        """Test the storage graph."""
+        self.st.storage_graph(self.run_id, "event_info")

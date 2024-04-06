@@ -28,7 +28,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Checkout repo
         uses: actions/checkout@v4
-      - name: pre-install requirements
+      - name: Install dependencies
+        run: sudo apt-get install -y graphviz
+      - name: Pre-install requirements
         run: pip install -r requirements.txt
       - name: Install straxen
         run: python setup.py install
