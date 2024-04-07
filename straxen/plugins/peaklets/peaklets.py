@@ -226,6 +226,8 @@ class Peaklets(strax.Plugin):
             save_outside_hits=(self.peak_left_extension, self.peak_right_extension),
             n_channels=len(self.to_pe),
         )
+        if np.any(lone_hits["right_integration"] - lone_hits["left_integration"] <= 0):
+            raise ValueError("Find lone_hits with non-positive length!")
 
         # Compute basic peak properties -- needed before natural breaks
         hits = hits[~is_lone_hit]
