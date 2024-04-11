@@ -1,7 +1,9 @@
-__version__ = '2.1.2'
+# mypy: disable-error-code="no-redef"
+__version__ = "2.2.1"
 
 from utilix import uconfig
 from .common import *
+
 # contexts.py below
 from .corrections_services import *
 from .get_corrections import *

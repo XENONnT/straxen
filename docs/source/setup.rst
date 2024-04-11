@@ -1,7 +1,7 @@
 Setting up straxen
 ===================
 
-To install straxen locally, follow these steps in a python 3.7, 3.8 or 3.9 environment:
+To install straxen locally, follow these steps in a python 3.9 or 3.10 environment:
 
 1. `git clone https://github.com/XENONnT/straxen`
 2. **Optional**. If you are NOT on the UChicago Midway analysis center please follow step 2. in this `wiki note (restricted) <https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:guide:straxen_installation>`_.
