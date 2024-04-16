@@ -31,6 +31,23 @@ _is_jupyter = any("jupyter" in arg for arg in sys.argv)
 
 
 export, __all__ = strax.exporter()
+__all__.extend(["kind_colors"])
+
+
+kind_colors = dict(
+    events="#ffffff",
+    peaks="#98fb98",
+    hitlets="#0066ff",
+    peaklets="#d9ff66",
+    merged_s2s="#ccffcc",
+    lone_hits="#CAFF70",
+    records="#ffa500",
+    raw_records="#ff4500",
+    raw_records_aqmon="#ff4500",
+    raw_records_aux_mv="#ff4500",
+    online_peak_monitor="deepskyblue",
+    online_monitor="deepskyblue",
+)
 
 
 @export
@@ -396,6 +413,33 @@ def total_size(o, handlers=None, verbose=False):
         return s
 
     return sizeof(o)
+
+
+@strax.Context.add_method
+def dependency_tree(
+    st,
+    target="event_info",
+    dump_plot=True,
+    to_dir="./",
+    format="svg",
+):
+    st._fixed_plugin_cache = None
+
+    plugins = st._get_plugins((target,), run_id="0")
+    graph = graphviz.Digraph(name=f"{to_dir}/{target}", strict=True)
+    graph.attr(bgcolor="transparent")
+    for d, p in plugins.items():
+        graph.node(
+            d,
+            style="filled",
+            fillcolor=kind_colors.get(p.data_kind_for(d), "grey"),
+        )
+        for dep in p.depends_on:
+            graph.edge(d, dep)
+
+    # dump the plot if need
+    if dump_plot:
+        graph.render(format=format)
 
 
 @strax.Context.add_method
