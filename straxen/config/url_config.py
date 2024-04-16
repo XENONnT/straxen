@@ -4,25 +4,16 @@ import strax
 import numbers
 import straxen
 import inspect
-
-import warnings
-from typing import Any, Dict, Optional, Container, Mapping, Union, Iterable
+from ast import literal_eval
+from typing import Any, Dict, Optional, Mapping, Union
 
 import pandas as pd
-
 from urllib.parse import urlparse, parse_qs
-
-from ast import literal_eval
-from strax.config import OMITTED
-from straxen.misc import filter_kwargs
-
-from typing import Mapping, Union
-
-from .config_tests import check_urls
-
-
 from pydantic.validators import find_validators
 from pydantic.config import get_config
+
+from strax.config import OMITTED
+from straxen.misc import filter_kwargs
 
 export, __all__ = strax.exporter()
 

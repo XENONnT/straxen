@@ -9,6 +9,7 @@ import fsspec
 import straxen
 import tarfile
 import tempfile
+from typing import Container, Iterable, Optional
 
 import numpy as np
 
@@ -16,7 +17,6 @@ from immutabledict import immutabledict
 
 from utilix import xent_collection
 from scipy.interpolate import interp1d
-from typing import Container, Iterable
 
 
 def get_item_or_attr(obj, key, default=None):
@@ -27,12 +27,12 @@ def get_item_or_attr(obj, key, default=None):
 
 @URLConfig.register("cmt")
 def get_correction(
-    name: str, run_id: str = None, version: str = "ONLINE", detector: str = "nt", **kwargs
+    name: str, run_id: Optional[str] = None, version: str = "ONLINE", detector: str = "nt", **kwargs
 ):
     """Get value for name from CMT."""
 
     if run_id is None:
-        raise ValueError("Attempting to fetch a correction without a run id.")
+        raise ValueError("Attempting to fetch a correction without a run_id.")
 
     return straxen.get_correction_from_cmt(run_id, (name, version, detector == "nt"))
 
@@ -72,7 +72,7 @@ def get_key(container: Container, take=None, **kwargs):
     # support for multiple keys for
     # nested objects
     for t in take:
-        container = container[t]
+        container = container[t]  # type: ignore
 
     return container
 
