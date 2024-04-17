@@ -26,7 +26,7 @@ def confirm_xedocs_schema_exists_check(url: str):
 # @check_urls.register(r".*(list-to-array|'objects-to-dict').*")
 @check_urls.register(r"(.*)(.*xedocs.*)")
 def data_as_list_check(url: str):
-    if "list-to-array" or "objects-to-dict" in url:
+    if ("list-to-array" in url) or ("objects-to-dict" in url):
         if not straxen.URLConfig.kwarg_from_url(url, "as_list"):
             warnings.warn(
                 "When using the list-to-array or objects-to-dict protocol, "
@@ -48,7 +48,7 @@ def are_resources_needed_check(url: str):
     if ("BaseMap" in parent_class) or ("BaseResourceReference" in parent_class):
         if not ("resource://" in url):
             warnings.warn(
-                "A URL which requeres the resource:// was given however resource:// "
+                "A URL which requests the resource:// was given. However resource:// "
                 f"was not found within the URL, not data will be loaded. url: {url}",
                 URLWarning,
             )
@@ -61,7 +61,7 @@ def itp_map_check(url: str):
     if "BaseMap" in parent_class:
         if not ("itp_map://" in url):
             warnings.warn(
-                "Warning, you are requesting a map file with this URL however, the protocol "
+                "Warning, you are requesting a map file with this URL. However, the protocol "
                 "itp_map:// was not requested as part of the URL. "
                 f"The itp_map:// protocol is requiered for map corrections. url: {url}",
                 URLWarning,
@@ -72,7 +72,7 @@ def itp_map_check(url: str):
 def tf_check(url: str):
     if not ("tf://" in url):
         warnings.warn(
-            "Warning, you are requesting a position reconstruction model with this URL however, "
+            "Warning, you are requesting a position reconstruction model with this URL. However, "
             "the protocol tf:// was not requested as part of the URL. "
             f"The tf:// protocol is requiered for position reconstruction corrections. url: {url}",
             URLWarning,
@@ -116,14 +116,14 @@ def tf_dict_attributes(url: str):
     if not ("key_attr" in url):
         warnings.warn(
             "Warning, you are requesting a correction in the form of a dictionary with "
-            "this URL however, you did not choose keys for the dictionary with [key_attr]. "
+            "this URL. However, you did not choose keys for the dictionary with [key_attr]. "
             f"Please insert [key_attr=] in your url for the keys. url: {url}",
             URLWarning,
         )
     if not ("value_attr" in url):
         warnings.warn(
             "Warning, you are requesting a correction in the form of a dictionary with "
-            "this URL however, you did not include [value_attr] in your url which is needed "
+            "this URL. However, you did not include [value_attr] in your url which is needed "
             "for dictionry outputs. Please insert [key_attr=] "
             f"in your url for the keys. url: {url}",
             URLWarning,
