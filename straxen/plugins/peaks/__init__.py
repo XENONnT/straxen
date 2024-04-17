@@ -40,9 +40,6 @@ from .peak_per_event import *
 from . import peak_corrections
 from .peak_corrections import *
 
-from . import peaks_subtyping
-from .peaks_subtyping import *
-
 from . import peaks_som
 from .peaks_som import *
 
