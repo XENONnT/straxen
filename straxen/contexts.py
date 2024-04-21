@@ -1,6 +1,5 @@
 import os
 import warnings
-from copy import deepcopy
 from typing import Dict, Any, List, Optional
 from immutabledict import immutabledict
 import socket
@@ -77,14 +76,7 @@ xnt_common_config = dict(
     ),
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
-# s1,s2 and fd corrections are still problematic
-xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(
-    gain_model="legacy-to-pe://to_pe_placeholder",
-    gain_model_nv="legacy-to-pe://adc_nv",
-    gain_model_mv="legacy-to-pe://adc_mv",
-    elife=1e6,
-)
+# s1, s2 and fd corrections are still problematic
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore, do not
