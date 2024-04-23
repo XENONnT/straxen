@@ -220,3 +220,224 @@ class DummyRawRecords(strax.Plugin):
                     rr = rr[(rr["channel"] >= first_channel) & (rr["channel"] < last_channel)]
             res[p] = self.chunk(start=t0, end=t0 + 1, data=rr, data_type=p)
         return res
+
+
+@export
+def version_hash_dict(context):
+    """Returns a dictionary of the form {data_type: [version, hash]} for the plugins within the
+    context."""
+
+    vh_dict = {}
+    for data_type in context._plugin_class_registry:
+        hash = context.key_for("0", data_type).lineage_hash
+        version = context._plugin_class_registry[data_type].__version__
+        vh_dict[data_type] = [version, hash]
+
+    return vh_dict
+
+
+@export
+def updated_plugins(old_vh_dict, new_vh_dict):
+    """Tags the updated plugins between two different versions. old/new_vh_dict refers to the
+    version_hash_dict of the old/new versions. This is typically ran after a PR. This finds the
+    added plugins, deleted plugins, changed plugins (via lineage hash), and the "change originator"
+    plugins. The change originators are plugins that were likely actually changed by a person, while
+    all changed plugins are just those with a changed lineage hash.
+
+    :param old_vh_dict: The version-hash dictionary of the old version
+    :param new_vh_dict: The version-hash dictionary of the new version
+    :return change_summary: dictionary summarizing the plugin changes
+
+    """
+    old_plugins = np.array(list(old_vh_dict.keys()))
+    new_plugins = np.array(list(new_vh_dict.keys()))
+
+    added_plugins = list(new_plugins[~np.isin(new_plugins, old_plugins)])
+    deleted_plugins = list(old_plugins[~np.isin(old_plugins, new_plugins)])
+
+    changed_plugins = []
+    change_originators = []
+    for op in old_plugins:
+        if op in new_plugins:
+            if old_vh_dict[op][1] != new_vh_dict[op][1]:
+                changed_plugins.append(op)
+                if old_vh_dict[op][0] != new_vh_dict[op][0]:
+                    change_originators.append(op)
+
+    change_summary = {
+        "added": added_plugins,
+        "deleted": deleted_plugins,
+        "changed": changed_plugins,
+        "change_origins": change_originators,
+    }
+
+    return change_summary
+
+
+@export
+def bad_field_info(context, run_id, plugins):
+    """Returns a dictionary of {data_type: {field: fraction of "bad" entries}} as well as the mean
+    of each entry (that isn't a nan). Here, a bad entry is a nan for float fields and a 0 or a -1
+    for integer fields.
+
+    :param context: strax context
+    :param run_id: run_id to test
+    :param plugins: plugins to test
+    :return bad_field_summary: {data_type: {field: fraction of "bad" entries}}
+
+    """
+
+    bad_field_summary = {}
+    for p in plugins:
+        data = context.get_array(run_id, p)
+        bad_field_frac = {}
+        for d in data.dtype.names:
+            if np.issubdtype(data[d].dtype, np.floating):
+                bad_field_frac[d] = float(np.sum(np.isnan(data[d])) / len(data))
+            elif np.issubdtype(data[d].dtype, np.integer):
+                bad_field_frac[d] = float(np.sum((data[d] == 0) | (data[d] == -1)) / len(data))
+
+            bad_field_frac[f"mean_{d}"] = float(np.mean(data[d][~np.isnan(data[d])]))
+        bad_field_summary[p] = bad_field_frac
+
+    return bad_field_summary
+
+
+@export
+def lowest_level_plugins(context, plugins):
+    """Returns the lowest level plugins within a context.
+
+    Here, a plugin is lowest level if there is nothing else within the plugins list that it depends
+    on.
+
+    """
+
+    if not isinstance(plugins, np.ndarray):
+        plugins = np.array(plugins)
+
+    low_lev_plugs = []
+    for p in plugins:
+        dependencies = list(context.key_for("0", p).lineage.keys())
+        if ~np.any(np.isin(plugins[plugins != p], dependencies)):
+            low_lev_plugs.append(p)
+    return low_lev_plugs
+
+
+@export
+def directly_depends_on(context, base_plugins, all_plugins):
+    """Returns a list of plugins from within all_plugins which directly depend on (i.e. one step
+    down on the dependency tree) any of the plugins within base_plugins.
+
+    :param context: strax context
+    :param base_plugins: plugins to see if others depend on it
+    :param all_plugins: plugins to see if they depend on those in base_plugins
+    :return next_layer_plugins: the plugins within all_plugins which are one layer above
+        base_plugins.
+
+    """
+
+    next_layer_plugins = []
+    for p in all_plugins:
+        dep_on = context._plugin_class_registry[p].depends_on
+        if isinstance(dep_on, str):
+            dep_on = [dep_on]
+        elif isinstance(dep_on, tuple):
+            dep_on = list(dep_on)
+
+        if np.any(np.isin(base_plugins, dep_on)):
+            next_layer_plugins.append(p)
+
+    return np.unique(next_layer_plugins)
+
+
+@export
+def dependency_graph(context):
+    """Gives the dependency graph for all the plugins in a context in the form of a dictionary with
+    {plugin: plugin.depends_on}"""
+
+    dep_graph = {}
+
+    for plugin_name, plugin in context._plugin_class_registry.items():
+        if isinstance(plugin.depends_on, str):
+            dep_graph[plugin_name] = [plugin.depends_on]
+        elif hasattr(plugin.depends_on, "__iter__"):
+            dep_graph[plugin_name] = list(plugin.depends_on)
+    return dep_graph
+
+
+@export
+def reverse_graph(original_graph):
+    """Reverses the direction of a directed graph.
+
+    Useful for seeing which plugins feed into other plugins after constructing the dependency graph.
+
+    """
+
+    reversed_graph = {node: [] for node in original_graph}
+
+    # Reverse the edges
+    for node, neighbors in original_graph.items():
+        for neighbor in neighbors:
+            reversed_graph[neighbor].append(node)
+
+    return reversed_graph
+
+
+@export
+def depth_first_search(graph, start_node, visited=None):
+    """Finds all of the reachable nodes within a graph starting from the start node."""
+
+    if visited is None:
+        visited = set()
+
+    visited.add(start_node)
+    for neighbor in graph.get(start_node, []):
+        if neighbor not in visited:
+            depth_first_search(graph, neighbor, visited)
+
+    return visited
+
+
+@export
+def unidir_graph_layers(dep_on_graph, feeds_into_graph):
+    """For a unidirectional graph, separate the nodes into layers. For strax(en), the dependency
+    tree is a unidirectional graph, and each plugin can be separated into a layer such that a plugin
+    in the nth layer has n layers of data types that need to be made before it. For example:
+    merged_s2s depends on peaklet_classification, peaklets, and lone_hits directly.
+    peaklet_classification depends on peaklets. peaklets and lone_hits depend on records. And
+    records depends on raw_records. Therefore, merged_s2s is on the 4th layer.
+
+    :param dep_on_graph: A graph represented as a dictionary with {node: [nodes that node depends
+        on]}
+    :param feeds_into_graph: A graph represented as a dictionary with {node: [nodes that node feeds
+        into]}
+
+    """
+
+    graph_layer = {}
+    visited = set()
+    # Start with all of the lowest level nodes
+    for p in dep_on_graph:
+        if not dep_on_graph[p]:
+            graph_layer[p] = 0
+            visited.add(p)
+    layer_counter = 0
+    this_layer = visited
+
+    while len(visited) < len(dep_on_graph):
+        next_layer = set()
+        for p in this_layer:
+            next_layer_p = set(feeds_into_graph[p])
+            next_layer = next_layer.union(next_layer_p)
+
+        next_visited_buffer = set()
+        for next_plugin in next_layer:
+            # If the node only depends on previously visited nodes, then we know its layer
+            if np.all(np.isin(dep_on_graph[next_plugin], list(visited))):
+                graph_layer[next_plugin] = layer_counter + 1
+                next_visited_buffer.add(next_plugin)
+        visited = visited.union(next_visited_buffer)
+        layer_counter += 1
+        this_layer = next_visited_buffer
+
+    return graph_layer
