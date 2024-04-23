@@ -90,7 +90,7 @@ class CorrectedAreas(strax.Plugin):
         default="cmt://single_electron_gain_partition?version=ONLINE&run_id=plugin.run_id",
         help="Two distinct patterns of evolution of single electron corrections between A+B and C+D. Distinguish thanks to linear and circular regions",
     )
-    
+
     # cS2 AFT correction due to photon ionization
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:zihao:sr1_s2aft_photonionization_correction
     cs2_bottom_top_ratio_correction = straxen.URLConfig(
@@ -144,9 +144,9 @@ class CorrectedAreas(strax.Plugin):
 
     def ab_region(self, x, y):
         new_x, new_y = rotate_perp_wires(x, y)
-        cond = new_x < self.single_electron_gain_partition['linear']
-        cond &= new_x > -self.single_electron_gain_partition['linear']
-        cond &= new_x**2 + new_y**2 < self.single_electron_gain_partition['circular']**2
+        cond = new_x < self.single_electron_gain_partition["linear"]
+        cond &= new_x > -self.single_electron_gain_partition["linear"]
+        cond &= new_x**2 + new_y**2 < self.single_electron_gain_partition["circular"] ** 2
         return cond
 
     def cd_region(self, x, y):
