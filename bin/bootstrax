@@ -820,7 +820,7 @@ def infer_mode(rd):
             elif time.time() - started_looking > timeouts["max_data_rate_infer_time"]:
                 raise RuntimeError(f'Could not infer_mode for {rd["number"]}')
             log.debug(
-                f'No rate inferred for {rd["number"]} after {time.time()-started_looking:.1f} s.'
+                f'No rate inferred for {rd["number"]} after {time.time() - started_looking:.1f} s.'
             )
             time.sleep(2)
 
