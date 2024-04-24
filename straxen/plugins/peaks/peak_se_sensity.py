@@ -25,7 +25,7 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
     ]
 
     se_time_search_window_left = straxen.URLConfig(
-        default=1e9, type=int, help="SEs time window searching window, left side [ns]"
+        default=5e9, type=int, help="SEs time window searching window, left side [ns]"
     )
 
     se_time_search_window_right = straxen.URLConfig(
@@ -52,7 +52,7 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
         mask = peaks["type"] == 2
         mask &= (peaks["area"] > 10) & (peaks["area"] < 80)
         mask &= (peaks["range_50p_area"] > 80) & (peaks["range_50p_area"] < 700)
-        return peaks[mask]
+        return mask
 
     @staticmethod
     @njit()
@@ -84,7 +84,8 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
     def compute_se_density(self, peaks, _peaks):
         """Function to calculate the SE rate density for each peak."""
         # select single electrons
-        se_peaks = self.select_se(peaks)
+        mask = self.select_se(peaks)
+        se_peaks = peaks[mask]
 
         # get single electron indices in peak vicinity
         split_peaks = np.zeros(len(_peaks), dtype=strax.time_fields)
