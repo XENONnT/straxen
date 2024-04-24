@@ -24,7 +24,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.2"
+    __version__ = "0.5.3"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -82,19 +82,18 @@ class CorrectedAreas(strax.Plugin):
         help="Relative light yield (allows for time dependence)",
     )
 
-    region_linear = straxen.URLConfig(
-        default=28,
+    # Single electron gain partition
+    # AB and CD partitons distiguished based on
+    # linear and circular regions
+    # https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction
+    # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:noahhood:corrections:se_gain_ee_final
+    single_electron_gain_partition = straxen.URLConfig(
+        default="objects-to-dict://xedocs://avg_se_gains?run_id=plugin.run_id&version=v2&"
+        "field=region_circular&field=region_linear&"
+        "as_list=True&sort=field&key_attr=field&value_attr=value",
         help=(
-            "linear cut (cm) for ab region, check out the note"
-            " https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction"
-        ),
-    )
-
-    region_circular = straxen.URLConfig(
-        default=60,
-        help=(
-            "circular cut (cm) for ab region, check out the note"
-            " https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction"
+            "Two distinct patterns of evolution of single electron corrections between AB and CD. "
+            "Distinguish thanks to linear and circular regions"
         ),
     )
 
@@ -151,9 +150,9 @@ class CorrectedAreas(strax.Plugin):
 
     def ab_region(self, x, y):
         new_x, new_y = rotate_perp_wires(x, y)
-        cond = new_x < self.region_linear
-        cond &= new_x > -self.region_linear
-        cond &= new_x**2 + new_y**2 < self.region_circular**2
+        cond = new_x < self.single_electron_gain_partition["region_circular"]
+        cond &= new_x > -self.single_electron_gain_partition["region_circular"]
+        cond &= new_x**2 + new_y**2 < self.single_electron_gain_partition["region_circular"] ** 2
         return cond
 
     def cd_region(self, x, y):
