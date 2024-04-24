@@ -86,9 +86,13 @@ class CorrectedAreas(strax.Plugin):
     # AB and CD partitons distiguished based on
     # linear and circular regions
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=jlong:sr0_2_region_se_correction
+    # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:noahhood:corrections:se_gain_ee_final
     single_electron_gain_partition = straxen.URLConfig(
         default="cmt://single_electron_gain_partition?version=ONLINE&run_id=plugin.run_id",
-        help="Two distinct patterns of evolution of single electron corrections between A+B and C+D. Distinguish thanks to linear and circular regions",
+        help=(
+            "Two distinct patterns of evolution of single electron corrections between AB and CD. "
+            "Distinguish thanks to linear and circular regions"
+        ),
     )
 
     # cS2 AFT correction due to photon ionization
