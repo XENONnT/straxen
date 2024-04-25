@@ -261,7 +261,6 @@ def resource_from_url(html: str, fmt="text"):
     cache_folders = [
         "./resource_cache",
         "/tmp/straxen_resource_cache",
-        "/dali/lgrandi/strax/resource_cache",
     ]
     for cache_folder in cache_folders:
         try:
