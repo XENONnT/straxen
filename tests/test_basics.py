@@ -89,7 +89,5 @@ class TestBasics(unittest.TestCase):
 
     def test_dependency_tree(self):
         """Test the dependency tree."""
-        self.st.dependency_tree(self.run_id, "event_info")
-        self.st.dependency_tree(
-            self.run_id, "event_info", include_class=True, exclude_pattern="raw_records_*"
-        )
+        self.st.dependency_tree("event_info")
+        self.st.dependency_tree("event_info", include_class=True, exclude_pattern="raw_records_*")
