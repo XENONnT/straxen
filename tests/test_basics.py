@@ -85,3 +85,11 @@ class TestBasics(unittest.TestCase):
     def test_storage_graph(self):
         """Test the storage graph."""
         self.st.storage_graph(self.run_id, "event_info")
+        self.st.storage_graph(self.run_id, "event_info", include_class=True)
+
+    def test_dependency_tree(self):
+        """Test the dependency tree."""
+        self.st.dependency_tree(self.run_id, "event_info")
+        self.st.dependency_tree(
+            self.run_id, "event_info", include_class=True, exclude_pattern="raw_records_*"
+        )
