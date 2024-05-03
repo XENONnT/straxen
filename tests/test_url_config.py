@@ -375,8 +375,8 @@ class TestURLConfig(unittest.TestCase):
             config={"test_config": "fake://electron_lifetimes?attr=value&run_id=25000&version=v5"}
         )
         self.assertEqual(
-            st1.key_for(25000, "corrected_areas").lineage_hash,
-            st2.key_for(25000, "corrected_areas").lineage_hash,
+            st1.key_for("025000", "corrected_areas").lineage_hash,
+            st2.key_for("025000", "corrected_areas").lineage_hash,
         )
 
     def test_global_version_not_changed(self):
