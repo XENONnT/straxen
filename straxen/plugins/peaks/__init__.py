@@ -40,9 +40,6 @@ from .peak_per_event import *
 from . import peak_corrections
 from .peak_corrections import *
 
-from . import peaks_subtyping
-from .peaks_subtyping import *
-
 from . import peaks_som
 from .peaks_som import *
 
@@ -51,3 +48,6 @@ from .peak_basics_som import *
 
 from . import peak_nearest_triggering
 from .peak_nearest_triggering import *
+
+from . import peak_se_sensity
+from .peak_se_sensity import *

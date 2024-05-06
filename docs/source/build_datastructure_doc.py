@@ -11,12 +11,13 @@ For extra credit, the SVGs are clickable.
 from collections import defaultdict
 import os
 import shutil
+from immutabledict import immutabledict
+import numpy as np
 import pandas as pd
 import graphviz
 import strax
 import straxen
-from immutabledict import immutabledict
-import numpy as np
+from straxen import kind_colors
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -112,21 +113,6 @@ titles = {
     "_mv": "Straxen {xT} datastructure for muon veto",
 }
 tree_suffices = list(titles.keys())
-
-kind_colors = dict(
-    events="#ffffff",
-    peaks="#98fb98",
-    hitlets="#0066ff",
-    peaklets="#d9ff66",
-    merged_s2s="#ccffcc",
-    lone_hits="#CAFF70",
-    records="#ffa500",
-    raw_records="#ff4500",
-    raw_records_aqmon="#ff4500",
-    raw_records_aux_mv="#ff4500",
-    online_peak_monitor="deepskyblue",
-    online_monitor="deepskyblue",
-)
 
 suffices = ["_he", "_nv", "_mv"]
 for suffix in suffices:
