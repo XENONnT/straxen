@@ -413,7 +413,7 @@ class TestURLConfig(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.st.set_config({"test_config": "run_doc://mode?run_id=plugin.run_id"})
-            p = self.st.get_single_plugin(999999999, "test_data")
+            p = self.st.get_single_plugin("999999999", "test_data")
             return p.test_config
 
     def test_pad_array(self):
