@@ -1,3 +1,12 @@
+2.2.3 / 2024-05-16
+-------------------
+* No need to set `loop_over` for `EventBasics` by @dachengx in https://github.com/XENONnT/straxen/pull/1377
+* Initialize plugins whose `depends_on` is property by @dachengx in https://github.com/XENONnT/straxen/pull/1379
+* Collect functions used for documentation building in `docs_utils.py` by @dachengx in https://github.com/XENONnT/straxen/pull/1380
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.2...v2.2.3
+
+
 2.2.2 / 2024-04-30
 -------------------
 * Minor change of indents by @dachengx in https://github.com/XENONnT/straxen/pull/1341
