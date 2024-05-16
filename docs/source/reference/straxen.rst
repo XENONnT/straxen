@@ -56,6 +56,14 @@ straxen.daq\_core module
    :undoc-members:
    :show-inheritance:
 
+straxen.docs\_utils module
+--------------------------
+
+.. automodule:: straxen.docs_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.entry\_points module
 ----------------------------
 
