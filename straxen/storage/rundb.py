@@ -133,7 +133,7 @@ class RunDB(strax.StorageFrontend):
             if re.match(regex, self.hostname):
                 self.available_query.append({"host": host_alias})
 
-        # When querying for rucio, add that it should be dali-userdisk (when on dali)
+        # When querying for rucio, add that it should be sparsed by the hostname
         if self.rucio_path is not None and any(
             re.match(regex, self.hostname) for regex in self.hosts.values()
         ):

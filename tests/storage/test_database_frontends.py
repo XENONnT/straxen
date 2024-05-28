@@ -1,5 +1,4 @@
 import os
-import re
 import unittest
 import strax
 from strax.testutils import Records, Peaks
@@ -63,6 +62,7 @@ class TestRunDBFrontend(unittest.TestCase):
             """Change class to mathc current host too."""
 
             hosts = {"bla": f"{socket.getfqdn()}"}
+            userdisks = {"BLA_USERDISK": f"{socket.getfqdn()}"}
 
         cls.rundb_sf_with_current_host = RunDBTestLocal(
             readonly=False,
@@ -193,21 +193,16 @@ class TestRunDBFrontend(unittest.TestCase):
         self.assertFalse(rucio_id in self.test_run_ids)
         rd = _rundoc_format(rucio_id)
         did = straxen.key_to_rucio_did(key)
-        location = None
-        for host_alias, regex in self.rundb_sf.userdisks.items():
-            if re.match(regex, self.rundb_sf.hostname):
-                location = host_alias
         rd["data"] = [
             {
                 "host": "rucio-catalogue",
+                "location": "BLA_USERDISK",
                 "status": "transferred",
                 "did": did,
                 "number": int(rucio_id),
                 "type": target,
             }
         ]
-        if location is not None:
-            rd["data"][0]["location"] = location
         self.database[self.collection_name].insert_one(rd)
 
         # Make sure we get the backend key using the _find option
