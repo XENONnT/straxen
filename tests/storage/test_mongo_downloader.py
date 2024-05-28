@@ -2,10 +2,7 @@ import unittest
 import straxen
 import os
 import pymongo
-
-
-def mongo_uri_not_set():
-    return "TEST_MONGO_URI" not in os.environ
+from straxen import mongo_uri_not_set
 
 
 @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
