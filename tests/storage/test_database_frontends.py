@@ -194,8 +194,8 @@ class TestRunDBFrontend(unittest.TestCase):
         rd = _rundoc_format(rucio_id)
         did = straxen.key_to_rucio_did(key)
         location = None
-        for host_alias, regex in self.database.userdisks.items():
-            if re.match(regex, self.database.hostname):
+        for host_alias, regex in self.rundb_sf.userdisks.items():
+            if re.match(regex, self.rundb_sf.hostname):
                 location = host_alias
         rd["data"] = [
             {
