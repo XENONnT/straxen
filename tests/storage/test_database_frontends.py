@@ -1,4 +1,5 @@
 import os
+import re
 import unittest
 import strax
 from strax.testutils import Records, Peaks
@@ -8,11 +9,7 @@ import tempfile
 import pymongo
 import datetime
 import socket
-from straxen import RunDB
-
-
-def mongo_uri_not_set():
-    return "TEST_MONGO_URI" not in os.environ
+from straxen import RunDB, mongo_uri_not_set
 
 
 @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
@@ -196,16 +193,21 @@ class TestRunDBFrontend(unittest.TestCase):
         self.assertFalse(rucio_id in self.test_run_ids)
         rd = _rundoc_format(rucio_id)
         did = straxen.key_to_rucio_did(key)
+        location = None
+        for host_alias, regex in self.database.userdisks.items():
+            if re.match(regex, self.database.hostname):
+                location = host_alias
         rd["data"] = [
             {
                 "host": "rucio-catalogue",
-                "location": "UC_DALI_USERDISK",
                 "status": "transferred",
                 "did": did,
                 "number": int(rucio_id),
                 "type": target,
             }
         ]
+        if location is not None:
+            rd["data"][0]["location"] = location
         self.database[self.collection_name].insert_one(rd)
 
         # Make sure we get the backend key using the _find option
