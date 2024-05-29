@@ -59,7 +59,7 @@ def itp_map_check(url: str):
     parent_class = get_parent_class(url)
 
     if "BaseMap" in parent_class:
-        if not ("itp_map://" in url) and straxen.URLConfig.kwarg_from_url(url, "attr") != "map":
+        if not ("itp_map://" in url) and straxen.URLConfig.kwarg_from_url(url, "attr") != "map" and not ("tf://" in url):
             warnings.warn(
                 "Warning, you are requesting a map file with this URL. However, the protocol "
                 "itp_map:// was not requested as part of the URL. "
