@@ -1,5 +1,5 @@
 # mypy: disable-error-code="no-redef"
-__version__ = "2.2.1"
+__version__ = "2.2.3"
 
 from utilix import uconfig
 from .common import *
@@ -36,6 +36,9 @@ from . import contexts
 
 from . import test_utils
 from .test_utils import *
+
+from . import docs_utils
+from .docs_utils import *
 
 from . import daq_core
 

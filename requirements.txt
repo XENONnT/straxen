@@ -11,6 +11,9 @@ multihist>=0.6.3
 numba>=0.50.0
 numpy
 packaging
+m2r==0.2.1
+docutils==0.18.1
+mistune==0.8.4
 pymongo
 requests
 strax>=1.5.0

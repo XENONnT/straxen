@@ -301,7 +301,7 @@ def main(args):
         for target in strax.to_str_tuple(args.target):
             run_make(target)
     logging.info(
-        f"Straxer is done in {time.time()-proc_start :.1f} s! peak RAM usage was"
+        f"Straxer is done in {time.time() - proc_start :.1f} s! peak RAM usage was"
         f" ~{peak_ram:.1f} MB."
     )
 

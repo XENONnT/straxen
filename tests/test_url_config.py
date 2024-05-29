@@ -376,8 +376,8 @@ class TestURLConfig(unittest.TestCase):
             config={"test_config": "fake://electron_lifetimes?attr=value&run_id=25000&version=v5"}
         )
         self.assertEqual(
-            st1.key_for(25000, "corrected_areas").lineage_hash,
-            st2.key_for(25000, "corrected_areas").lineage_hash,
+            st1.key_for("025000", "corrected_areas").lineage_hash,
+            st2.key_for("025000", "corrected_areas").lineage_hash,
         )
 
     def test_global_version_not_changed(self):
@@ -414,7 +414,7 @@ class TestURLConfig(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.st.set_config({"test_config": "run_doc://mode?run_id=plugin.run_id"})
-            p = self.st.get_single_plugin(999999999, "test_data")
+            p = self.st.get_single_plugin("999999999", "test_data")
             return p.test_config
 
     def test_regex_url_warnings(self):

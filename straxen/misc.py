@@ -3,6 +3,7 @@ from sys import getsizeof, stderr
 import inspect
 import warnings
 import datetime
+import fnmatch
 from immutabledict import immutabledict
 import pytz
 from itertools import chain
@@ -419,18 +420,41 @@ def total_size(o, handlers=None, verbose=False):
 def dependency_tree(
     st,
     target="event_info",
+    include_class=False,
+    exclude_pattern=None,
     dump_plot=True,
     to_dir="./",
     format="svg",
 ):
+    """Plot the dependency graph.
+
+    :param target: str of the target plugin to check
+    :param include_class: bool, whether include class name in label
+    :param exclude_pattern: str, list or tuple of patterns to exclude
+    :param dump_plot: bool, if True, save the plot to the to_dir
+    :param to_dir: str, directory to save the plot
+    :param format: str, format of the plot
+
+    """
+    if exclude_pattern is None:
+        exclude_pattern = []
+    elif isinstance(exclude_pattern, str):
+        exclude_pattern = [exclude_pattern]
+
+    if not isinstance(exclude_pattern, (list, tuple)):
+        raise ValueError("exclude_pattern should be a str or list or tuple!")
+
     st._fixed_plugin_cache = None
 
     plugins = st._get_plugins((target,), run_id="0")
     graph = graphviz.Digraph(name=f"{to_dir}/{target}", strict=True)
     graph.attr(bgcolor="transparent")
     for d, p in plugins.items():
+        if any([fnmatch.fnmatch(d, pattern) for pattern in exclude_pattern]):
+            continue
         graph.node(
             d,
+            label=f"{d}\n{p.__class__.__name__}" if include_class else None,
             style="filled",
             fillcolor=kind_colors.get(p.data_kind_for(d), "grey"),
         )
@@ -449,6 +473,7 @@ def storage_graph(
     target,
     graph=None,
     not_stored=None,
+    include_class=False,
     dump_plot=True,
     to_dir="./",
     format="svg",
@@ -484,7 +509,7 @@ def storage_graph(
         # if the plugin is stored, fill in green
         fillcolor = "green"
     else:
-        save_when = deepcopy(st._plugin_class_registry[target].save_when)
+        save_when = deepcopy(st._plugin_class_registry[target]().save_when)
         if isinstance(save_when, immutabledict):
             save_when = save_when[target]
         # if it is not stored, fill in the color according to save_when
@@ -497,14 +522,16 @@ def storage_graph(
         if not isinstance(graph, graphviz.graphs.Digraph):
             raise ValueError("graph should be a graphviz.Digraph instance!")
     # add a node of target
+    p = st._Context__get_plugin(run_id, target)
     graph.node(
         target,
+        label=f"{target}\n{p.__class__.__name__}" if include_class else None,
         style="filled",
         fillcolor=fillcolor,
     )
     if (not st.is_stored(run_id, target)) and (target not in not_stored):
         not_stored.add(target)
-        depends_on = deepcopy(st._plugin_class_registry[target].depends_on)
+        depends_on = deepcopy(st._plugin_class_registry[target]().depends_on)
         depends_on = strax.to_str_tuple(depends_on)
         for dep in depends_on:
             # only add the node to the graph but not save the plot
@@ -514,6 +541,7 @@ def storage_graph(
                     dep,
                     graph=graph,
                     not_stored=not_stored,
+                    include_class=include_class,
                     dump_plot=False,
                     to_dir=to_dir,
                 )
