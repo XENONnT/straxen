@@ -46,7 +46,7 @@ def are_resources_needed_check(url: str):
     parent_class = get_parent_class(url)
 
     if ("BaseMap" in parent_class) or ("BaseResourceReference" in parent_class):
-        if not ("resource://" in url):
+        if not ("resource://" in url) and straxen.URLConfig.kwarg_from_url(url, "attr") != "map":
             warnings.warn(
                 "A URL which requests the resource:// was given. However resource:// "
                 f"was not found within the URL, not data will be loaded. url: {url}",
@@ -59,7 +59,7 @@ def itp_map_check(url: str):
     parent_class = get_parent_class(url)
 
     if "BaseMap" in parent_class:
-        if not ("itp_map://" in url):
+        if not ("itp_map://" in url) and straxen.URLConfig.kwarg_from_url(url, "attr") != "map":
             warnings.warn(
                 "Warning, you are requesting a map file with this URL. However, the protocol "
                 "itp_map:// was not requested as part of the URL. "
@@ -96,17 +96,6 @@ def url_version_check(url: str):
         warnings.warn(
             "A URL without a 'version' argument was given, as a result, to use a url protocol "
             f"to get a correction a version of said correcection is requiered. url: {url}",
-            URLWarning,
-        )
-
-
-@check_urls.register(r".*fdc_maps.*")
-def url_fdc_check(url: str):
-    if not ("scale_coordinates" in url):
-        warnings.warn(
-            "A URL for fdc was given without a [scale_coordinates] argument. "
-            "This could lead to issues when reprocessing data. "
-            f"Please include the scaling in the URL. url: {url}",
             URLWarning,
         )
 
