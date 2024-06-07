@@ -335,7 +335,9 @@ def pre_apply_function(data, run_id, target, function_name="pre_apply_function")
     :return: Data where the function is applied.
 
     """
-    if function_name not in _resource_cache:
+    # If use local file split of path and only use file name
+    cache_name = os.path.basename(function_name)
+    if cache_name not in _resource_cache:
         # only load the function once and put it in the resource cache
         function_file = f"{function_name}.py"
         function_file = straxen.test_utils._overwrite_testing_function_file(function_file)
@@ -343,8 +345,8 @@ def pre_apply_function(data, run_id, target, function_name="pre_apply_function")
         # pylint: disable=exec-used
         exec(function)
         # Cache the function to reduce reloading & eval operations
-        _resource_cache[function_name] = locals().get(function_name)
-    data = _resource_cache[function_name](data, run_id, strax.to_str_tuple(target))
+        _resource_cache[cache_name] = locals().get(cache_name)
+    data = _resource_cache[cache_name](data, run_id, strax.to_str_tuple(target))
     return data
 
 
