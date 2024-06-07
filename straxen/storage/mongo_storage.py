@@ -260,8 +260,8 @@ class MongoDownloader(GridFsInterface):
         # either specified by the user or we use these defaults:
         if store_files_at is None:
             store_files_at = (
-                "/tmp/straxen_resource_cache/",
                 "./resource_cache",
+                "/tmp/straxen_resource_cache",
             )
         elif not isinstance(store_files_at, (tuple, str, list)):
             raise ValueError(f"{store_files_at} should be tuple of paths!")
