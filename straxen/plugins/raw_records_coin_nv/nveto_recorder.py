@@ -6,8 +6,6 @@ from immutabledict import immutabledict
 import strax
 import straxen
 
-from straxen.plugins.defaults import NV_HIT_DEFAULTS
-
 export, __all__ = strax.exporter()
 
 
@@ -22,14 +20,13 @@ class nVETORecorder(strax.Plugin):
 
     """
 
-    __version__ = "0.0.7"
+    __version__ = "0.1.0"
 
     parallel = "process"
 
     rechunk_on_save = True
     save_when = immutabledict(
-        raw_records_coin_nv=strax.SaveWhen.TARGET,
-        lone_raw_records_nv=strax.SaveWhen.TARGET,
+        raw_records_coin_nv=strax.SaveWhen.ALWAYS,
         lone_raw_record_statistics_nv=strax.SaveWhen.ALWAYS,
     )
     compressor = "zstd"
@@ -38,50 +35,35 @@ class nVETORecorder(strax.Plugin):
 
     provides = (
         "raw_records_coin_nv",  # nv-raw-records with coincidence requirement (stored long term)
-        "lone_raw_records_nv",
         "lone_raw_record_statistics_nv",
     )
 
     data_kind = {key: key for key in provides}
 
     coincidence_level_recorder_nv = straxen.URLConfig(
-        type=int, default=3, help="Required coincidence level."
+        track=False, type=int, default=3, help="Required coincidence level."
     )
 
     pre_trigger_time_nv = straxen.URLConfig(
-        type=int, default=150, help="Pretrigger time before coincidence window in ns."
+        track=False, type=int, default=150, help="Pretrigger time before coincidence window in ns."
     )
 
     resolving_time_recorder_nv = straxen.URLConfig(
-        type=int, default=600, help="Resolving time of the coincidence in ns."
+        track=False, type=int, default=600, help="Resolving time of the coincidence in ns."
     )
 
-    baseline_samples_nv = straxen.URLConfig(
+    baseline_software_trigger_samples_nv = straxen.URLConfig(
         infer_type=False,
-        default="cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id",
-        track=True,
+        default=26,
+        track=False,
         help="Number of samples used in baseline rms calculation",
     )
 
-    hit_min_amplitude_nv = straxen.URLConfig(
+    software_trigger_hit_threshold = straxen.URLConfig(
         infer_type=False,
-        default=NV_HIT_DEFAULTS["hit_min_amplitude_nv"],
-        track=True,
-        help=(
-            "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_nveto_pmts, or a number, "
-            'or a string like "pmt_commissioning_initial" which means calling '
-            "hitfinder_thresholds.py, "
-            "or a tuple like (correction=str, version=str, nT=boolean), "
-            "which means we are using cmt."
-        ),
-    )
-
-    n_lone_records_nv = straxen.URLConfig(
-        type=int,
-        default=2,
+        default=15,
         track=False,
-        help="Number of lone hits to be stored per channel for diagnostic reasons.",
+        help=("Minimum hit amplitude in ADC counts above baseline " "for the software trigger. "),
     )
 
     channel_map = straxen.URLConfig(
@@ -97,9 +79,19 @@ class nVETORecorder(strax.Plugin):
         help="Crash if any of the pulses in raw_records overlap with others in the same channel",
     )
 
+    keep_n_chunks_for_monitoring = straxen.URLConfig(
+        default=5,
+        track=False,
+        infer_type=False,
+        help=(
+            "How many chunks at a begining of a run should be "
+            "kept to monitor the detector performance."
+        ),
+    )
+
     def setup(self):
-        self.baseline_samples = self.baseline_samples_nv
-        self.hit_thresholds = self.hit_min_amplitude_nv
+        self.baseline_samples = self.baseline_software_trigger_samples_nv
+        self.hit_thresholds = self.software_trigger_hit_threshold
 
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
@@ -109,28 +101,30 @@ class nVETORecorder(strax.Plugin):
         channel_range = self.channel_map["nveto"]
         n_channel = (channel_range[1] - channel_range[0]) + 1
         nveto_records_dtype = strax.raw_record_dtype(self.record_length)
-        nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
         nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(n_channel)
 
         dtypes = [
             nveto_records_dtype,
-            nveto_diagnostic_lone_records_dtype,
             nveto_lone_records_statistics_dtype,
         ]
 
         return {k: v for k, v in zip(self.provides, dtypes)}
 
-    def compute(self, raw_records_nv, start, end):
+    def compute(self, raw_records_nv, start, end, chunk_i):
         if self.check_raw_record_overlaps_nv:
             straxen.check_overlaps(raw_records_nv, n_channels=3000)
-        # Cover the case if we do not want to have any coincidence:
-        if self.coincidence_level_recorder_nv <= 1:
+
+        # Cover the case if we do not want to have any coincidence
+        # Keep all raw data for the very first 5 chunks of data for
+        # monitoring purposes.
+        _keep_all_raw_records = (self.coincidence_level_recorder_nv <= 1) or (
+            chunk_i < self.keep_n_chunks_for_monitoring
+        )
+        if _keep_all_raw_records:
             rr = raw_records_nv
-            lr = np.zeros(0, dtype=self.dtype["lone_raw_records_nv"])
             lrs = np.zeros(0, dtype=self.dtype["lone_raw_record_statistics_nv"])
             return {
                 "raw_records_coin_nv": rr,
-                "lone_raw_records_nv": lr,
                 "lone_raw_record_statistics_nv": lrs,
             }
 
@@ -193,13 +187,12 @@ class nVETORecorder(strax.Plugin):
         strax.zero_out_of_bounds(lr)
         strax.baseline(lr, baseline_samples=self.baseline_samples, flip=True)
         strax.integrate(lr)
-        lrs, lr = compute_lone_records(lr, self.channel_map["nveto"], self.n_lone_records_nv)
+        lrs, lr = compute_lone_records(lr, self.channel_map["nveto"], 0)
         lrs["time"] = start
         lrs["endtime"] = end
 
         return {
             "raw_records_coin_nv": rr,
-            "lone_raw_records_nv": lr,
             "lone_raw_record_statistics_nv": lrs,
         }
 
