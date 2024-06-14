@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 class muVETOEvents(nVETOEvents):
     """Plugin which computes the boundaries of veto events."""
 
-    depends_on = "hitlets_mv"
+    depends_on = "hitlets_mv"  # type: ignore
     provides = "events_mv"
     data_kind = "events_mv"
 
