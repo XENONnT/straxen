@@ -336,10 +336,21 @@ def pre_apply_function(data, run_id, target, function_name="pre_apply_function")
 
     """
     # If use local file split of path and only use file name
-    cache_name = os.path.basename(function_name)
+    if os.path.isabs(function_name) and function_name.endswith(".py"):
+        if not os.path.exists(function_name):
+            raise FileNotFoundError(f"Cannot find {function_name}!")
+        cache_name = os.path.basename(function_name).replace(".py", "")
+        function_file = function_name
+    else:
+        if "/" in function_name:
+            raise ValueError(
+                "You should either provide a absolute path or the function name. "
+                f"But not {function_name}"
+            )
+        cache_name = function_name
+        function_file = f"{function_name}.py"
     if cache_name not in _resource_cache:
         # only load the function once and put it in the resource cache
-        function_file = f"{function_name}.py"
         function_file = straxen.test_utils._overwrite_testing_function_file(function_file)
         function = get_resource(function_file, fmt="txt")
         # pylint: disable=exec-used
