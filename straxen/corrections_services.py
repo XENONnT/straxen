@@ -475,7 +475,6 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
 
     context.set_config(cmt_config)
 
-
 @strax.Context.add_method
 def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> None:
     import xedocs
@@ -493,6 +492,7 @@ def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> N
 
     if len(global_config):
         context.set_config(global_config)
+        context.set_context_config({'xedocs_version':filter_kwargs['version']})
     else:
         warnings.warn(
             f"Could not find any context configs matchin {filter_kwargs}",
