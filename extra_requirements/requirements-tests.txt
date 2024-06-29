@@ -1,4 +1,4 @@
 # File for the requirements of straxen with the automated tests
 sharedarray@https://xenon.isi.edu/python/SharedArray-3.2.3.tar.gz # workaround for numpy 2.0.0 build problem, see XENONnT/base_environment#1718
-strax==1.6.4
 git+https://github.com/XENONnT/base_environment
+git+https://github.com/AxFoundation/strax
