@@ -1,3 +1,19 @@
+2.2.4 / 2024-07-01
+-------------------
+* Parse USERDISK base on hostname in RunDB by @dachengx in https://github.com/XENONnT/straxen/pull/1384
+* Fix packages temporarily for documentation generation by @dachengx in https://github.com/XENONnT/straxen/pull/1385
+* Bad url warnings by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1216
+* Allow local blinding files by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1387
+* Lock strax version in test by @dachengx in https://github.com/XENONnT/straxen/pull/1389
+* Add xedocs version to context config, only if xedocs is called by @Ananthu-Ravindran in https://github.com/XENONnT/straxen/pull/1393
+* Revert "Lock strax version in test" by @dachengx in https://github.com/XENONnT/straxen/pull/1394
+
+New Contributors
+* @Ananthu-Ravindran made their first contribution in https://github.com/XENONnT/straxen/pull/1393
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.3...v2.2.4
+
+
 2.2.3 / 2024-05-16
 -------------------
 * No need to set `loop_over` for `EventBasics` by @dachengx in https://github.com/XENONnT/straxen/pull/1377
