@@ -3,6 +3,7 @@ import tempfile
 from datetime import datetime
 from warnings import warn
 import pytz
+from typing import Tuple, Dict
 from strax import exporter, to_str_tuple
 import gridfs
 from tqdm import tqdm
@@ -252,6 +253,15 @@ class MongoUploader(GridFsInterface):
 @export
 class MongoDownloader(GridFsInterface):
     """Class to download files from GridFs."""
+
+    _instances: Dict[Tuple, "MongoDownloader"] = {}
+
+    def __new__(cls, *args, **kwargs):
+        key = (args, frozenset(kwargs.items()))
+        if key not in cls._instances:
+            cls._instances[key] = super(MongoDownloader, cls).__new__(cls)
+            cls._instances[key].__init__(*args, **kwargs)
+        return cls._instances[key]
 
     def __init__(self, store_files_at=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
