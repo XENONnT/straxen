@@ -12,3 +12,7 @@ from .rundb import *
 
 from . import mongo_storage
 from .mongo_storage import *
+
+
+mongo_downloader = mongo_storage.MongoDownloader()
+mongo_downloader_files = mongo_downloader.list_files()

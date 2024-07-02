@@ -18,6 +18,8 @@ from immutabledict import immutabledict
 from utilix import xent_collection
 from scipy.interpolate import interp1d
 
+from ..storage import mongo_downloader
+
 
 def get_item_or_attr(obj, key, default=None):
     if isinstance(obj, dict):
@@ -42,8 +44,7 @@ def get_resource(name: str, fmt: str = "text", **kwargs):
     """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
     passed directly to straxen.get_resource."""
     if fmt == "abs_path":
-        downloader = straxen.MongoDownloader()
-        return downloader.download_single(name)
+        return mongo_downloader.download_single(name)
     return straxen.get_resource(name, fmt=fmt)
 
 

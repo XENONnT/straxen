@@ -17,6 +17,7 @@ import pandas as pd
 import numba
 import strax
 import straxen
+from .storage import mongo_downloader, mongo_downloader_files
 
 export, __all__ = strax.exporter()
 __all__.extend(
@@ -222,9 +223,8 @@ def get_resource(x: str, fmt="text"):
         return open_resource(x, fmt=fmt)
     # 3. load from database
     elif straxen.uconfig is not None:
-        downloader = straxen.MongoDownloader()
-        if x in downloader.list_files():
-            path = downloader.download_single(x)
+        if x in mongo_downloader_files:
+            path = mongo_downloader.download_single(x)
             return open_resource(path, fmt=fmt)
     # 4. load from URL
     if "://" in x:
