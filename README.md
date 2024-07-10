@@ -1,4 +1,5 @@
 # straxen
+Thanks Maxime
 Streaming analysis for XENON(nT)
 
 [![Test package](https://github.com/XENONnT/straxen/actions/workflows/pytest.yml/badge.svg?branch=master)](https://github.com/XENONnT/straxen/actions/workflows/pytest.yml)
