@@ -37,13 +37,11 @@ class EventPeaks(strax.Plugin):
             result["drift_time"][split_peaks_ind == event_i] = (
                 sp["center_time"] - event["s1_center_time"]
             )
-## Start of new part
-        sorted_indices_split_peaks_ind = np.argsort(
-            split_peaks_ind
-        ) 
+        ## Start of new part
+        sorted_indices_split_peaks_ind = np.argsort(split_peaks_ind)
         mapping = {
             val: events["event_number"][i]
-            for val,i in zip(
+            for val, i in zip(
                 np.unique(
                     split_peaks_ind[sorted_indices_split_peaks_ind][
                         split_peaks_ind[sorted_indices_split_peaks_ind] != -1
@@ -55,10 +53,10 @@ class EventPeaks(strax.Plugin):
 
         corrected_split_peaks_ind = np.array(
             [mapping[val] if val in mapping else val for val in split_peaks_ind]
-        ) 
-        
+        )
+
         result["event_number"] = corrected_split_peaks_ind
-## End of new part
+        ## End of new part
         result["drift_time"][peaks["type"] != 2] = np.nan
         result["time"] = peaks["time"]
         result["endtime"] = strax.endtime(peaks)
