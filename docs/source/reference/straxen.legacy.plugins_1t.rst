@@ -12,6 +12,14 @@ straxen.legacy.plugins\_1t.event\_info module
    :undoc-members:
    :show-inheritance:
 
+straxen.legacy.plugins\_1t.fake\_daqreader module
+-------------------------------------------------
+
+.. automodule:: straxen.legacy.plugins_1t.fake_daqreader
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.legacy.plugins\_1t.pax\_interface module
 ------------------------------------------------
 

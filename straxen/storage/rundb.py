@@ -26,7 +26,14 @@ class RunDB(strax.StorageFrontend):
 
     storage_type = strax.StorageType.LOCAL
     # Dict of alias used in rundb: regex on hostname
-    hosts = {"dali": r"^dali.*rcc.*|^midway2.*rcc.*|^midway.*rcc.*|fried.rice.edu"}
+    hosts = {
+        "dali": r"^dali.*rcc.*|fried.rice.edu",
+        "midway": r"^midway2.*rcc.*|^midway.*rcc.*",
+    }
+    userdisks = {
+        "UC_DALI_USERDISK": r"^dali.*rcc.*|fried.rice.edu",
+        "UC_MIDWAY_USERDISK": r"^midway2.*rcc.*|^midway.*rcc.*",
+    }
 
     provide_run_metadata = True
     progress_bar = False
@@ -126,16 +133,20 @@ class RunDB(strax.StorageFrontend):
             if re.match(regex, self.hostname):
                 self.available_query.append({"host": host_alias})
 
-        # When querying for rucio, add that it should be dali-userdisk (when on dali)
+        # When querying for rucio, add that it should be sparsed by the hostname
         if self.rucio_path is not None and any(
             re.match(regex, self.hostname) for regex in self.hosts.values()
         ):
-            self.backends.append(RucioLocalBackend(self.rucio_path))
-            self.available_query.append({
-                "host": "rucio-catalogue",
-                "location": "UC_DALI_USERDISK",
-                "status": "transferred",
-            })
+            for host_alias, regex in self.userdisks.items():
+                if re.match(regex, self.hostname):
+                    self.backends.append(RucioLocalBackend(self.rucio_path))
+                    self.available_query.append(
+                        {
+                            "host": "rucio-catalogue",
+                            "location": host_alias,
+                            "status": "transferred",
+                        }
+                    )
 
     def _data_query(self, key):
         """Return MongoDB query for data field matching key."""

@@ -8,11 +8,7 @@ import tempfile
 import pymongo
 import datetime
 import socket
-from straxen import RunDB
-
-
-def mongo_uri_not_set():
-    return "TEST_MONGO_URI" not in os.environ
+from straxen import RunDB, mongo_uri_not_set
 
 
 @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
@@ -66,6 +62,7 @@ class TestRunDBFrontend(unittest.TestCase):
             """Change class to mathc current host too."""
 
             hosts = {"bla": f"{socket.getfqdn()}"}
+            userdisks = {"BLA_USERDISK": f"{socket.getfqdn()}"}
 
         cls.rundb_sf_with_current_host = RunDBTestLocal(
             readonly=False,
@@ -196,14 +193,16 @@ class TestRunDBFrontend(unittest.TestCase):
         self.assertFalse(rucio_id in self.test_run_ids)
         rd = _rundoc_format(rucio_id)
         did = straxen.key_to_rucio_did(key)
-        rd["data"] = [{
-            "host": "rucio-catalogue",
-            "location": "UC_DALI_USERDISK",
-            "status": "transferred",
-            "did": did,
-            "number": int(rucio_id),
-            "type": target,
-        }]
+        rd["data"] = [
+            {
+                "host": "rucio-catalogue",
+                "location": "BLA_USERDISK",
+                "status": "transferred",
+                "did": did,
+                "number": int(rucio_id),
+                "type": target,
+            }
+        ]
         self.database[self.collection_name].insert_one(rd)
 
         # Make sure we get the backend key using the _find option

@@ -183,17 +183,21 @@ class ReStrax(daq_core.DataBases):
     is_heavy_rate_mbs: ty.Union[int, float] = 50  # MB/s
 
     # Default compressors / target sizes. Fn matches the datatype to the keys in the dict to get the
-    target_compressor: ty.Mapping = immutabledict.immutabledict({
-        "peak*": "zstd",
-        "_raw_record_compressor_light": "bz2",
-        "_raw_record_compressor_heavy": "zstd",
-        "_other": None,  # use the default compressor
-    })
-    target_size: ty.Mapping = immutabledict.immutabledict({
-        "peak*": 1_500,
-        "_other": 1_500,
-        "_raw_records": 5_000,
-    })
+    target_compressor: ty.Mapping = immutabledict.immutabledict(
+        {
+            "peak*": "zstd",
+            "_raw_record_compressor_light": "bz2",
+            "_raw_record_compressor_heavy": "zstd",
+            "_other": None,  # use the default compressor
+        }
+    )
+    target_size: ty.Mapping = immutabledict.immutabledict(
+        {
+            "peak*": 1_500,
+            "_other": 1_500,
+            "_raw_records": 5_000,
+        }
+    )
 
     # Prevent using more than this much MB when doing data validation
     max_compare_buffer_mb: ty.Union[float, int] = 5000
@@ -286,12 +290,14 @@ class ReStrax(daq_core.DataBases):
                 if run_id != first_run:
                     continue
                 self.log.info(f"Do {folder}")
-                data_docs.append({
-                    "host": self.hostname,
-                    "location": os.path.join(self.read_from, folder),
-                    "type": data_type,
-                    "linage_hash": lineage,
-                })
+                data_docs.append(
+                    {
+                        "host": self.hostname,
+                        "location": os.path.join(self.read_from, folder),
+                        "type": data_type,
+                        "linage_hash": lineage,
+                    }
+                )
         if not len(data_docs):
             return None
         run_doc = self.run_coll.find_one({"number": int(first_run)}, projection=projection)

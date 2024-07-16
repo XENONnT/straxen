@@ -11,12 +11,14 @@ For extra credit, the SVGs are clickable.
 from collections import defaultdict
 import os
 import shutil
+from immutabledict import immutabledict
+import numpy as np
 import pandas as pd
 import graphviz
 import strax
 import straxen
-from immutabledict import immutabledict
-import numpy as np
+from straxen import kind_colors
+from straxen.docs_utils import add_spaces, add_deps_to_graph_tree
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -113,40 +115,11 @@ titles = {
 }
 tree_suffices = list(titles.keys())
 
-kind_colors = dict(
-    events="#ffffff",
-    peaks="#98fb98",
-    hitlets="#0066ff",
-    peaklets="#d9ff66",
-    merged_s2s="#ccffcc",
-    lone_hits="#CAFF70",
-    records="#ffa500",
-    raw_records="#ff4500",
-    raw_records_aqmon="#ff4500",
-    raw_records_aux_mv="#ff4500",
-    online_peak_monitor="deepskyblue",
-    online_monitor="deepskyblue",
-)
-
 suffices = ["_he", "_nv", "_mv"]
 for suffix in suffices:
     to_copy = list(kind_colors.keys())
     for c in to_copy:
         kind_colors[c + suffix] = kind_colors[c]
-
-
-def add_spaces(x):
-    """Add four spaces to every line in x.
-
-    This is needed to make html raw blocks in rst format correctly
-
-    """
-    y = ""
-    if isinstance(x, str):
-        x = x.split("\n")
-    for q in x:
-        y += "    " + q
-    return y
 
 
 def get_plugins_deps(st):
@@ -258,30 +231,6 @@ def build_datastructure_doc(is_nt):
             f.write(out)
 
         shutil.rmtree(this_dir + f"/graphs{suffix}_{one_tonne_or_n_tonne}")
-
-
-def add_deps_to_graph_tree(graph_tree, plugin, data_type, _seen=None):
-    """Recursively add nodes to graph base on plugin.deps."""
-    if _seen is None:
-        _seen = []
-    if data_type in _seen:
-        return graph_tree, _seen
-
-    # Add new one
-    graph_tree.node(
-        data_type,
-        style="filled",
-        href="#" + data_type.replace("_", "-"),
-        fillcolor=kind_colors.get(plugin.data_kind_for(data_type), "grey"),
-    )
-    for dep in plugin.depends_on:
-        graph_tree.edge(data_type, dep)
-
-    # Add any of the lower plugins if we have to
-    for lower_data_type, lower_plugin in plugin.deps.items():
-        graph_tree, _seen = add_deps_to_graph_tree(graph_tree, lower_plugin, lower_data_type, _seen)
-    _seen.append(data_type)
-    return graph_tree, _seen
 
 
 def tree_to_svg(graph_tree, save_as="data_kinds_nT"):

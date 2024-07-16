@@ -627,7 +627,11 @@ def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
     """Get close to <target> by doing a numeric derivative."""
     if abs(y1 - y0) < err:
         # break by passing dx == 0
-        return 0.0, x1, x1
+        if abs(y0 - target) < abs(y1 - target):
+            x = x0
+        else:
+            x = x1
+        return 0.0, x, x
 
     x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
     x = min(x, x_max)

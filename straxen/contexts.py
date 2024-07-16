@@ -1,6 +1,5 @@
 import os
 import warnings
-from copy import deepcopy
 from typing import Dict, Any, List, Optional
 from immutabledict import immutabledict
 import socket
@@ -77,30 +76,27 @@ xnt_common_config = dict(
     ),
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
-# s1,s2 and fd corrections are still problematic
-xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(
-    gain_model="legacy-to-pe://to_pe_placeholder",
-    gain_model_nv="legacy-to-pe://adc_nv",
-    gain_model_mv="legacy-to-pe://adc_mv",
-    elife=1e6,
-)
+# s1, s2 and fd corrections are still problematic
 
 # Plugins in these files have nT plugins, E.g. in pulse&peak(let)
 # processing there are plugins for High Energy plugins. Therefore, do not
 # st.register_all in 1T contexts.
 xnt_common_opts = common_opts.copy()
-xnt_common_opts.update({
-    "register": list(common_opts["register"]) + [
-        straxen.PeakletSOMClass,
-        straxen.PeaksSOMClassification,
-        straxen.EventSOMClassification,
-    ],
-    "register_all": list(common_opts["register_all"]) + [
-        straxen.plugins,
-    ],
-    "use_per_run_defaults": False,
-})
+xnt_common_opts.update(
+    {
+        "register": list(common_opts["register"])
+        + [
+            straxen.PeakletSOMClass,
+            straxen.PeaksSOMClassification,
+            straxen.EventSOMClassification,
+        ],
+        "register_all": list(common_opts["register_all"])
+        + [
+            straxen.plugins,
+        ],
+        "use_per_run_defaults": False,
+    }
+)
 
 
 ##
@@ -128,12 +124,14 @@ def xenonnt_som(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=Fa
         cmt_version=cmt_version, xedocs_version=xedocs_version, _from_cutax=_from_cutax, **kwargs
     )
     del st._plugin_class_registry["peaklet_classification"]
-    st.register((
-        straxen.PeakletClassificationSOM,
-        straxen.PeaksSOM,
-        straxen.PeakBasicsSOM,
-        straxen.EventBasicsSOM,
-    ))
+    st.register(
+        (
+            straxen.PeakletClassificationSOM,
+            straxen.PeaksSOM,
+            straxen.PeakBasicsSOM,
+            straxen.EventBasicsSOM,
+        )
+    )
 
     return st
 
@@ -160,8 +158,7 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
         __rucio_local_path = "/project/lgrandi/rucio/"
         print(
             "You specified _auto_append_rucio_local=True and you are not on dali compute nodes, "
-            "so we will add the following rucio local path: ",
-            __rucio_local_path,
+            f"so we will add the following rucio local path: {__rucio_local_path}"
         )
 
     return _include_rucio_local, __rucio_local_path
@@ -227,12 +224,14 @@ def xenonnt_online(
     context_options = {**straxen.contexts.xnt_common_opts, **kwargs}
 
     st = strax.Context(config=straxen.contexts.xnt_common_config, **context_options)
-    st.register([
-        straxen.DAQReader,
-        straxen.LEDCalibration,
-        straxen.LEDAfterpulseProcessing,
-        straxen.nVeto_reflectivity,
-    ])
+    st.register(
+        [
+            straxen.DAQReader,
+            straxen.LEDCalibration,
+            straxen.LEDAfterpulseProcessing,
+            straxen.nVeto_reflectivity,
+        ]
+    )
 
     if _auto_append_rucio_local:
         include_rucio_local, _rucio_local_path = find_rucio_local_path(
@@ -325,20 +324,24 @@ def xenonnt_online(
 
 def xenonnt_led(**kwargs):
     st = xenonnt_online(**kwargs)
-    st.set_context_config({
-        "check_available": ("raw_records", "led_calibration"),
-        "free_options": list(xnt_common_config.keys()),
-    })
+    st.set_context_config(
+        {
+            "check_available": ("raw_records", "led_calibration"),
+            "free_options": list(xnt_common_config.keys()),
+        }
+    )
     # Return a new context with only raw_records and led_calibration registered
     st = st.new_context(replace=True, config=st.config, storage=st.storage, **st.context_config)
-    st.register([
-        straxen.DAQReader,
-        straxen.LEDCalibration,
-        straxen.nVETORecorder,
-        straxen.nVETOPulseProcessing,
-        straxen.nVETOHitlets,
-        straxen.nVetoExtTimings,
-    ])
+    st.register(
+        [
+            straxen.DAQReader,
+            straxen.LEDCalibration,
+            straxen.nVETORecorder,
+            straxen.nVETOPulseProcessing,
+            straxen.nVETOHitlets,
+            straxen.nVetoExtTimings,
+        ]
+    )
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
 

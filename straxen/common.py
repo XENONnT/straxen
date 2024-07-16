@@ -19,24 +19,26 @@ import strax
 import straxen
 
 export, __all__ = strax.exporter()
-__all__.extend([
-    "straxen_dir",
-    "first_sr1_run",
-    "tpc_r",
-    "tpc_z",
-    "aux_repo",
-    "n_tpc_pmts",
-    "n_top_pmts",
-    "n_hard_aqmon_start",
-    "ADC_TO_E",
-    "n_nveto_pmts",
-    "n_mveto_pmts",
-    "tpc_pmt_radius",
-    "cryostat_outer_radius",
-    "perp_wire_angle",
-    "perp_wire_x_rot_pos",
-    "INFINITY_64BIT_SIGNED",
-])
+__all__.extend(
+    [
+        "straxen_dir",
+        "first_sr1_run",
+        "tpc_r",
+        "tpc_z",
+        "aux_repo",
+        "n_tpc_pmts",
+        "n_top_pmts",
+        "n_hard_aqmon_start",
+        "ADC_TO_E",
+        "n_nveto_pmts",
+        "n_mveto_pmts",
+        "tpc_pmt_radius",
+        "cryostat_outer_radius",
+        "perp_wire_angle",
+        "perp_wire_x_rot_pos",
+        "INFINITY_64BIT_SIGNED",
+    ]
+)
 
 straxen_dir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe()))  # type: ignore
@@ -110,15 +112,17 @@ def pmt_positions(xenon1t=False):
             )
         )
         pmt_config = ast.literal_eval(config["DEFAULT"]["pmts"])
-        return pd.DataFrame([
-            dict(
-                x=q["position"]["x"],
-                y=q["position"]["y"],
-                i=q["pmt_position"],
-                array=q.get("array", "other"),
-            )
-            for q in pmt_config[:248]
-        ])
+        return pd.DataFrame(
+            [
+                dict(
+                    x=q["position"]["x"],
+                    y=q["position"]["y"],
+                    i=q["pmt_position"],
+                    array=q.get("array", "other"),
+                )
+                for q in pmt_config[:248]
+            ]
+        )
     else:
         return resource_from_url(
             aux_repo + "874de2ffe41147719263183b89d26c9ee562c334/pmt_positions_xenonnt.csv",
@@ -130,7 +134,7 @@ def pmt_positions(xenon1t=False):
 _resource_cache: Dict[str, Any] = dict()
 
 # Formats for which the original file is text, not binary
-_text_formats = ["text", "csv", "json"]
+_text_formats = ["txt", "csv", "json"]
 
 
 @export
@@ -257,7 +261,6 @@ def resource_from_url(html: str, fmt="text"):
     cache_folders = [
         "./resource_cache",
         "/tmp/straxen_resource_cache",
-        "/dali/lgrandi/strax/resource_cache",
     ]
     for cache_folder in cache_folders:
         try:
@@ -332,16 +335,29 @@ def pre_apply_function(data, run_id, target, function_name="pre_apply_function")
     :return: Data where the function is applied.
 
     """
-    if function_name not in _resource_cache:
-        # only load the function once and put it in the resource cache
+    # If use local file split of path and only use file name
+    if os.path.isabs(function_name) and function_name.endswith(".py"):
+        if not os.path.exists(function_name):
+            raise FileNotFoundError(f"Cannot find {function_name}!")
+        cache_name = os.path.basename(function_name).replace(".py", "")
+        function_file = function_name
+    else:
+        if "/" in function_name:
+            raise ValueError(
+                "You should either provide a absolute path or the function name. "
+                f"But not {function_name}"
+            )
+        cache_name = function_name
         function_file = f"{function_name}.py"
+    if cache_name not in _resource_cache:
+        # only load the function once and put it in the resource cache
         function_file = straxen.test_utils._overwrite_testing_function_file(function_file)
         function = get_resource(function_file, fmt="txt")
         # pylint: disable=exec-used
         exec(function)
         # Cache the function to reduce reloading & eval operations
-        _resource_cache[function_name] = locals().get(function_name)
-    data = _resource_cache[function_name](data, run_id, strax.to_str_tuple(target))
+        _resource_cache[cache_name] = locals().get(cache_name)
+    data = _resource_cache[cache_name](data, run_id, strax.to_str_tuple(target))
     return data
 
 

@@ -226,6 +226,8 @@ class Peaklets(strax.Plugin):
             save_outside_hits=(self.peak_left_extension, self.peak_right_extension),
             n_channels=len(self.to_pe),
         )
+        if np.any(lone_hits["right_integration"] - lone_hits["left_integration"] <= 0):
+            raise ValueError("Find lone_hits with non-positive length!")
 
         # Compute basic peak properties -- needed before natural breaks
         hits = hits[~is_lone_hit]
@@ -248,9 +250,13 @@ class Peaklets(strax.Plugin):
         hitlets = hits
         del hits
 
+        # Extend hits into hitlets and clip at chunk boundaries:
         hitlets["time"] -= (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
         hitlets["length"] = hitlets["right_integration"] - hitlets["left_integration"]
+
         hitlets = strax.sort_by_time(hitlets)
+        hitlets_time = np.copy(hitlets["time"])
+        self.clip_peaklet_times(hitlets, start, end)
         rlinks = strax.record_links(records)
 
         # If sum_waveform_top_array is false, don't digitize the top array
@@ -303,17 +309,17 @@ class Peaklets(strax.Plugin):
             # Compute the width again for corrected peaks
             strax.compute_widths(peaklets, select_peaks_indices=peak_list)
 
-        hitlet_time_shift = (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
-        hit_max_times = (
-            hitlets["time"] + hitlet_time_shift
-        )  # add time shift again to get correct maximum
-        hit_max_times += hitlets["dt"] * hit_max_sample(records, hitlets)
-
         # Compute tight coincidence level.
         # Making this a separate plugin would
         # (a) doing hitfinding yet again (or storing hits)
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
+        hitlet_time_shift = (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
+        hit_max_times = (
+            hitlets_time + hitlet_time_shift
+        )  # add time shift again to get correct maximum
+        hit_max_times += hitlets["dt"] * hit_max_sample(records, hitlets)
+
         hit_max_times_argsort = np.argsort(hit_max_times)
         sorted_hit_max_times = hit_max_times[hit_max_times_argsort]
         sorted_hit_channels = hitlets["channel"][hit_max_times_argsort]

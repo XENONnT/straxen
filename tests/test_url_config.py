@@ -10,6 +10,7 @@ from straxen.test_utils import nt_test_context, nt_test_run_id
 import unittest
 import pickle
 import random
+import warnings
 import numpy as np
 from datetime import datetime
 
@@ -148,11 +149,13 @@ class TestURLConfig(unittest.TestCase):
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_bodedga_get(self):
         """Just a didactic example."""
-        self.st.set_config({
-            "test_config": (
-                "take://resource://XENONnT_numbers.json?fmt=json&take=g1&take=v2&take=value"
-            )
-        })
+        self.st.set_config(
+            {
+                "test_config": (
+                    "take://resource://XENONnT_numbers.json?fmt=json&take=g1&take=v2&take=value"
+                )
+            }
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
@@ -194,16 +197,18 @@ class TestURLConfig(unittest.TestCase):
         else:
             raise ValueError
 
-        self.st.set_config({
-            "test_config": (
-                "itp_dict://"
-                "resource://"
-                f"{fake_file_name}"
-                "?run_id=plugin.run_id"
-                f"&fmt={dump_as}"
-                "&itp_keys=ab,cd"
-            )
-        })
+        self.st.set_config(
+            {
+                "test_config": (
+                    "itp_dict://"
+                    "resource://"
+                    f"{fake_file_name}"
+                    "?run_id=plugin.run_id"
+                    f"&fmt={dump_as}"
+                    "&itp_keys=ab,cd"
+                )
+            }
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertIsInstance(p.test_config, dict)
         assert np.isclose(p.test_config["ab"], ab_value, rtol=1e-3)
@@ -223,13 +228,15 @@ class TestURLConfig(unittest.TestCase):
         with open(fake_file_name, "w") as f:
             json.dump(original_dict, f)
 
-        self.st.set_config({
-            "test_config": (
-                f"rekey_dict://resource://{fake_file_name}?"
-                "fmt=json&replace_keys=a,b,c"
-                "&with_keys=anew,bnew,cnew"
-            )
-        })
+        self.st.set_config(
+            {
+                "test_config": (
+                    f"rekey_dict://resource://{fake_file_name}?"
+                    "fmt=json&replace_keys=a,b,c"
+                    "&with_keys=anew,bnew,cnew"
+                )
+            }
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, check_dict)
         temp_dir.cleanup()
@@ -352,12 +359,12 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, "fake://url?version=v0")
 
-    def test_alphabetize_url_kwargs(self):
+    def test_sort_url_kwargs(self):
         """URLConfig preprocessor to rearange the order of arguments given buy a url to ensure the
         same url with a different hash order gives the same hash."""
         url = "xedocs://electron_lifetimes?run_id=034678&version=v5&attr=value"
         intended_url = "xedocs://electron_lifetimes?attr=value&run_id=034678&version=v5"
-        preprocessed_url = straxen.url_config.alphabetize_url_kwargs(url)
+        preprocessed_url = straxen.config.preprocessors.sort_url_kwargs(url)
         self.assertEqual(intended_url, preprocessed_url)
 
     def test_xedocs_global_version_hash_coinsistency(self):
@@ -369,8 +376,8 @@ class TestURLConfig(unittest.TestCase):
             config={"test_config": "fake://electron_lifetimes?attr=value&run_id=25000&version=v5"}
         )
         self.assertEqual(
-            st1.key_for(25000, "corrected_areas").lineage_hash,
-            st2.key_for(25000, "corrected_areas").lineage_hash,
+            st1.key_for("025000", "corrected_areas").lineage_hash,
+            st2.key_for("025000", "corrected_areas").lineage_hash,
         )
 
     def test_global_version_not_changed(self):
@@ -407,8 +414,23 @@ class TestURLConfig(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.st.set_config({"test_config": "run_doc://mode?run_id=plugin.run_id"})
-            p = self.st.get_single_plugin(999999999, "test_data")
+            p = self.st.get_single_plugin("999999999", "test_data")
             return p.test_config
+
+    def test_regex_url_warnings(self):
+
+        url = "xedocs://electron_lifetimes?verion=v5&att=value"  # url with typos
+        self.st.set_config({"test_config": url})
+
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+
+            # Trigger a warning.
+            self.st.get_single_plugin(nt_test_run_id, "test_data")
+
+            # Verify the warning
+            assert len(w) != 0, "Error, warning dispatcher not working"
 
     def test_pad_array(self):
         """Test that pad_array works as expected."""

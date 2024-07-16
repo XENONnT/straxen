@@ -29,53 +29,63 @@ class EventTopBottomParams(strax.Plugin):
         self.arrs = ["top", "bot"]
         for type_ in self.ptypes:
             for arr_ in self.arrs:
-                dtype += [(
-                    (
-                        f"Central time for {infoline[type_]} for {arr_} PMTs [ ns ]",
-                        f"{type_}_center_time_{arr_}",
-                    ),
-                    ev_info_fields[f"{type_}_center_time"][0],
-                )]
-                dtype += [(
+                dtype += [
                     (
                         (
-                            f"Time between 10% and 50% area quantiles for {infoline[type_]} for"
-                            f" {arr_} PMTs [ns]"
+                            f"Central time for {infoline[type_]} for {arr_} PMTs [ ns ]",
+                            f"{type_}_center_time_{arr_}",
                         ),
-                        f"{type_}_rise_time_{arr_}",
-                    ),
-                    ev_info_fields[f"{type_}_rise_time"][0],
-                )]
-                dtype += [(
+                        ev_info_fields[f"{type_}_center_time"][0],
+                    )
+                ]
+                dtype += [
                     (
                         (
-                            f"Width (in ns) of the central 50% area of the peak for {arr_} PMTs"
-                            f" of {infoline[type_]}"
+                            (
+                                f"Time between 10% and 50% area quantiles for {infoline[type_]} for"
+                                f" {arr_} PMTs [ns]"
+                            ),
+                            f"{type_}_rise_time_{arr_}",
                         ),
-                        f"{type_}_range_50p_area_{arr_}",
-                    ),
-                    ev_info_fields[f"{type_}_range_50p_area"][0],
-                )]
-                dtype += [(
+                        ev_info_fields[f"{type_}_rise_time"][0],
+                    )
+                ]
+                dtype += [
                     (
                         (
-                            f"Width (in ns) of the central 90% area of the peak for {arr_} PMTs"
-                            f" of {infoline[type_]}"
+                            (
+                                f"Width (in ns) of the central 50% area of the peak for {arr_} PMTs"
+                                f" of {infoline[type_]}"
+                            ),
+                            f"{type_}_range_50p_area_{arr_}",
                         ),
-                        f"{type_}_range_90p_area_{arr_}",
-                    ),
-                    ev_info_fields[f"{type_}_range_90p_area"][0],
-                )]
-            dtype += [(
+                        ev_info_fields[f"{type_}_range_50p_area"][0],
+                    )
+                ]
+                dtype += [
+                    (
+                        (
+                            (
+                                f"Width (in ns) of the central 90% area of the peak for {arr_} PMTs"
+                                f" of {infoline[type_]}"
+                            ),
+                            f"{type_}_range_90p_area_{arr_}",
+                        ),
+                        ev_info_fields[f"{type_}_range_90p_area"][0],
+                    )
+                ]
+            dtype += [
                 (
                     (
-                        "Difference between center times of top and bottom arrays for"
-                        f" {infoline[type_]} [ ns ]"
+                        (
+                            "Difference between center times of top and bottom arrays for"
+                            f" {infoline[type_]} [ ns ]"
+                        ),
+                        f"{type_}_center_time_diff_top_bot",
                     ),
-                    f"{type_}_center_time_diff_top_bot",
-                ),
-                ev_info_fields[f"{type_}_center_time"][0],
-            )]
+                    ev_info_fields[f"{type_}_center_time"][0],
+                )
+            ]
         dtype += strax.time_fields
         return dtype
 
