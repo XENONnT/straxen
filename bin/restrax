@@ -458,7 +458,6 @@ class ReStrax(daq_core.DataBases):
             chunk.get("nbytes", 0)
             for chunk in storage_backend.get_metadata(data_doc["location"]).get("chunks", [dict()])
         )
-        data_docs = sorted(data_docs, key=size, reverse=True)
         try:
             data_docs = sorted(data_docs, key=size, reverse=True)
         except Exception as exception:
