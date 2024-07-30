@@ -1,8 +1,6 @@
 import strax
 import straxen
 import numpy as np
-import numba
-import typing as ty
 from immutabledict import immutabledict
 
 export, __all__ = strax.exporter()
@@ -80,7 +78,7 @@ def veto_event_waveform_dtype(
 
 
 def _temp_event_data_type(
-    n_samples_wf: int = 200,
+    n_samples_wf: int = 150,
     n_pmts: int = 120,
     n_widths: int = 11,
 ) -> list:
