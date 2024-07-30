@@ -66,6 +66,12 @@ docs/_build
 # coverage
 .coverage
 
+# graphviz
+*.gv
+*.dot
+*.png
+*.svg
+
 # Documentation files
 docs/source/reference/datastructure*
 docs/source/reference/data_kinds*

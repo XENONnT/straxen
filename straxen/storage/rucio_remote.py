@@ -12,7 +12,7 @@ try:
     from rucio.common.exception import DataIdentifierNotFound
 
     HAVE_ADMIX = True
-except ImportError:
+except (ImportError, AttributeError):
     HAVE_ADMIX = False
 
 export, __all__ = strax.exporter()

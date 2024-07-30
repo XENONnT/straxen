@@ -1,3 +1,54 @@
+2.2.4 / 2024-07-01
+-------------------
+* Parse USERDISK base on hostname in RunDB by @dachengx in https://github.com/XENONnT/straxen/pull/1384
+* Fix packages temporarily for documentation generation by @dachengx in https://github.com/XENONnT/straxen/pull/1385
+* Bad url warnings by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1216
+* Allow local blinding files by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1387
+* Lock strax version in test by @dachengx in https://github.com/XENONnT/straxen/pull/1389
+* Add xedocs version to context config, only if xedocs is called by @Ananthu-Ravindran in https://github.com/XENONnT/straxen/pull/1393
+* Revert "Lock strax version in test" by @dachengx in https://github.com/XENONnT/straxen/pull/1394
+
+New Contributors
+* @Ananthu-Ravindran made their first contribution in https://github.com/XENONnT/straxen/pull/1393
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.3...v2.2.4
+
+
+2.2.3 / 2024-05-16
+-------------------
+* No need to set `loop_over` for `EventBasics` by @dachengx in https://github.com/XENONnT/straxen/pull/1377
+* Initialize plugins whose `depends_on` is property by @dachengx in https://github.com/XENONnT/straxen/pull/1379
+* Collect functions used for documentation building in `docs_utils.py` by @dachengx in https://github.com/XENONnT/straxen/pull/1380
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.2...v2.2.3
+
+
+2.2.2 / 2024-04-30
+-------------------
+* Minor change of indents by @dachengx in https://github.com/XENONnT/straxen/pull/1341
+* Remove unused `__all__` by @dachengx in https://github.com/XENONnT/straxen/pull/1342
+* Bump graphviz from 0.20.1 to 0.20.2 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1345
+* Specifically install `lxml_html_clean` by @dachengx in https://github.com/XENONnT/straxen/pull/1352
+* Improve InterpolateAndExtrapolate performance for array valued maps by @l-althueser in https://github.com/XENONnT/straxen/pull/1347
+* Bump graphviz from 0.20.2 to 0.20.3 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1350
+* Bump actions/setup-python from 5.0.0 to 5.1.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1351
+* Add `storage_graph` to show the plugins stored or needed to be calculated in the dependency tree by @dachengx in https://github.com/XENONnT/straxen/pull/1353
+* Small bug fix of `storage_graph`, save plot into desired folder by @dachengx in https://github.com/XENONnT/straxen/pull/1356
+* Check non-positive lone_hits by @dachengx in https://github.com/XENONnT/straxen/pull/1358
+* Return the edge closer to the target in `_numeric_derivative` by @dachengx in https://github.com/XENONnT/straxen/pull/1355
+* Add a simply function to plot the dependency tree by @dachengx in https://github.com/XENONnT/straxen/pull/1363
+* Remove `PeakSubtyping` from straxen by @dachengx in https://github.com/XENONnT/straxen/pull/1365
+* Remove `xnt_simulation_config` by @dachengx in https://github.com/XENONnT/straxen/pull/1366
+* Tolerate more exceptions when can not import admix by @dachengx in https://github.com/XENONnT/straxen/pull/1367
+* Add `PeakSEDensity` and `EventSEDensity` by @dachengx in https://github.com/XENONnT/straxen/pull/1368
+* Update `se_time_search_window_left` by @dachengx in https://github.com/XENONnT/straxen/pull/1370
+* remove resource_cache from dali by @yuema137 in https://github.com/XENONnT/straxen/pull/1372
+* Add `exclude_pattern` argument to `dependency_tree` by @dachengx in https://github.com/XENONnT/straxen/pull/1373
+* Let xedocs to handle avg seg and seg partitioning by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1371
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.1...v2.2.2
+
+
 2.2.1 / 2024-02-21
 -------------------
 * Loosen `save_when` of `Events` by @dachengx in https://github.com/XENONnT/straxen/pull/1327

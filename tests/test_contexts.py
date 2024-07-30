@@ -78,7 +78,7 @@ def test_cmt_versions():
             pass
     print(
         f"This straxen version works with {success_for} but is "
-        f"incompatible with {set(cmt_versions)-set(success_for)}"
+        f"incompatible with {set(cmt_versions) - set(success_for)}"
     )
 
     test = unittest.TestCase()
