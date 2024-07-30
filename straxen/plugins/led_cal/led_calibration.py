@@ -1,8 +1,8 @@
 """
 Dear nT analyser,
 if you want to complain please contact:
-    chiara@physik.uzh.ch, 
-    gvolta@physik.uzh.ch, 
+    chiara@physik.uzh.ch,
+    gvolta@physik.uzh.ch,
     kazama@isee.nagoya-u.ac.jp
     torben.flehmke@fysik.su.se
 """
@@ -56,15 +56,11 @@ class LEDCalibration(strax.Plugin):
     )
 
     led_hit_extension = straxen.URLConfig(
-        default=(-5, 24),
-        infer_type=False,
-        help="The extension around the LED hit to integrate."
+        default=(-5, 24), infer_type=False, help="The extension around the LED hit to integrate."
     )
 
     noise_window = straxen.URLConfig(
-        default=(10, 48), 
-        infer_type=False, 
-        help="Window (samples) to analyse the noise"
+        default=(10, 48), infer_type=False, help="Window (samples) to analyse the noise"
     )
 
     channel_list = straxen.URLConfig(
@@ -108,11 +104,9 @@ class LEDCalibration(strax.Plugin):
     ]
 
     def compute(self, raw_records):
-        """The data for LED calibration are build for those PMT which belongs to 
-        channel list.
+        """The data for LED calibration are build for those PMT which belongs to channel list.
 
-        This is used for the different ligh levels. As default value all the PMTs 
-        are considered.
+        This is used for the different ligh levels. As default value all the PMTs are considered.
 
         """
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
@@ -122,13 +116,13 @@ class LEDCalibration(strax.Plugin):
 
         temp = np.zeros(len(r), dtype=self.dtype)
         strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
-        
+
         led_windows = get_led_windows(
-            r, 
-            self.default_led_window, 
-            self.led_hit_extension, 
-            self.hit_min_amplitude, 
-            self.hit_min_height_over_noise
+            r,
+            self.default_led_window,
+            self.led_hit_extension,
+            self.hit_min_amplitude,
+            self.hit_min_height_over_noise,
         )
 
         on, off = get_amplitude(r, led_windows, self.noise_window)
@@ -178,26 +172,21 @@ def get_records(raw_records, baseline_window):
 
 
 def get_led_windows(
-    records, 
-    default_window, 
-    led_hit_extension, 
-    hit_min_amplitude, 
-    hit_min_height_over_noise
+    records, default_window, led_hit_extension, hit_min_amplitude, hit_min_height_over_noise
 ):
-    """ Search for hits in the records, if a hit is found, return an interval
-        around the hit given by led_hit_extension. If no hit is found in the
-        record, return the default window.
+    """Search for hits in the records, if a hit is found, return an interval around the hit given by
+    led_hit_extension. If no hit is found in the record, return the default window.
 
     :param records: Array of the records to search for LED hits.
-    :param default_window: Default window to use if no LED hit is found given as a tuple (start, end)
-    :param led_hit_extension: The integration window around the first hit found to use. A tuple of 
+    :param default_window: Default window to use if no LED hit is found given as a tuple (start,
+        end)
+    :param led_hit_extension: The integration window around the first hit found to use. A tuple of
         form (samples_before, samples_after) the first LED hit.
     :param hit_min_amplitude: Minimum amplitude of the signal to be considered a hit.
-    :param hit_min_height_over_noise: Minimum height of the signal over noise to be considered a hit.
+    :param hit_min_height_over_noise: Minimum height of the signal over noise to be considered a
+        hit. :return (len(records), 2) array: Integration window for each record
 
-    :return (len(records), 2) array: Integration window for each record
-
-    """    
+    """
     hits = strax.find_hits(
         records,
         min_amplitude=hit_min_amplitude,
@@ -213,21 +202,24 @@ def _get_led_windows(hits, default_windows, led_hit_extension):
     last = -1
     for hit in hits:
         if hit["record_i"] == last:
-            continue # If there are multiple hits in one record, ignore after the first
+            continue  # If there are multiple hits in one record, ignore after the first
 
         left = hit["left"] + led_hit_extension[0]
         # Limit the position of the window so it stays inside the record.
-        if left < default_windows[0, 0]: left = default_windows[0, 0]
-        elif left > 150 - (led_hit_extension[1] - led_hit_extension[0]): 
+        if left < default_windows[0, 0]:
+            left = default_windows[0, 0]
+        elif left > 150 - (led_hit_extension[1] - led_hit_extension[0]):
             left = 150 - (led_hit_extension[1] - led_hit_extension[0])
 
         right = hit["left"] + led_hit_extension[1]
-        if right < default_windows[0, 1]: right = default_windows[0, 1]
-        elif right > 150: right = 150
+        if right < default_windows[0, 1]:
+            right = default_windows[0, 1]
+        elif right > 150:
+            right = 150
 
         windows[hit["record_i"]] = np.array([left, right])
         last = hit["record_i"]
-        
+
     return windows
 
 
@@ -242,11 +234,10 @@ def get_amplitude(records, led_windows, noise_window):
     where there is.
 
     :param records: Array of records
-    :param ndarray led_windows : 2d array of shape (len(records), 2) with the window to use as the 
+    :param ndarray led_windows : 2d array of shape (len(records), 2) with the window to use as the
         signal on area for each record. Inclusive left boundary and exclusive right boundary.
     :param tuple noise_window: Tuple with the window, used for the signal off area for all records.
-
-    :return ndarray ons: 1d array of length len(records). The maximum amplitude in the led window 
+    :return ndarray ons: 1d array of length len(records). The maximum amplitude in the led window
         area for each record.
     :return ndarray offs: 1d array of length len(records). The maximum amplitude in the noise area
         for each record.
@@ -259,8 +250,8 @@ def get_amplitude(records, led_windows, noise_window):
         ons[i]["channel"] = record["channel"]
         offs[i]["channel"] = record["channel"]
 
-        ons[i]["amplitude"] = np.max(record["data"][led_windows[i, 0]:led_windows[i, 1]])
-        offs[i]["amplitude"] = np.max(record["data"][noise_window[0]:noise_window[1]])
+        ons[i]["amplitude"] = np.max(record["data"][led_windows[i, 0] : led_windows[i, 1]])
+        offs[i]["amplitude"] = np.max(record["data"][noise_window[0] : noise_window[1]])
 
     return ons, offs
 
@@ -276,10 +267,9 @@ def get_area(records, led_windows):
     done with 6 different window lengths, which are then averaged.
 
     :param records: Array of records
-    :param ndarray led_windows : 2d array of shape (len(records), 2) with the window to use as the 
+    :param ndarray led_windows : 2d array of shape (len(records), 2) with the window to use as the
         integration boundaries.
-
-    :return ndarray area: 1d array of length len(records) with the averaged integrated areas for 
+    :return ndarray area: 1d array of length len(records) with the averaged integrated areas for
         each record.
 
     """
@@ -289,7 +279,7 @@ def get_area(records, led_windows):
     for i, record in enumerate(records):
         area[i]["channel"] = record["channel"]
         for right in end_pos:
-            area[i]["area"] += np.sum(record["data"][led_windows[i, 0]:led_windows[i, 1]+right])
+            area[i]["area"] += np.sum(record["data"][led_windows[i, 0] : led_windows[i, 1] + right])
 
         area[i]["area"] /= float(len(end_pos))
 
