@@ -459,6 +459,12 @@ class ReStrax(daq_core.DataBases):
             for chunk in storage_backend.get_metadata(data_doc["location"]).get("chunks", [dict()])
         )
         data_docs = sorted(data_docs, key=size, reverse=True)
+        try:
+            data_docs = sorted(data_docs, key=size, reverse=True)
+        except Exception as exception:
+                self.set_restrax_failed(run_doc, str(exception))
+                self.log.error(f"Ran into {exception}")
+                raise exception
         return data_docs
 
     def run_software_veto(self, run_doc: dict):
