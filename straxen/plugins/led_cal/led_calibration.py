@@ -111,7 +111,7 @@ class LEDCalibration(strax.Plugin):
         """The data for LED calibration are build for those PMT which belongs to 
         channel list.
 
-        This is used for the different ligh levels. As defaul value all the PMTs 
+        This is used for the different ligh levels. As default value all the PMTs 
         are considered.
 
         """
@@ -184,9 +184,16 @@ def get_led_windows(
     hit_min_amplitude, 
     hit_min_height_over_noise
 ):
-    """ Searches for hits in the records, if a hit is found, returns an interval
+    """ Search for hits in the records, if a hit is found, return an interval
         around the hit given by led_hit_extension. If no hit is found in the
-        record, returns the default window.
+        record, return the default window.
+
+    :param records: Array of the records to search for LED hits.
+    :param default_window: Default window to use if no LED hit is found given as a tuple (start, end)
+    :param led_hit_extension: The integration window around the first hit found to use. A tuple of 
+        form (samples_before, samples_after) the first LED hit.
+    :param hit_min_amplitude: Minimum amplitude of the signal to be considered a hit.
+    :param hit_min_height_over_noise: Minimum height of the signal over noise to be considered a hit.
 
     :return (len(records), 2) array: Integration window for each record
 
@@ -201,9 +208,8 @@ def get_led_windows(
 
 
 @numba.jit(nopython=True)
-def _get_led_windows(hits, default_windows, led_hit_extension): 
+def _get_led_windows(hits, default_windows, led_hit_extension):
     windows = default_windows
-    # max_window = np.array([96, 150])
     last = -1
     for hit in hits:
         if hit["record_i"] == last:
@@ -212,7 +218,8 @@ def _get_led_windows(hits, default_windows, led_hit_extension):
         left = hit["left"] + led_hit_extension[0]
         # Limit the position of the window so it stays inside the record.
         if left < default_windows[0, 0]: left = default_windows[0, 0]
-        elif left > 96: left = 96
+        elif left > 150 - (led_hit_extension[1] - led_hit_extension[0]): 
+            left = 150 - (led_hit_extension[1] - led_hit_extension[0])
 
         right = hit["left"] + led_hit_extension[1]
         if right < default_windows[0, 1]: right = default_windows[0, 1]
@@ -231,7 +238,18 @@ _on_off_dtype = np.dtype([("channel", "int16"), ("amplitude", "float32")])
 def get_amplitude(records, led_windows, noise_window):
     """Needed for the SPE computation.
 
-    Take the maximum in two different regions, where there is the signal and where there is not.
+    Get the maximum of the signal in two different regions, one where there is no signal, and one
+    where there is.
+
+    :param records: Array of records
+    :param ndarray led_windows : 2d array of shape (len(records), 2) with the window to use as the 
+        signal on area for each record. Inclusive left boundary and exclusive right boundary.
+    :param tuple noise_window: Tuple with the window, used for the signal off area for all records.
+
+    :return ndarray ons: 1d array of length len(records). The maximum amplitude in the led window 
+        area for each record.
+    :return ndarray offs: 1d array of length len(records). The maximum amplitude in the noise area
+        for each record.
 
     """
     ons = np.zeros(len(records), dtype=_on_off_dtype)
@@ -254,8 +272,15 @@ _area_dtype = np.dtype([("channel", "int16"), ("area", "float32")])
 def get_area(records, led_windows):
     """Needed for the gain computation.
 
-    Sum the data in the defined window to get the area. This is done in 6 integration window and it
-    returns the average area.
+    Integrate the record in the defined window area. To reduce the effects of the noise, this is
+    done with 6 different window lengths, which are then averaged.
+
+    :param records: Array of records
+    :param ndarray led_windows : 2d array of shape (len(records), 2) with the window to use as the 
+        integration boundaries.
+
+    :return ndarray area: 1d array of length len(records) with the averaged integrated areas for 
+        each record.
 
     """
     area = np.zeros(len(records), dtype=_area_dtype)
