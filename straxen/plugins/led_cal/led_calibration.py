@@ -179,9 +179,7 @@ def get_records(raw_records, baseline_window):
     records = records[mask]
     bl = records["data"][:, baseline_window[0] : baseline_window[1]].mean(axis=1)
     rms = records["data"][:, baseline_window[0] : baseline_window[1]].std(axis=1)
-    records["data"][:, :160] = (
-        -1.0 * (records["data"][:, :160].transpose() - bl[:]).transpose()
-    )
+    records["data"][:, :160] = -1.0 * (records["data"][:, :160].transpose() - bl[:]).transpose()
     records["baseline"] = bl
     records["baseline_rms"] = rms
     return records
@@ -270,9 +268,7 @@ def get_amplitude(records, led_windows, noise_window):
         ons[i]["channel"] = record["channel"]
         offs[i]["channel"] = record["channel"]
 
-        ons[i]["amplitude"] = np.max(
-            record["data"][led_windows[i, 0] : led_windows[i, 1]]
-        )
+        ons[i]["amplitude"] = np.max(record["data"][led_windows[i, 0] : led_windows[i, 1]])
         offs[i]["amplitude"] = np.max(record["data"][noise_window[0] : noise_window[1]])
 
     return ons, offs
@@ -301,9 +297,7 @@ def get_area(records, led_windows):
     for i, record in enumerate(records):
         area[i]["channel"] = record["channel"]
         for right in end_pos:
-            area[i]["area"] += np.sum(
-                record["data"][led_windows[i, 0] : led_windows[i, 1] + right]
-            )
+            area[i]["area"] += np.sum(record["data"][led_windows[i, 0] : led_windows[i, 1] + right])
 
         area[i]["area"] /= float(len(end_pos))
 
@@ -374,9 +368,7 @@ class nVetoExtTimings(strax.Plugin):
         return pulse_dtype
 
     @staticmethod
-    def calc_delta_time(
-        ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop
-    ):
+    def calc_delta_time(ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop):
         """Numpy access with fancy index returns copy, not view This for-loop is required to
         substitute in one by one."""
         hitlet_index = np.arange(len(hitlets_nv))
@@ -390,9 +382,7 @@ class nVetoExtTimings(strax.Plugin):
 
             hitlets_in_channel = hitlets_nv[hitlet_in_channel_index]
             pulses_in_channel = pulses[pulse_in_channel_index]
-            hit_in_pulse_index = strax.fully_contained_in(
-                hitlets_in_channel, pulses_in_channel
-            )
+            hit_in_pulse_index = strax.fully_contained_in(hitlets_in_channel, pulses_in_channel)
             for h_i, p_i in zip(hitlet_in_channel_index, hit_in_pulse_index):
                 if p_i == -1:
                     continue
