@@ -65,30 +65,6 @@ class muVETOHitlets(nVETOHitlets):
         ),
     )
 
-    entropy_template_mv = straxen.URLConfig(
-        default="flat",
-        track=True,
-        infer_type=False,
-        child_option=True,
-        parent_option_name="entropy_template_nv",
-        help=(
-            'Template data is compared with in conditional entropy. Can be either "flat" or a '
-            "template array."
-        ),
-    )
-
-    entropy_square_data_mv = straxen.URLConfig(
-        default=False,
-        track=True,
-        infer_type=False,
-        child_option=True,
-        parent_option_name="entropy_square_data_nv",
-        help=(
-            "Parameter which decides if data is first squared before normalized and compared to "
-            "the template."
-        ),
-    )
-
     gain_model_mv = straxen.URLConfig(
         default="cmt://to_pe_model_mv?version=ONLINE&run_id=plugin.run_id",
         infer_type=False,
