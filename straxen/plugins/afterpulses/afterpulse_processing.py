@@ -304,7 +304,13 @@ def _find_ap(
         res = buffer[offset]
 
         fill_hitpars(
-            res, h, hit_left_extension, hit_right_extension, record_data, record_len, baseline_fpart
+            res,
+            h,
+            hit_left_extension,
+            hit_right_extension,
+            record_data,
+            record_len,
+            baseline_fpart,
         )
 
         res["tdelay"] = res["sample_10pc_area"] - t_LED
@@ -380,7 +386,9 @@ def fill_hitpars(
     result["right"] = hit["right"]
     result["right_integration"] = hit["right"] + hit_right_extension
     if result["right_integration"] > record_len:
-        result["right_integration"] = record_len  # cap right_integration at end of record
+        result["right_integration"] = (
+            record_len  # cap right_integration at end of record
+        )
     result["length"] = result["right_integration"] - result["left_integration"]
 
     hit_data = record_data[result["left_integration"] : result["right_integration"]]
@@ -414,16 +422,46 @@ def dtype_afterpulses():
         (("Integral in ADC x samples", "area"), "<i4"),
         (("Pulse area in PE", "area_pe"), "<f4"),
         (("Sample index in which hit starts", "left"), "<i2"),
-        (("Sample index in which hit area succeeds 10% of total area", "sample_10pc_area"), "<i2"),
-        (("Sample index in which hit area succeeds 50% of total area", "sample_50pc_area"), "<i2"),
+        (
+            (
+                "Sample index in which hit area succeeds 10% of total area",
+                "sample_10pc_area",
+            ),
+            "<i2",
+        ),
+        (
+            (
+                "Sample index in which hit area succeeds 50% of total area",
+                "sample_50pc_area",
+            ),
+            "<i2",
+        ),
         (("Sample index of hit maximum", "max"), "<i2"),
-        (("Index of first sample in record just beyond hit (exclusive bound)", "right"), "<i2"),
+        (
+            (
+                "Index of first sample in record just beyond hit (exclusive bound)",
+                "right",
+            ),
+            "<i2",
+        ),
         (("Height of hit in ADC counts", "height"), "<i4"),
         (("Height of hit in PE", "height_pe"), "<f4"),
         (("Delay of hit w.r.t. LED hit in same WF, in samples", "tdelay"), "<i2"),
-        (("Internal (temporary) index of fragment in which hit was found", "record_i"), "<i4"),
-        (("Index of sample in record where integration starts", "left_integration"), np.int16),
-        (("Index of first sample beyond integration region", "right_integration"), np.int16),
+        (
+            (
+                "Internal (temporary) index of fragment in which hit was found",
+                "record_i",
+            ),
+            "<i4",
+        ),
+        (
+            ("Index of sample in record where integration starts", "left_integration"),
+            np.int16,
+        ),
+        (
+            ("Index of first sample beyond integration region", "right_integration"),
+            np.int16,
+        ),
         (("ADC threshold applied in order to find hits", "threshold"), np.float32),
     ]
     return dtype_ap

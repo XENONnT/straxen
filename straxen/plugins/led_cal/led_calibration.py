@@ -46,7 +46,9 @@ class LEDCalibration(strax.Plugin):
     rechunk_on_save = False
 
     baseline_window = straxen.URLConfig(
-        default=(0, 40), infer_type=False, help="Window (samples) for baseline calculation."
+        default=(0, 40),
+        infer_type=False,
+        help="Window (samples) for baseline calculation.",
     )
 
     default_led_window = straxen.URLConfig(
@@ -56,7 +58,9 @@ class LEDCalibration(strax.Plugin):
     )
 
     led_hit_extension = straxen.URLConfig(
-        default=(-5, 24), infer_type=False, help="The extension around the LED hit to integrate."
+        default=(-5, 24),
+        infer_type=False,
+        help="The extension around the LED hit to integrate.",
     )
 
     noise_window = straxen.URLConfig(
@@ -149,12 +153,21 @@ def get_records(raw_records, baseline_window):
         (("Width of one sample [ns]", "dt"), "<i2"),
         (("Channel/PMT number", "channel"), "<i2"),
         (
-            ("Length of pulse to which the record belongs (without zero-padding)", "pulse_length"),
+            (
+                "Length of pulse to which the record belongs (without zero-padding)",
+                "pulse_length",
+            ),
             "<i4",
         ),
         (("Fragment number in the pulse", "record_i"), "<i2"),
-        (("Baseline in ADC counts. data = int(baseline) - data_orig", "baseline"), "f4"),
-        (("Baseline RMS in ADC counts. data = baseline - data_orig", "baseline_rms"), "f4"),
+        (
+            ("Baseline in ADC counts. data = int(baseline) - data_orig", "baseline"),
+            "f4",
+        ),
+        (
+            ("Baseline RMS in ADC counts. data = baseline - data_orig", "baseline_rms"),
+            "f4",
+        ),
         (("Waveform data in raw ADC counts", "data"), "f4", (record_length,)),
     ]
 
@@ -165,14 +178,20 @@ def get_records(raw_records, baseline_window):
     records = records[mask]
     bl = records["data"][:, baseline_window[0] : baseline_window[1]].mean(axis=1)
     rms = records["data"][:, baseline_window[0] : baseline_window[1]].std(axis=1)
-    records["data"][:, :160] = -1.0 * (records["data"][:, :160].transpose() - bl[:]).transpose()
+    records["data"][:, :160] = (
+        -1.0 * (records["data"][:, :160].transpose() - bl[:]).transpose()
+    )
     records["baseline"] = bl
     records["baseline_rms"] = rms
     return records
 
 
 def get_led_windows(
-    records, default_window, led_hit_extension, hit_min_amplitude, hit_min_height_over_noise
+    records,
+    default_window,
+    led_hit_extension,
+    hit_min_amplitude,
+    hit_min_height_over_noise,
 ):
     """Search for hits in the records, if a hit is found, return an interval around the hit given by
     led_hit_extension. If no hit is found in the record, return the default window.
@@ -250,7 +269,9 @@ def get_amplitude(records, led_windows, noise_window):
         ons[i]["channel"] = record["channel"]
         offs[i]["channel"] = record["channel"]
 
-        ons[i]["amplitude"] = np.max(record["data"][led_windows[i, 0] : led_windows[i, 1]])
+        ons[i]["amplitude"] = np.max(
+            record["data"][led_windows[i, 0] : led_windows[i, 1]]
+        )
         offs[i]["amplitude"] = np.max(record["data"][noise_window[0] : noise_window[1]])
 
     return ons, offs
@@ -279,7 +300,9 @@ def get_area(records, led_windows):
     for i, record in enumerate(records):
         area[i]["channel"] = record["channel"]
         for right in end_pos:
-            area[i]["area"] += np.sum(record["data"][led_windows[i, 0] : led_windows[i, 1] + right])
+            area[i]["area"] += np.sum(
+                record["data"][led_windows[i, 0] : led_windows[i, 1] + right]
+            )
 
         area[i]["area"] /= float(len(end_pos))
 
@@ -314,7 +337,10 @@ class nVetoExtTimings(strax.Plugin):
         dtype += strax.time_dt_fields
         dtype += [
             (("Delta time from trigger timing [ns]", "delta_time"), np.int16),
-            (("Index to which pulse (not record) the hitlet belongs to.", "pulse_i"), np.int32),
+            (
+                ("Index to which pulse (not record) the hitlet belongs to.", "pulse_i"),
+                np.int32,
+            ),
         ]
         return dtype
 
@@ -347,7 +373,9 @@ class nVetoExtTimings(strax.Plugin):
         return pulse_dtype
 
     @staticmethod
-    def calc_delta_time(ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop):
+    def calc_delta_time(
+        ext_timings_nv_delta_time, pulses, hitlets_nv, nv_pmt_start, nv_pmt_stop
+    ):
         """Numpy access with fancy index returns copy, not view This for-loop is required to
         substitute in one by one."""
         hitlet_index = np.arange(len(hitlets_nv))
@@ -361,7 +389,9 @@ class nVetoExtTimings(strax.Plugin):
 
             hitlets_in_channel = hitlets_nv[hitlet_in_channel_index]
             pulses_in_channel = pulses[pulse_in_channel_index]
-            hit_in_pulse_index = strax.fully_contained_in(hitlets_in_channel, pulses_in_channel)
+            hit_in_pulse_index = strax.fully_contained_in(
+                hitlets_in_channel, pulses_in_channel
+            )
             for h_i, p_i in zip(hitlet_in_channel_index, hit_in_pulse_index):
                 if p_i == -1:
                     continue
