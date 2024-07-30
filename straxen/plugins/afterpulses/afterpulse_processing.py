@@ -386,9 +386,7 @@ def fill_hitpars(
     result["right"] = hit["right"]
     result["right_integration"] = hit["right"] + hit_right_extension
     if result["right_integration"] > record_len:
-        result["right_integration"] = (
-            record_len  # cap right_integration at end of record
-        )
+        result["right_integration"] = record_len  # cap right_integration at end of record
     result["length"] = result["right_integration"] - result["left_integration"]
 
     hit_data = record_data[result["left_integration"] : result["right_integration"]]
