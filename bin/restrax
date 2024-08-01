@@ -367,11 +367,15 @@ class ReStrax(daq_core.DataBases):
 
     def set_restrax_failed(self, run_doc: dict, reason: str) -> None:
         """Update the rundoc with the restrax fail state."""
+
+        n_tries = run_doc.get("restrax", {}).get("n_tries", 0)
         update = {
             "restrax.state": "failed",
             "restrax.ended": now(),
             "restrax.reason": reason,
+            "restrax.n_tries": n_tries + 1
         }
+
         if self.production:
             self.run_coll.update_one(
                 {"_id": run_doc["_id"]},
