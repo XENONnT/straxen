@@ -40,13 +40,6 @@ class EventPositionContour(strax.Plugin):
     loop_over = "events"
 
     # Configuration options
-<<<<<<< HEAD
-=======
-    default_reconstruction_algorithm = straxen.URLConfig(
-        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
-    )
-
->>>>>>> 0dbf7451f94c08900be5aa030d1ad83e57c1ffec
     n_poly = straxen.URLConfig(
         default=16,
         infer_type=False,
