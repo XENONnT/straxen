@@ -245,3 +245,60 @@ def read_rundoc(path, run_id=None, default=None):
 def get_paded_array(arr: np.ndarray, pad_value=0, pad_left=0, pad_right=0):
     """Pad the array with pad_value on the left and right side."""
     return np.pad(arr, (pad_left, pad_right), constant_values=pad_value)
+
+
+@URLConfig.register('jax')
+def open_jax_model(model_path: str, **kwargs):
+    """
+    Open and deserialize a JAX model from a tar file.
+
+    This function is registered with straxen's URLConfig under the 'jax' key.
+    It opens a tar file containing serialized JAX models, extracts the requested
+    model based on the provided parameters, and returns the deserialized model.
+
+    Args:
+        model_path (str): Path to the tar file containing the JAX models.
+        **kwargs: Additional keyword arguments.
+            Required:
+                n_poly (int): Number of polynomials used in the model.
+                sig (float): Sigma value used in the model.
+
+    Returns:
+        callable: The deserialized JAX model as a callable function.
+
+    Raises:
+        FileNotFoundError: If the specified model_path does not exist.
+        ValueError: If the requested model is not found in the tar file.
+
+    Note:
+        This function uses a nested import of 'jax.export' to reduce the loading
+        time of importing straxen, as JAX is not a base requirement.
+    """
+    # Nested import to reduce loading time of import straxen as it's not
+    # a base requirement
+    from jax import export
+
+    # Check if the model file exists
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f'No file at {model_path}')
+
+    # Extract required parameters from kwargs
+    n_poly = kwargs['n_poly']
+    sig = kwargs['sig']
+
+    # Open the tar file and extract the requested model
+    with tarfile.open(model_path, 'r') as f:
+        names = f.getnames()
+        
+        # Construct the filename based on n_poly and sig
+        filename = f"{int(n_poly):02d}_{float(sig)*1000:3.0f}"
+        
+        # Check if the requested model exists in the tar file
+        if filename not in names:
+            raise ValueError('Requested model not in tarfile!')
+        
+        # Extract and read the serialized JAX object
+        serialized_jax_object = f.extractfile(filename).read()
+
+    # Deserialize the JAX object and return its callable function
+    return export.deserialize(serialized_jax_object).call
