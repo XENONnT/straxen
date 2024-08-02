@@ -300,7 +300,7 @@ def open_jax_model(model_path: str, **kwargs):
         # Extract and read the serialized JAX object
         file_obj = f.extractfile(filename)
         if file_obj is not None:
-            serialized_jax_object = f.extractfile(filename).read()
+            serialized_jax_object = file_obj.read()
         else:
             raise ValueError("Model file is empty!")
     # Deserialize the JAX object and return its callable function
