@@ -26,7 +26,9 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     save_when = strax.SaveWhen.NEVER
     __version__ = "0.0.0"
 
-    default_reconstruction_algorithm = 'mlp'
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
 
     def infer_dtype(self):
         dtype = strax.merged_dtype([self.deps[d].dtype_for(d) for d in self.depends_on])
