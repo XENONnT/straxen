@@ -23,7 +23,6 @@ class EventPositionContour(strax.Plugin):
         loop_over (str): Data structure to iterate over during computation.
 
     Configuration options:
-        default_reconstruction_algorithm (str): Default algorithm for position reconstruction.
         n_poly (int): Number of points in the uncertainty contour.
         electron_drift_velocity (float): Electron drift velocity in cm/ns.
         fdc_map (str): Path to the 3D field distortion correction map.
@@ -40,10 +39,6 @@ class EventPositionContour(strax.Plugin):
     loop_over = 'events'
 
     # Configuration options
-    default_reconstruction_algorithm = straxen.URLConfig(
-        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
-    )
-    
     n_poly = straxen.URLConfig(
         default=16, infer_type=False, help="Size of uncertainty contour",
     )
