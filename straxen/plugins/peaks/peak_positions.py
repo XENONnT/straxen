@@ -22,7 +22,12 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     """
 
     provides = "peak_positions"
-    depends_on = ("peak_positions_cnn", "peak_positions_mlp", "peak_positions_gcn", "peak_positions_flow")
+    depends_on = (
+        "peak_positions_cnn",
+        "peak_positions_mlp",
+        "peak_positions_gcn",
+        "peak_positions_flow",
+    )
     save_when = strax.SaveWhen.NEVER
     __version__ = "0.0.0"
 
