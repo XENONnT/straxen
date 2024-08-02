@@ -22,13 +22,11 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     """
 
     provides = "peak_positions"
-    depends_on = ("peak_positions_cnn", "peak_positions_mlp", "peak_positions_gcn")
+    depends_on = ("peak_positions_cnn", "peak_positions_mlp", "peak_positions_gcn", "peak_positions_flow")
     save_when = strax.SaveWhen.NEVER
     __version__ = "0.0.0"
 
-    default_reconstruction_algorithm = straxen.URLConfig(
-        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
-    )
+    default_reconstruction_algorithm = 'mlp'
 
     def infer_dtype(self):
         dtype = strax.merged_dtype([self.deps[d].dtype_for(d) for d in self.depends_on])
