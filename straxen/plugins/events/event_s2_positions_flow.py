@@ -28,7 +28,8 @@ class EventPositionContour(strax.Plugin):
         n_poly (int): Number of points in the uncertainty contour.
         electron_drift_velocity (float): Electron drift velocity in cm/ns.
         fdc_map (str): Path to the 3D field distortion correction map.
-        use_fdc_for_contour (bool): Whether to use full FDC for position reconstruction uncertainty contours.
+        use_fdc_for_contour (bool): Whether to use full FDC for
+        position reconstruction uncertainty contours.
 
     """
 
@@ -66,7 +67,10 @@ class EventPositionContour(strax.Plugin):
 
     use_fdc_for_contour = straxen.URLConfig(
         infer_type=False,
-        help="Whether to use full FDC for position reconstruction uncertainty contours. Uses the FDC of the central point if false.",
+        help=(
+            "Whether to use full FDC for position reconstruction uncertainty contours. "
+            "Uses the FDC of the central point if false."
+        ),
         default=False,
     )
 

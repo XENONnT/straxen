@@ -291,7 +291,7 @@ def open_jax_model(model_path: str, **kwargs):
         names = f.getnames()
 
         # Construct the filename based on n_poly and sig
-        filename = f"{int(n_poly):02d}_{float(sig)*1000:3.0f}"
+        filename = f"{int(n_poly):02d}_{float(sig) * 1000:3.0f}"
 
         # Check if the requested model exists in the tar file
         if filename not in names:
