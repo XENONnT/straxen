@@ -120,6 +120,10 @@ class Peaklets(strax.Plugin):
         default=True, type=bool, help="Digitize the sum waveform of the top array separately"
     )
 
+    save_waveform_start = straxen.URLConfig(
+        default=True, type=bool, help="Save the start time of the waveform with 10 ns dt"
+    )
+
     saturation_correction_on = straxen.URLConfig(
         default=True, infer_type=False, help="On off switch for saturation correction"
     )
@@ -165,6 +169,7 @@ class Peaklets(strax.Plugin):
             peaklets=strax.peak_dtype(
                 n_channels=self.n_tpc_pmts,
                 digitize_top=self.sum_waveform_top_array,
+                save_waveform_start=self.save_waveform_start,
             ),
             lone_hits=strax.hit_dtype,
         )
@@ -205,7 +210,7 @@ class Peaklets(strax.Plugin):
             right_extension=self.peak_right_extension,
             min_channels=self.peak_min_pmts,
             # NB, need to have the data_top field here, will discard if not digitized later
-            result_dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True),
+            result_dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True, save_waveform_start=True),
             max_duration=self.peaklet_max_duration,
         )
 
@@ -262,7 +267,7 @@ class Peaklets(strax.Plugin):
         # If sum_waveform_top_array is false, don't digitize the top array
         n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
         strax.sum_waveform(
-            peaklets, hitlets, r, rlinks, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top
+            peaklets, hitlets, r, rlinks, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top, save_waveform_start=self.save_waveform_start
         )
 
         strax.compute_widths(peaklets)
@@ -283,6 +288,7 @@ class Peaklets(strax.Plugin):
             min_area=self.peak_split_min_area,
             do_iterations=self.peak_split_iterations,
             n_top_channels=n_top_pmts_if_digitize_top,
+            save_waveform_start=self.save_waveform_start,
         )
 
         # Saturation correction using non-saturated channels
@@ -304,6 +310,7 @@ class Peaklets(strax.Plugin):
                 reference_length=self.saturation_reference_length,
                 min_reference_length=self.saturation_min_reference_length,
                 n_top_channels=n_top_pmts_if_digitize_top,
+                save_waveform_start=self.save_waveform_start,
             )
 
             # Compute the width again for corrected peaks
@@ -348,9 +355,17 @@ class Peaklets(strax.Plugin):
         counts = np.diff(counts, axis=1).flatten()
         peaklets["n_hits"] = counts
 
-        # Drop the data_top field
-        if n_top_pmts_if_digitize_top <= 0:
-            peaklets = drop_data_top_field(peaklets, self.dtype_for("peaklets"))
+        # Drop the data_top field and waveform start field if needed
+        peaklets = drop_data_top_field(peaklets,
+                                       strax.peak_dtype(
+                                           n_channels=self.n_tpc_pmts,
+                                           digitize_top=self.sum_waveform_top_array,
+                                           save_waveform_start=self.save_waveform_start,
+                                           )
+                                        )
+
+
+
 
         # Check channel of peaklets
         peaklets_unique_channel = np.unique(peaklets["channel"])
@@ -456,6 +471,7 @@ def peak_saturation_correction(
     min_reference_length=20,
     use_classification=False,
     n_top_channels=0,
+    save_waveform_start=False,
 ):
     """Correct the area and per pmt area of peaks from saturation.
 
@@ -543,7 +559,7 @@ def peak_saturation_correction(
         peaks[peak_i]["length"] = p["length"] * p["dt"] / dt
         peaks[peak_i]["dt"] = dt
 
-    strax.sum_waveform(peaks, hitlets, records, rlinks, to_pe, n_top_channels, peak_list)
+    strax.sum_waveform(peaks, hitlets, records, rlinks, to_pe, n_top_channels, peak_list, save_waveform_start)
     return peak_list
 
 
