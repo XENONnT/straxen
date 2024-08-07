@@ -45,6 +45,10 @@ class LEDCalibration(strax.Plugin):
     parallel = "process"
     rechunk_on_save = False
 
+    record_length = straxen.URLConfig(
+        default=160, infer_type=False, help="Length (samples) of one record."
+    )
+
     baseline_window = straxen.URLConfig(
         default=(0, 40), infer_type=False, help="Window (samples) for baseline calculation."
     )
@@ -52,13 +56,38 @@ class LEDCalibration(strax.Plugin):
     default_led_window = straxen.URLConfig(
         default=(78, 107),
         infer_type=False,
-        help="Default window (samples) to integrate and get he maximum amplitude of if no hit was found in the record.",
+        help=(
+            "Default window (samples) to integrate and get he maximum amplitude of if no hit was"
+            "found in the record."
+        )
     )
 
     led_hit_extension = straxen.URLConfig(
         default=(-5, 24),
         infer_type=False,
         help="The extension around the LED hit to integrate."
+    )
+
+    area_averaging_length = straxen.URLConfig(
+        default=10,
+        infer_type=False,
+        help=(
+            "The total length of the averaging window for the area calculation."
+            "To mitigate a possiple bias from noise, the area is integrated multiple times with"
+            "sligntly different window lengths and then averaged. integration_averaging_length" 
+            "should be divisible by step."
+        )
+    )
+
+    area_averaging_step = straxen.URLConfig(
+        default=2,
+        infer_type=False,
+        help=(
+            "The step size used for the different windows, averaged for the area calculation."
+            "To mitigate a possiple bias from noise, the area is integrated multiple times with"
+            "sligntly different window lengths and then averaged. integration_averaging_length" 
+            "should be divisible by step."
+        )
     )
 
     noise_window = straxen.URLConfig(
@@ -128,14 +157,16 @@ class LEDCalibration(strax.Plugin):
             self.default_led_window, 
             self.led_hit_extension, 
             self.hit_min_amplitude, 
-            self.hit_min_height_over_noise
+            self.hit_min_height_over_noise,
+            self.record_length,
+            self.area_averaging_length
         )
 
         on, off = get_amplitude(r, led_windows, self.noise_window)
         temp["amplitude_led"] = on["amplitude"]
         temp["amplitude_noise"] = off["amplitude"]
 
-        area = get_area(r, led_windows)
+        area = get_area(r, led_windows, self.area_averaging_length, self.area_averaging_step)
         temp["area"] = area["area"]
         return temp
 
@@ -182,7 +213,9 @@ def get_led_windows(
     default_window, 
     led_hit_extension, 
     hit_min_amplitude, 
-    hit_min_height_over_noise
+    hit_min_height_over_noise,
+    record_length,
+    area_averaging_length
 ):
     """ Search for hits in the records, if a hit is found, return an interval
         around the hit given by led_hit_extension. If no hit is found in the
@@ -198,32 +231,41 @@ def get_led_windows(
     :return (len(records), 2) array: Integration window for each record
 
     """    
-    hits = strax.find_hits(
-        records,
-        min_amplitude=hit_min_amplitude,
-        min_height_over_noise=hit_min_height_over_noise,
-    )
+    hits = strax.find_hits(records, hit_min_amplitude, hit_min_height_over_noise)
     default_windows = np.tile(default_window, (len(records), 1))
-    return _get_led_windows(hits, default_windows, led_hit_extension)
+    return _get_led_windows(
+        hits,
+        default_windows,
+        led_hit_extension,
+        record_length,
+        area_averaging_length
+        )
 
 
 @numba.jit(nopython=True)
-def _get_led_windows(hits, default_windows, led_hit_extension):
+def _get_led_windows(
+    hits, 
+    default_windows, 
+    led_hit_extension, 
+    record_length, 
+    area_averaging_length
+):
     windows = default_windows
+    hit_left_min = default_windows[0, 0] - led_hit_extension[0]
+    hit_left_max = record_length - area_averaging_length - led_hit_extension[1]
     last = -1
+
     for hit in hits:
         if hit["record_i"] == last:
             continue # If there are multiple hits in one record, ignore after the first
 
-        left = hit["left"] + led_hit_extension[0]
+        hit_left = hit['left']
         # Limit the position of the window so it stays inside the record.
-        if left < default_windows[0, 0]: left = default_windows[0, 0]
-        elif left > 150 - (led_hit_extension[1] - led_hit_extension[0]): 
-            left = 150 - (led_hit_extension[1] - led_hit_extension[0])
+        if hit_left < hit_left_min: hit_left = hit_left_min
+        if hit_left > hit_left_max: hit_left = hit_left_max
 
-        right = hit["left"] + led_hit_extension[1]
-        if right < default_windows[0, 1]: right = default_windows[0, 1]
-        elif right > 150: right = 150
+        left = hit_left + led_hit_extension[0]
+        right = hit_left + led_hit_extension[1]
 
         windows[hit["record_i"]] = np.array([left, right])
         last = hit["record_i"]
