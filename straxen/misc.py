@@ -509,7 +509,7 @@ def storage_graph(
         # if the plugin is stored, fill in green
         fillcolor = "green"
     else:
-        save_when = deepcopy(st._plugin_class_registry[target].save_when)
+        save_when = deepcopy(st._plugin_class_registry[target]().save_when)
         if isinstance(save_when, immutabledict):
             save_when = save_when[target]
         # if it is not stored, fill in the color according to save_when
@@ -531,7 +531,7 @@ def storage_graph(
     )
     if (not st.is_stored(run_id, target)) and (target not in not_stored):
         not_stored.add(target)
-        depends_on = deepcopy(st._plugin_class_registry[target].depends_on)
+        depends_on = deepcopy(st._plugin_class_registry[target]().depends_on)
         depends_on = strax.to_str_tuple(depends_on)
         for dep in depends_on:
             # only add the node to the graph but not save the plot

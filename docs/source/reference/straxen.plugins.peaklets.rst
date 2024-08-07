@@ -12,6 +12,14 @@ straxen.plugins.peaklets.peaklet\_classification module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.peaklets.peaklet\_classification\_som module
+------------------------------------------------------------
+
+.. automodule:: straxen.plugins.peaklets.peaklet_classification_som
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.peaklets.peaklets module
 ----------------------------------------
 

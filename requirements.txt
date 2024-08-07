@@ -9,10 +9,13 @@ immutabledict
 matplotlib
 multihist>=0.6.3
 numba>=0.50.0
-numpy
+numpy<2.0.0
 packaging
+m2r==0.2.1
+docutils==0.18.1
+mistune==0.8.4
 pymongo
 requests
-strax>=1.5.0
+strax>=1.6.4
 utilix>=0.5.3
 xedocs
