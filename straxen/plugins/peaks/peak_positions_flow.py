@@ -65,8 +65,8 @@ class PeakPositionsFlow(strax.Plugin):
 
     pred_function = straxen.URLConfig(
         default=(
-            "jax:///project2/lgrandi/juehang/flow_20240730.tar.gz?"
-            "n_poly=plugin.n_poly&sig=plugin.sig"
+            "jax://resource://flow_20240730.tar.gz?"
+            "n_poly=plugin.n_poly&sig=plugin.sig&fmt=abs_path"
         ),
         help="Compiled JAX function",
     )
