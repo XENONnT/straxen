@@ -370,14 +370,22 @@ class ReStrax(daq_core.DataBases):
             "restrax.state": "failed",
             "restrax.ended": now(),
             "restrax.reason": reason,
-            "$inc": {"restrax.n_tries": 1},
-        }
+            }
 
         if self.production:
             self.run_coll.update_one(
                 {"_id": run_doc["_id"]},
                 {"$set": update},
             )
+
+            # Perform the $inc update to increment n_tries
+            result_inc = self.run_coll.update_one(
+                {"_id": run_doc["_id"]},
+                {"$inc": {"restrax.n_tries": 1}}
+            )
+            self.log.debug(f'Increment update result: {result_inc.raw_result}')
+
+
         self.log.debug(f'Fail {run_doc["number"]} with {update}')
         if run_doc.get("restrax", {}).get("n_tries", 0) >= self.max_tries:
             self.log_warning(
