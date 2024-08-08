@@ -74,9 +74,9 @@ class LEDCalibration(strax.Plugin):
         help=(
             "The total length of the averaging window for the area calculation."
             "To mitigate a possiple bias from noise, the area is integrated multiple times with"
-            "sligntly different window lengths and then averaged. integration_averaging_length" 
+            "sligntly different window lengths and then averaged. integration_averaging_length"
             "should be divisible by step."
-        )
+        ),
     )
 
     area_averaging_step = straxen.URLConfig(
@@ -85,9 +85,9 @@ class LEDCalibration(strax.Plugin):
         help=(
             "The step size used for the different windows, averaged for the area calculation."
             "To mitigate a possiple bias from noise, the area is integrated multiple times with"
-            "sligntly different window lengths and then averaged. integration_averaging_length" 
+            "sligntly different window lengths and then averaged. integration_averaging_length"
             "should be divisible by step."
-        )
+        ),
     )
 
     noise_window = straxen.URLConfig(
@@ -129,22 +129,20 @@ class LEDCalibration(strax.Plugin):
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
         raw_records_active_channels = raw_records[mask]
         records = get_records(
-            raw_records_active_channels,
-            self.baseline_window, 
-            self.led_cal_record_length
-            )
+            raw_records_active_channels, self.baseline_window, self.led_cal_record_length
+        )
         del raw_records_active_channels, raw_records
 
         temp = np.zeros(len(records), dtype=self.dtype)
         strax.copy_to_buffer(records, temp, "_recs_to_temp_led")
 
         led_windows = get_led_windows(
-            records, 
-            self.default_led_window, 
-            self.led_hit_extension, 
+            records,
+            self.default_led_window,
+            self.led_hit_extension,
             self.hit_min_height_over_noise,
             self.led_cal_record_length,
-            self.area_averaging_length
+            self.area_averaging_length,
         )
 
         on, off = get_amplitude(records, led_windows, self.noise_window)
@@ -203,12 +201,12 @@ def get_records(raw_records, baseline_window, record_length):
 
 
 def get_led_windows(
-    records, 
-    default_window, 
-    led_hit_extension, 
+    records,
+    default_window,
+    led_hit_extension,
     hit_min_height_over_noise,
     record_length,
-    area_averaging_length
+    area_averaging_length,
 ):
     """Search for hits in the records, if a hit is found, return an interval around the hit given by
     led_hit_extension. If no hit is found in the record, return the default window.
@@ -223,38 +221,34 @@ def get_led_windows(
         hit. :return (len(records), 2) array: Integration window for each record
     :param record_length: The length of one led_calibration record
     :param area_averaging_length: The length (samples) of the window to do the averaging on.
+
     """
     hits = strax.find_hits(
         records,
-        min_amplitude=0, # Always use the height over noise threshold.
+        min_amplitude=0,  # Always use the height over noise threshold.
         min_height_over_noise=hit_min_height_over_noise,
     )
     # Check if the records are sorted properly by 'record_i' first and 'time' second and if them if
     # they are not
-    record_i = hits['record_i']
-    time = hits['time']
-    if not(np.all(
-        (record_i[:-1] < record_i[1:]) | 
-        ((record_i[:-1] == record_i[1:]) & (time[:-1] <= time[1:])))):
-        hits.sort(order=['record_i', 'time'])
+    record_i = hits["record_i"]
+    time = hits["time"]
+    if not (
+        np.all(
+            (record_i[:-1] < record_i[1:])
+            | ((record_i[:-1] == record_i[1:]) & (time[:-1] <= time[1:]))
+        )
+    ):
+        hits.sort(order=["record_i", "time"])
 
     default_windows = np.tile(default_window, (len(records), 1))
     return _get_led_windows(
-        hits,
-        default_windows,
-        led_hit_extension,
-        record_length,
-        area_averaging_length
-        )
+        hits, default_windows, led_hit_extension, record_length, area_averaging_length
+    )
 
 
 @numba.jit(nopython=True)
 def _get_led_windows(
-    hits, 
-    default_windows, 
-    led_hit_extension, 
-    record_length, 
-    area_averaging_length
+    hits, default_windows, led_hit_extension, record_length, area_averaging_length
 ):
     windows = default_windows
     hit_left_min = default_windows[0, 0] - led_hit_extension[0]
@@ -265,10 +259,12 @@ def _get_led_windows(
         if hit["record_i"] == last:
             continue  # If there are multiple hits in one record, ignore after the first
 
-        hit_left = hit['left']
+        hit_left = hit["left"]
         # Limit the position of the window so it stays inside the record.
-        if hit_left < hit_left_min: hit_left = hit_left_min
-        if hit_left > hit_left_max: hit_left = hit_left_max
+        if hit_left < hit_left_min:
+            hit_left = hit_left_min
+        if hit_left > hit_left_max:
+            hit_left = hit_left_max
 
         left = hit_left + led_hit_extension[0]
         right = hit_left + led_hit_extension[1]
@@ -316,12 +312,7 @@ _area_dtype = np.dtype([("channel", "int16"), ("area", "float32")])
 
 
 @numba.jit(nopython=True)
-def get_area(
-    records, 
-    led_windows, 
-    area_averaging_length,
-    area_averaging_step
-):
+def get_area(records, led_windows, area_averaging_length, area_averaging_step):
     """Needed for the gain computation.
 
     Integrate the record in the defined window area. To reduce the effects of the noise, this is
@@ -333,18 +324,17 @@ def get_area(
     :param area_averaging_length: The total length in records of the window over which to do the
         averaging of the areas.
     :param area_averaging_step: The increase in length for each step of the averaging.
-
     :return ndarray area: 1d array of length len(records) with the averaged integrated areas for
         each record.
 
     """
     area = np.zeros(len(records), dtype=_area_dtype)
-    end_pos = np.arange(0, area_averaging_length+area_averaging_step, area_averaging_step)
+    end_pos = np.arange(0, area_averaging_length + area_averaging_step, area_averaging_step)
 
     for i, record in enumerate(records):
         area[i]["channel"] = record["channel"]
         for right in end_pos:
-            area[i]["area"] += np.sum(record["data"][led_windows[i, 0]:led_windows[i, 1]+right])
+            area[i]["area"] += np.sum(record["data"][led_windows[i, 0] : led_windows[i, 1] + right])
 
         area[i]["area"] /= float(len(end_pos))
 
