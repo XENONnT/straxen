@@ -100,20 +100,6 @@ class LEDCalibration(strax.Plugin):
         help="List of PMTs. Defalt value: all the PMTs",
     )
 
-    hit_min_amplitude = straxen.URLConfig(
-        track=True,
-        infer_type=False,
-        default="cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id",
-        help=(
-            "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_tpc_pmts, or a number,"
-            'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
-            "hitfinder_thresholds.py"
-            'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
-            "calling cmt."
-        ),
-    )
-
     hit_min_height_over_noise = straxen.URLConfig(
         default=4,
         infer_type=False,
@@ -156,7 +142,6 @@ class LEDCalibration(strax.Plugin):
             records, 
             self.default_led_window, 
             self.led_hit_extension, 
-            self.hit_min_amplitude, 
             self.hit_min_height_over_noise,
             self.led_cal_record_length,
             self.area_averaging_length
@@ -221,7 +206,6 @@ def get_led_windows(
     records, 
     default_window, 
     led_hit_extension, 
-    hit_min_amplitude, 
     hit_min_height_over_noise,
     record_length,
     area_averaging_length
@@ -242,7 +226,7 @@ def get_led_windows(
     """
     hits = strax.find_hits(
         records,
-        min_amplitude=hit_min_amplitude,
+        min_amplitude=0, # Always use the height over noise threshold.
         min_height_over_noise=hit_min_height_over_noise,
     )
     # Check if the records are sorted properly by 'record_i' first and 'time' second and if them if
