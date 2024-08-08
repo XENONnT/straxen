@@ -122,7 +122,7 @@ def main():
             if not args.undying:
                 raise
 
-            restrax.warning("Restarting main loop after 60 seconds due to fatal error.")
+            restrax.log.warning("Restarting main loop after 60 seconds due to fatal error.")
             time.sleep(60)
 
 
