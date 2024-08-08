@@ -95,43 +95,38 @@ def parse_args():
         )
     return args
 
-
 def main():
     args = parse_args()
+    restrax = ReStrax(args=args)
+
     while True:
         try:
-            run_restrax(args)
+            run_restrax(restrax, args)
             if args.process:
                 break
         except (KeyboardInterrupt, SystemExit):
             break
         except Exception as fatal_error:
-            # Open a class, just to log the error
-            re_temp = ReStrax(args=args)
-            re_temp.log.error(
-                f"Fatal warning:\tran into {fatal_error}. Try logging error and restart restrax"
+            restrax.log.error(
+                f"Fatal warning: ran into {fatal_error}. Trying to log error and restart ReStrax."
             )
             try:
-                re_temp.log_warning(
-                    f"Fatal warning:\tran into {fatal_error}",
+                restrax.log_warning(
+                    f"Fatal warning: ran into {fatal_error}",
                     priority="error",
                 )
             except Exception as warning_error:
-                re_temp.error(f"Fatal warning:\tcould not log {warning_error}")
+                restrax.error(f"Fatal warning: could not log {warning_error}")
 
             if not args.undying:
                 raise
 
-            # This usually only takes a minute or two
+            restrax.warning("Restarting main loop after 60 seconds due to fatal error.")
             time.sleep(60)
-            re_temp.warning("Restarting main loop")
 
-
-def run_restrax(args):
-    """Run the infinite loop of restrax."""
-    restrax = ReStrax(args=args)
+def run_restrax(restrax, args):
+    """Run the infinite loop of ReStrax."""
     restrax.infinite_loop(close=bool(args.process))
-
 
 class ReStrax(daq_core.DataBases):
     """
