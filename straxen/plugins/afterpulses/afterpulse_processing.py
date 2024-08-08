@@ -208,8 +208,8 @@ def _find_ap(
     offset = 0
 
     is_LED = False
-    t_LED = None
-    t_LED_hit = None
+    t_LED = None        # The position of the total LED pulse.
+    t_LED_window = None # The position that defines the LED integration window.
 
     prev_record_i = hits[0]["record_i"]
     record_data = records[prev_record_i]["data"]
@@ -246,7 +246,7 @@ def _find_ap(
                 baseline_fpart,
             )
 
-            t_LED_hit = res["sample_10pc_area"]
+            t_LED_window = res["sample_10pc_area"] # Set it to the first hit in the LED hit boundary.
             t_LED = res["sample_10pc_area"]
             is_LED = True
 
@@ -256,7 +256,7 @@ def _find_ap(
             # No hit found in the LED hit window: skip to next record
             continue
 
-        if h["left"] < (t_LED_hit + LED_window_width):
+        if h["left"] < (t_LED_window + LED_window_width):
             # This hit is still inside the LED window: extend the LED hit
             fill_hitpars(
                 res,
