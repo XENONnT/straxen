@@ -95,6 +95,7 @@ def parse_args():
         )
     return args
 
+
 def main():
     args = parse_args()
     restrax = ReStrax(args=args)
@@ -124,9 +125,11 @@ def main():
             restrax.warning("Restarting main loop after 60 seconds due to fatal error.")
             time.sleep(60)
 
+
 def run_restrax(restrax, args):
     """Run the infinite loop of ReStrax."""
     restrax.infinite_loop(close=bool(args.process))
+
 
 class ReStrax(daq_core.DataBases):
     """
