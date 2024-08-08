@@ -370,7 +370,7 @@ class ReStrax(daq_core.DataBases):
             "restrax.state": "failed",
             "restrax.ended": now(),
             "restrax.reason": reason,
-            "$inc": {"restrax.n_tries": 1}
+            "$inc": {"restrax.n_tries": 1},
         }
 
         if self.production:
