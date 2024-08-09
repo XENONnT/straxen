@@ -154,7 +154,7 @@ class LEDCalibration(strax.Plugin):
         return temp
 
 
-def get_records(raw_records, baseline_window, record_length):
+def get_records(raw_records, baseline_window, led_cal_record_length):
     """Determine baseline as the average of the first baseline_samples of each pulse.
 
     Subtract the pulse float(data) from baseline.
@@ -190,11 +190,11 @@ def get_records(raw_records, baseline_window, record_length):
     records = np.zeros(len(raw_records), dtype=_dtype)
     strax.copy_to_buffer(raw_records, records, "_rr_to_r_led")
 
-    mask = np.where((records["record_i"] == 0) & (records["length"] == 160))[0]
+    mask = np.where((records["record_i"] == 0) & (records["length"] == led_cal_record_length))[0]
     records = records[mask]
     bl = records["data"][:, baseline_window[0] : baseline_window[1]].mean(axis=1)
     rms = records["data"][:, baseline_window[0] : baseline_window[1]].std(axis=1)
-    records["data"][:, :160] = -1.0 * (records["data"][:, :160].transpose() - bl[:]).transpose()
+    records["data"][:, :led_cal_record_length] = -1.0 * (records["data"][:, :led_cal_record_length].transpose() - bl[:]).transpose()
     records["baseline"] = bl
     records["baseline_rms"] = rms
     return records
