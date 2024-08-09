@@ -196,6 +196,7 @@ class TestAqmonProcessing(TestCase):
         st.set_context_config({"free_options": list(st.config.keys())})
         st._plugin_class_registry = {}
 
+        st.set_config(dict(veto_proximity_window=10**99))
         self.TOTAL_DEADTIME: List = []
         self.TOTAL_SIGNALS: List = []
 
