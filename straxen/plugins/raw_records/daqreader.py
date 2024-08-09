@@ -75,7 +75,7 @@ class ArtificialDeadtimeInserted(UserWarning):
     # DAQReader settings
     strax.Option(
         "safe_break_in_pulses",
-        default=1000,
+        default=strax.DEFAULT_CHUNK_SPLIT_NS,
         track=False,
         infer_type=False,
         help=(
