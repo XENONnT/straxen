@@ -194,7 +194,9 @@ def get_records(raw_records, baseline_window, led_cal_record_length):
     records = records[mask]
     bl = records["data"][:, baseline_window[0] : baseline_window[1]].mean(axis=1)
     rms = records["data"][:, baseline_window[0] : baseline_window[1]].std(axis=1)
-    records["data"][:, :led_cal_record_length] = -1.0 * (records["data"][:, :led_cal_record_length].transpose() - bl[:]).transpose()
+    records["data"][:, :led_cal_record_length] = (
+        -1.0 * (records["data"][:, :led_cal_record_length].transpose() - bl[:]).transpose()
+    )
     records["baseline"] = bl
     records["baseline_rms"] = rms
     return records
