@@ -251,6 +251,8 @@ def _get_led_windows(
     hits, default_windows, led_hit_extension, record_length, area_averaging_length
 ):
     windows = default_windows
+    if len(default_windows) == 0:
+        return np.empty((0, 2), dtype=np.int64)  # Return empty array of correct shape
     hit_left_min = default_windows[0, 0] - led_hit_extension[0]
     hit_left_max = record_length - area_averaging_length - led_hit_extension[1]
     last = -1
