@@ -61,11 +61,14 @@ class EventWaveform(strax.Plugin):
             if "s1" in type_:
                 dtype += [
                     (
-                        (f"Waveform Start for {infoline[type_]} [ PE / 10 ns ]", f"{type_}_data_start"),
+                        (
+                            f"Waveform Start for {infoline[type_]} [ PE / 10 ns ]",
+                            f"{type_}_data_start",
+                        ),
                         pfields_["data_start"][0],
                     )
                 ]
-                
+
         # populating S1 n channel properties
         dtype += [
             (("Main S1 count of contributing PMTs", "s1_n_channels"), np.int16),
@@ -90,7 +93,7 @@ class EventWaveform(strax.Plugin):
                     result[f"{type_}_data"][event_i] = sp["data"][type_index]
                     result[f"{type_}_data_top"][event_i] = sp["data_top"][type_index]
                     result[f"{type_}_dt"][event_i] = sp["dt"][type_index]
-                    
+
                     if "s1" in type_:
                         result[f"{type_}_data_start"][event_i] = sp["data_start"][type_index]
 
