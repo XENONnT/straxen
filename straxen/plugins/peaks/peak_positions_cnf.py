@@ -11,10 +11,12 @@ class PeakPositionsFlow(strax.Plugin):
 
     This plugin reconstructs the position of S2 peaks using a conditional normalizing flow model.
     It provides x and y coordinates of the reconstructed position, along with uncertainty contours
-    and uncertainty estimates in r and theta.
+    and uncertainty estimates in r and theta. For information on the model, see note_.
+    
+    .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2
 
     Depends on: 'peaks'
-    Provides: 'peak_positions_flow'
+    Provides: 'peak_positions_cnf'
 
     Configuration options:
     - min_reconstruction_area: Minimum area (PE) required for reconstruction
@@ -27,7 +29,7 @@ class PeakPositionsFlow(strax.Plugin):
     """
 
     depends_on = "peaks"
-    provides = "peak_positions_flow"
+    provides = "peak_positions_cnf"
 
     __version__ = "0.0.3"
 
@@ -132,15 +134,15 @@ class PeakPositionsFlow(strax.Plugin):
 
         """
         dtype = [
-            (("Reconstructed flow S2 X position (cm), uncorrected", "x_flow"), np.float32),
-            (("Reconstructed flow S2 Y position (cm), uncorrected", "y_flow"), np.float32),
+            (("Reconstructed flow S2 X position (cm), uncorrected", "x_cnf"), np.float32),
+            (("Reconstructed flow S2 Y position (cm), uncorrected", "y_cnf"), np.float32),
             (
-                ("Position uncertainty contour", "position_contours_flow"),
+                ("Position uncertainty contour", "position_contours_cnf"),
                 np.float32,
                 (self.n_poly + 1, 2),
             ),
-            (("Position uncertainty in r (cm)", "r_uncertainty_flow"), np.float32),
-            (("Position uncertainty in theta (rad)", "theta_uncertainty_flow"), np.float32),
+            (("Position uncertainty in r (cm)", "r_uncertainty_cnf"), np.float32),
+            (("Position uncertainty in theta (rad)", "theta_uncertainty_cnf"), np.float32),
         ]
         dtype += strax.time_fields
         return dtype
@@ -160,11 +162,11 @@ class PeakPositionsFlow(strax.Plugin):
         result["time"], result["endtime"] = peaks["time"], strax.endtime(peaks)
 
         # Set default values to NaN
-        result["x_flow"] *= float("nan")
-        result["y_flow"] *= float("nan")
-        result["position_contours_flow"] *= float("nan")
-        result["r_uncertainty_flow"] *= np.nan
-        result["theta_uncertainty_flow"] *= np.nan
+        result["x_cnf"] *= float("nan")
+        result["y_cnf"] *= float("nan")
+        result["position_contours_cnf"] *= float("nan")
+        result["r_uncertainty_cnf"] *= np.nan
+        result["theta_uncertainty_cnf"] *= np.nan
 
         # Keep large peaks only
         peak_mask = peaks["area"] > self.min_reconstruction_area
@@ -188,9 +190,9 @@ class PeakPositionsFlow(strax.Plugin):
         xy, contours = self.prediction_loop(flow_data)
 
         # Write output to the result array
-        result["x_flow"][peak_mask] = xy[:, 0]
-        result["y_flow"][peak_mask] = xy[:, 1]
-        result["position_contours_flow"][peak_mask] = contours
+        result["x_cnf"][peak_mask] = xy[:, 0]
+        result["y_cnf"][peak_mask] = xy[:, 1]
+        result["position_contours_cnf"][peak_mask] = contours
 
         # Calculate uncertainties in r and theta
         r_array = np.linalg.norm(contours, axis=2)
@@ -203,7 +205,7 @@ class PeakPositionsFlow(strax.Plugin):
         theta_diff = theta_max - theta_min
         theta_diff[theta_diff > np.pi] -= 2 * np.pi
 
-        result["r_uncertainty_flow"][peak_mask] = (r_max - r_min) / 2
-        result["theta_uncertainty_flow"][peak_mask] = np.abs(theta_diff) / 2
+        result["r_uncertainty_cnf"][peak_mask] = (r_max - r_min) / 2
+        result["theta_uncertainty_cnf"][peak_mask] = np.abs(theta_diff) / 2
 
         return result

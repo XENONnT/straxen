@@ -2,8 +2,6 @@ import numpy as np
 import strax
 import straxen
 
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
-
 
 export, __all__ = strax.exporter()
 
@@ -11,7 +9,10 @@ export, __all__ = strax.exporter()
 @export
 class EventPositionContour(strax.Plugin):
     """A strax plugin that computes event position contours and applies field distortion
-    corrections.
+    corrections using the conditional normalising flow model.
+    For information on the model, see note_.
+    
+    .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2
 
     This plugin calculates position contours for S2 and alternative S2 signals, and applies
     field distortion corrections to improve the accuracy of position reconstruction.
@@ -35,7 +36,7 @@ class EventPositionContour(strax.Plugin):
 
     __version__ = "0.0.9"
 
-    depends_on = ("events", "event_basics", "event_info", "peak_positions_flow", "peaks")
+    depends_on = ("events", "event_basics", "event_info", "peak_positions_cnf", "peaks")
 
     provides = "event_position_contour"
     compressor = "zstd"
@@ -43,10 +44,6 @@ class EventPositionContour(strax.Plugin):
     loop_over = "events"
 
     # Configuration options
-    default_reconstruction_algorithm = straxen.URLConfig(
-        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
-    )
-
     n_poly = straxen.URLConfig(
         default=16,
         infer_type=False,
@@ -97,7 +94,7 @@ class EventPositionContour(strax.Plugin):
                 (
                     (
                         f"Naive flow position contour for {infoline[type_]}",
-                        f"{type_}_position_contour_flow_naive",
+                        f"{type_}_position_contour_cnf_naive",
                     ),
                     np.float32,
                     (self.n_poly + 1, 2),
@@ -107,16 +104,16 @@ class EventPositionContour(strax.Plugin):
         # Add fields for flow position contour and corrected positions
         dtype += [
             (
-                (f"Flow position contour", "position_contour_flow"),
+                (f"Flow position contour", "position_contour_cnf"),
                 np.float32,
                 (self.n_poly + 1, 2),
             ),
             (
-                (f"Flow x position", "x_flow_fdc"),
+                (f"Flow x position", "x_cnf_fdc"),
                 np.float32,
             ),
             (
-                (f"Flow y position", "y_flow_fdc"),
+                (f"Flow y position", "y_cnf_fdc"),
                 np.float32,
             ),
         ]
@@ -146,8 +143,8 @@ class EventPositionContour(strax.Plugin):
 
         # Initialize contour fields with NaN values
         for type_ in ["s2", "alt_s2"]:
-            result[f"{type_}_position_contour_flow_naive"] *= np.nan
-        result[f"position_contour_flow"] *= np.nan
+            result[f"{type_}_position_contour_cnf_naive"] *= np.nan
+        result[f"position_contour_cnf"] *= np.nan
 
         # Split peaks by containment in events
         split_peaks = strax.split_by_containment(peaks, events)
@@ -158,8 +155,8 @@ class EventPositionContour(strax.Plugin):
                 type_index = event[f"{type_}_index"]
                 if type_index != -1:
                     # Store naive flow position contour
-                    result[f"{type_}_position_contour_flow_naive"][event_i] = sp[
-                        "position_contours_flow"
+                    result[f"{type_}_position_contour_cnf_naive"][event_i] = sp[
+                        "position_contours_cnf"
                     ][type_index]
 
                 if type_ == "s2":
@@ -167,8 +164,8 @@ class EventPositionContour(strax.Plugin):
                         # Apply full field distortion correction to contour
                         contour_plus_xy = np.concatenate(
                             [
-                                sp["position_contours_flow"][type_index],
-                                np.array([[sp["x_flow"][type_index], sp["y_flow"][type_index]]]),
+                                sp["position_contours_cnf"][type_index],
+                                np.array([[sp["x_cnf"][type_index], sp["y_cnf"][type_index]]]),
                             ],
                             axis=0,
                         )
@@ -184,24 +181,27 @@ class EventPositionContour(strax.Plugin):
                         scaled_2d_contour = contour_with_z[:, :2] * scale[:, np.newaxis]
 
                         # Store corrected contour and positions
-                        result["position_contour_flow"][event_i] = scaled_2d_contour[:-1]
-                        result["x_flow_fdc"][event_i] = scaled_2d_contour[-1, 0]
-                        result["y_flow_fdc"][event_i] = scaled_2d_contour[-1, 1]
+                        result["position_contour_cnf"][event_i] = scaled_2d_contour[:-1]
+                        result["x_cnf_fdc"][event_i] = scaled_2d_contour[-1, 0]
+                        result["y_cnf_fdc"][event_i] = scaled_2d_contour[-1, 1]
                     else:
                         # Apply simple scaling based on field distortion correction
                         scale = event["r_field_distortion_correction"] / event["r_naive"] + 1
-                        result["position_contour_flow"][event_i] = (
-                            sp["position_contours_flow"][type_index] * scale
+                        result["position_contour_cnf"][event_i] = (
+                            sp["position_contours_cnf"][type_index] * scale
                         )
-                        result["x_flow_fdc"][event_i] = sp["x_flow"][type_index] * scale
-                        result["y_flow_fdc"][event_i] = sp["y_flow"][type_index] * scale
+                        result["x_cnf_fdc"][event_i] = sp["x_cnf"][type_index] * scale
+                        result["y_cnf_fdc"][event_i] = sp["y_cnf"][type_index] * scale
 
         return result
 
 
 @export
 class EventPositionUncertainty(strax.Plugin):
-    """Plugin to calculate position uncertainties for events.
+    """Plugin to calculate position uncertainties for events using the conditional
+    normalising flow model. For information on the model, see note_.
+    
+    .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2
 
     This plugin computes uncertainties in radial (r) and angular (theta) positions
     for both main and alternative S2 signals. It uses the position contours
@@ -286,14 +286,14 @@ class EventPositionUncertainty(strax.Plugin):
         # Calculate uncertainties for main and alternative S2 signals
         for type_ in ["s2", "alt_s2"]:
             # Calculate radial uncertainties
-            r_array = np.linalg.norm(events[f"{type_}_position_contour_flow_naive"], axis=2)
+            r_array = np.linalg.norm(events[f"{type_}_position_contour_cnf_naive"], axis=2)
             r_min = np.min(r_array, axis=1)
             r_max = np.max(r_array, axis=1)
 
             # Calculate angular uncertainties
             theta_array = np.arctan2(
-                events[f"{type_}_position_contour_flow_naive"][..., 1],
-                events[f"{type_}_position_contour_flow_naive"][..., 0],
+                events[f"{type_}_position_contour_cnf_naive"][..., 1],
+                events[f"{type_}_position_contour_cnf_naive"][..., 0],
             )
             theta_min = np.min(theta_array, axis=1)
             theta_max = np.max(theta_array, axis=1)

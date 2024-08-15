@@ -19,8 +19,8 @@ from .peak_positions import *
 from . import peak_positions_cnn
 from .peak_positions_cnn import *
 
-from . import peak_positions_flow
-from .peak_positions_flow import *
+from . import peak_positions_cnf
+from .peak_positions_cnf import *
 
 from . import peak_positions_gcn
 from .peak_positions_gcn import *
