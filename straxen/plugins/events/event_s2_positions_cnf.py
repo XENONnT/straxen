@@ -8,10 +8,9 @@ export, __all__ = strax.exporter()
 
 @export
 class EventPositionContour(strax.Plugin):
-    """A strax plugin that computes event position contours and applies field distortion
-    corrections using the conditional normalising flow model.
-    For information on the model, see note_.
-    
+    """A strax plugin that computes event position contours and applies field distortion corrections
+    using the conditional normalising flow model. For information on the model, see note_.
+
     .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2
 
     This plugin calculates position contours for S2 and alternative S2 signals, and applies
@@ -198,9 +197,9 @@ class EventPositionContour(strax.Plugin):
 
 @export
 class EventPositionUncertainty(strax.Plugin):
-    """Plugin to calculate position uncertainties for events using the conditional
-    normalising flow model. For information on the model, see note_.
-    
+    """Plugin to calculate position uncertainties for events using the conditional normalising flow
+    model. For information on the model, see note_.
+
     .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2
 
     This plugin computes uncertainties in radial (r) and angular (theta) positions

@@ -12,7 +12,7 @@ class PeakPositionsFlow(strax.Plugin):
     This plugin reconstructs the position of S2 peaks using a conditional normalizing flow model.
     It provides x and y coordinates of the reconstructed position, along with uncertainty contours
     and uncertainty estimates in r and theta. For information on the model, see note_.
-    
+
     .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2
 
     Depends on: 'peaks'
