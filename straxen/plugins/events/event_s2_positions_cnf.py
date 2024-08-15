@@ -1,6 +1,7 @@
 import numpy as np
 import strax
 import straxen
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 
 export, __all__ = strax.exporter()
@@ -43,6 +44,10 @@ class EventPositionContour(strax.Plugin):
     loop_over = "events"
 
     # Configuration options
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
+    
     n_poly = straxen.URLConfig(
         default=16,
         infer_type=False,
