@@ -13,7 +13,7 @@ class PeakPositionsFlow(strax.Plugin):
     It provides x and y coordinates of the reconstructed position, along with uncertainty contours
     and uncertainty estimates in r and theta. For information on the model, see note_.
 
-    .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2
+    .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2 # noqa: E501
 
     Depends on: 'peaks'
     Provides: 'peak_positions_cnf'
