@@ -31,7 +31,7 @@ setuptools.setup(
     tests_require=requires + tests_requires,
     python_requires=">=3.9",
     extras_require={
-        "docs": doc_requirements,
+        "docs": requires + doc_requirements,
         "microstrax": ["hug"],
     },
     scripts=[
