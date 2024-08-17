@@ -22,10 +22,8 @@ repos:
     rev: v1.7.5
     hooks:
     -   id: docformatter
-        args: [
-            --recursive, --in-place,
-            --style=sphinx, --wrap-summaries=100, --wrap-descriptions=100,
-        ]
+        additional_dependencies: [tomli]
+        args: [--config ./pyproject.toml]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
