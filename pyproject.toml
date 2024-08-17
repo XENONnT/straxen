@@ -91,7 +91,7 @@ preview = true
 [tool.docformatter]
 recursive = true
 in-place = true
-style = sphinx
+style = "sphinx"
 wrap-summaries = 100
 wrap-descriptions = 100
 blank = true
