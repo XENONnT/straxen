@@ -28,11 +28,7 @@ strax = [
 bokeh = "*"
 commentjson = "*"
 gitpython = "*"
-graphviz = [
-  "*",
-  { version = "*", optional = true, extras = ["tests"] },
-  { version = "0.20.3", optional = true, extras = ["docs"] }
-]
+graphviz = "*"
 immutabledict = "*"
 matplotlib = "*"
 multihist = ">=0.6.3"
