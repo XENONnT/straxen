@@ -59,6 +59,7 @@ jobs:
 
       - name: Install requirements
         run: |
+          pip install pytest hypothesis coverage coveralls
           pip install .[tests] --force-reinstall
 
       - name: Start MongoDB
