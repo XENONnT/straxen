@@ -37,7 +37,7 @@ matplotlib = "*"
 multihist = ">=0.6.3"
 numba = ">=0.50.0"
 numpy = "<2.0.0"
-sharedarray = { file = "https://xenon.isi.edu/python/SharedArray-3.2.3.tar.gz", optional = true, extras = ["tests"] }
+sharedarray = { url = "https://xenon.isi.edu/python/SharedArray-3.2.3.tar.gz", optional = true, extras = ["tests"] }
 packaging = "*"
 m2r = [
   "==0.2.1",
