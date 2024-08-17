@@ -87,3 +87,10 @@ build-backend = "poetry.core.masonry.api"
 [tool.black]
 line-length = 100
 preview = true
+
+[tool.docformatter]
+recursive = true
+in-place = true
+style = sphinx
+wrap-summaries = 100
+wrap-descriptions = 100
