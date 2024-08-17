@@ -28,7 +28,10 @@ strax = [
 bokeh = "*"
 commentjson = "*"
 gitpython = "*"
-graphviz = "*"
+graphviz = [
+  "*",
+  { version = "0.20.3", optional = true, extras = ["docs"] },
+]
 immutabledict = "*"
 matplotlib = "*"
 multihist = ">=0.6.3"
@@ -44,7 +47,6 @@ requests = "*"
 utilix = ">=0.5.3"
 xedocs = "*"
 commonmark = { version = "0.9.1", optional = true, extras = ["docs"] }
-graphviz = { version = "0.20.3", optional = true, extras = ["docs"] }
 m2r = { version = "0.2.1", optional = true, extras = ["docs"] }
 mistune = { version = "0.8.4", optional = true, extras = ["docs"] }
 nbsphinx = { version = "0.8.9", optional = true, extras = ["docs"] }
