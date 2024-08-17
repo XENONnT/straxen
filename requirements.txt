@@ -16,6 +16,6 @@ docutils==0.18.1
 mistune==0.8.4
 pymongo
 requests
-strax>=1.7.0
+git+https://github.com/AxFoundation/strax
 utilix>=0.5.3
 xedocs
