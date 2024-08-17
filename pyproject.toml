@@ -37,7 +37,7 @@ matplotlib = "*"
 multihist = ">=0.6.3"
 numba = ">=0.50.0"
 numpy = "<2.0.0"
-sharedarray = { url = "https://xenon.isi.edu/python/SharedArray-3.2.3.tar.gz", optional = true, extras = ["tests"] }
+sharedarray = { file = "https://xenon.isi.edu/python/SharedArray-3.2.3.tar.gz", optional = true, extras = ["tests"] }
 packaging = "*"
 m2r = [
   "==0.2.1",
@@ -87,10 +87,3 @@ build-backend = "poetry.core.masonry.api"
 [tool.black]
 line-length = 100
 preview = true
-
-[tool.docformatter]
-recursive = true
-in-place = true
-style = "sphinx"
-wrap-summaries = 100
-wrap-descriptions = 100
