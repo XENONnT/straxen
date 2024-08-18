@@ -33,15 +33,9 @@ numba = ">=0.50.0"
 numpy = "<2.0.0"
 sharedarray = { url = "https://xenon.isi.edu/python/SharedArray-3.2.3.tar.gz", optional = true, extras = ["tests"] }
 packaging = "*"
-m2r = [
-  "==0.2.1",
-  { version = "0.2.1", optional = true, extras = ["docs"] }
-]
+m2r = "==0.2.1"
 docutils = "==0.18.1"
-mistune = [
-  "==0.8.4",
-  { version = "0.8.4", optional = true, extras = ["docs"] }
-]
+mistune = "==0.8.4"
 pymongo = "*"
 requests = "*"
 utilix = ">=0.5.3"
