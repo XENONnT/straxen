@@ -52,14 +52,13 @@ lxml_html_clean = { version = "*", optional = true, extras = ["docs"] }
 [tool.poetry.extras]
 docs = [
   "commonmark",
-  "m2r",
-  "mistune",
   "nbsphinx",
   "recommonmark",
   "sphinx",
   "sphinx_rtd_theme",
   "Jinja2",
   "urllib3",
+  "lxml_html_clean",
 ]
 tests = [
   "sharedarray",
