@@ -19,6 +19,16 @@ classifiers = [
 ]
 repository = "https://github.com/XENONnT/straxen"
 
+[tool.poetry.scripts]
+ajax = "bin.ajax:main_ajax"
+bootstrax = "bin.bootstrax:main"
+fake_daq = "bin.fake_daq:main"
+microstrax = "bin.microstrax:main"
+refresh_raw_records = "bin.refresh_raw_records:main"
+restrax = "bin.restrax:main"
+straxen_print_versions = "bin.straxen_print_versions:main"
+straxer = "bin.straxer:main"
+
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 strax = { git = "https://github.com/AxFoundation/strax.git" }
