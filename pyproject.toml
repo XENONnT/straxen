@@ -21,10 +21,7 @@ repository = "https://github.com/XENONnT/straxen"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
-strax = [
-  { git = "https://github.com/AxFoundation/strax.git" },
-  { git = "https://github.com/AxFoundation/strax.git", optional = true, extras = ["tests"] }
-]
+strax = { git = "https://github.com/AxFoundation/strax.git" }
 bokeh = "*"
 commentjson = "*"
 gitpython = "*"
@@ -74,7 +71,6 @@ docs = [
 tests = [
   "sharedarray",
   "base_environment",
-  "strax",
 ]
 
 [build-system]
