@@ -143,7 +143,7 @@ class CorrectionsManagementServices:
                 f"{corrections_w_file} "
             )
 
-    # entry for e.g. for super runs
+    # entry for e.g. for superruns
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
     def _get_correction(self, run_id, correction, version):
