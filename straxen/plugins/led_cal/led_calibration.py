@@ -45,7 +45,7 @@ class LEDCalibration(strax.Plugin):
     parallel = "process"
     rechunk_on_save = False
 
-    led_cal_record_length = straxen.URLConfig(
+    LED_cal_record_length = straxen.URLConfig(
         default=160, infer_type=False, help="Length (samples) of one record without 0 padding."
     )
 
@@ -129,7 +129,7 @@ class LEDCalibration(strax.Plugin):
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
         raw_records_active_channels = raw_records[mask]
         records = get_records(
-            raw_records_active_channels, self.baseline_window, self.led_cal_record_length
+            raw_records_active_channels, self.baseline_window, self.LED_cal_record_length
         )
         del raw_records_active_channels, raw_records
 
@@ -141,7 +141,7 @@ class LEDCalibration(strax.Plugin):
             self.default_led_window,
             self.led_hit_extension,
             self.hit_min_height_over_noise,
-            self.led_cal_record_length,
+            self.LED_cal_record_length,
             self.area_averaging_length,
         )
 
@@ -154,7 +154,7 @@ class LEDCalibration(strax.Plugin):
         return temp
 
 
-def get_records(raw_records, baseline_window, led_cal_record_length):
+def get_records(raw_records, baseline_window, LED_cal_record_length):
     """Determine baseline as the average of the first baseline_samples of each pulse.
 
     Subtract the pulse float(data) from baseline.
@@ -190,12 +190,12 @@ def get_records(raw_records, baseline_window, led_cal_record_length):
     records = np.zeros(len(raw_records), dtype=_dtype)
     strax.copy_to_buffer(raw_records, records, "_rr_to_r_led")
 
-    mask = np.where((records["record_i"] == 0) & (records["length"] == led_cal_record_length))[0]
+    mask = np.where((records["record_i"] == 0) & (records["length"] == LED_cal_record_length))[0]
     records = records[mask]
     bl = records["data"][:, baseline_window[0] : baseline_window[1]].mean(axis=1)
     rms = records["data"][:, baseline_window[0] : baseline_window[1]].std(axis=1)
-    records["data"][:, :led_cal_record_length] = (
-        -1.0 * (records["data"][:, :led_cal_record_length].transpose() - bl[:]).transpose()
+    records["data"][:, :LED_cal_record_length] = (
+        -1.0 * (records["data"][:, :LED_cal_record_length].transpose() - bl[:]).transpose()
     )
     records["baseline"] = bl
     records["baseline_rms"] = rms
