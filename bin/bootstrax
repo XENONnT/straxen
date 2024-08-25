@@ -1579,7 +1579,7 @@ def process_run(rd, send_heartbeats=args.production):
                             "raw_records_mv",
                             "raw_records_nv",
                         ):
-                            md = st.get_meta(run_id, rr_type)
+                            md = st.get_metadata(run_id, rr_type)
                             if len(md["chunks"]) and (
                                 "first_time" in md["chunks"][0]
                                 and "last_endtime" in md["chunks"][0]
