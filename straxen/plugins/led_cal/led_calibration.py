@@ -1,12 +1,16 @@
 """
 Dear nT analyser,
 if you want to complain please contact:
-    chiara@physik.uzh.ch, gvolta@physik.uzh.ch, kazama@isee.nagoya-u.ac.jp
+    chiara@physik.uzh.ch,
+    gvolta@physik.uzh.ch,
+    kazama@isee.nagoya-u.ac.jp
+    torben.flehmke@fysik.su.se
 """
 
 from immutabledict import immutabledict
 import strax
 import straxen
+import numba
 import numpy as np
 
 # This makes sure shorthands for only the necessary functions
@@ -33,7 +37,7 @@ class LEDCalibration(strax.Plugin):
           from the signal one.
     """
 
-    __version__ = "0.2.4"
+    __version__ = "0.3.0"
 
     depends_on = "raw_records"
     data_kind = "led_cal"
@@ -41,24 +45,69 @@ class LEDCalibration(strax.Plugin):
     parallel = "process"
     rechunk_on_save = False
 
-    baseline_window = straxen.URLConfig(
-        default=(0, 40), infer_type=False, help="Window (samples) for baseline calculation."
+    LED_cal_record_length = straxen.URLConfig(
+        default=160, infer_type=False, help="Length (samples) of one record without 0 padding."
     )
 
-    led_window = straxen.URLConfig(
-        default=(78, 132),
+    baseline_window = straxen.URLConfig(
+        default=(0, 40),
         infer_type=False,
-        help="Window (samples) where we expect the signal in LED calibration",
+        help="Window (samples) for baseline calculation.",
+    )
+
+    default_led_window = straxen.URLConfig(
+        default=(78, 107),
+        infer_type=False,
+        help="Default window (samples) to integrate and get the maximum amplitude \
+            if no hit was found in the record.",
+    )
+
+    led_hit_extension = straxen.URLConfig(
+        default=(-5, 24),
+        infer_type=False,
+        help="The extension around the LED hit to integrate.",
+    )
+
+    area_averaging_length = straxen.URLConfig(
+        default=10,
+        infer_type=False,
+        help=(
+            "The total length of the averaging window for the area calculation."
+            "To mitigate a possiple bias from noise, the area is integrated multiple times with"
+            "sligntly different window lengths and then averaged. integration_averaging_length"
+            "should be divisible by step."
+        ),
+    )
+
+    area_averaging_step = straxen.URLConfig(
+        default=2,
+        infer_type=False,
+        help=(
+            "The step size used for the different windows, averaged for the area calculation."
+            "To mitigate a possiple bias from noise, the area is integrated multiple times with"
+            "sligntly different window lengths and then averaged. integration_averaging_length"
+            "should be divisible by step."
+        ),
     )
 
     noise_window = straxen.URLConfig(
-        default=(10, 48), infer_type=False, help="Window (samples) to analysis the noise"
+        default=(10, 48), infer_type=False, help="Window (samples) to analyse the noise"
     )
 
     channel_list = straxen.URLConfig(
         default=(tuple(channel_list)),
         infer_type=False,
         help="List of PMTs. Defalt value: all the PMTs",
+    )
+
+    hit_min_height_over_noise = straxen.URLConfig(
+        default=4,
+        infer_type=False,
+        help=(
+            "Minimum hit amplitude in numbers of baseline_rms above baseline."
+            "Actual threshold used is max(hit_min_amplitude, hit_min_"
+            "height_over_noise * baseline_rms)."
+        ),
     )
 
     dtype = [
@@ -74,34 +123,45 @@ class LEDCalibration(strax.Plugin):
     def compute(self, raw_records):
         """The data for LED calibration are build for those PMT which belongs to channel list.
 
-        This is used for the different ligh levels. As defaul value all the PMTs are considered.
+        This is used for the different ligh levels. As default value all the PMTs are considered.
 
         """
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
-        rr = raw_records[mask]
-        r = get_records(rr, baseline_window=self.baseline_window)
-        del rr, raw_records
+        raw_records_active_channels = raw_records[mask]
+        records = get_records(
+            raw_records_active_channels, self.baseline_window, self.LED_cal_record_length
+        )
+        del raw_records_active_channels, raw_records
 
-        temp = np.zeros(len(r), dtype=self.dtype)
-        strax.copy_to_buffer(r, temp, "_recs_to_temp_led")
+        temp = np.zeros(len(records), dtype=self.dtype)
+        strax.copy_to_buffer(records, temp, "_recs_to_temp_led")
 
-        on, off = get_amplitude(r, self.led_window, self.noise_window)
+        led_windows = get_led_windows(
+            records,
+            self.default_led_window,
+            self.led_hit_extension,
+            self.hit_min_height_over_noise,
+            self.LED_cal_record_length,
+            self.area_averaging_length,
+        )
+
+        on, off = get_amplitude(records, led_windows, self.noise_window)
         temp["amplitude_led"] = on["amplitude"]
         temp["amplitude_noise"] = off["amplitude"]
 
-        area = get_area(r, self.led_window)
+        area = get_area(records, led_windows, self.area_averaging_length, self.area_averaging_step)
         temp["area"] = area["area"]
         return temp
 
 
-def get_records(raw_records, baseline_window):
+def get_records(raw_records, baseline_window, LED_cal_record_length):
     """Determine baseline as the average of the first baseline_samples of each pulse.
 
     Subtract the pulse float(data) from baseline.
 
     """
 
-    record_length = np.shape(raw_records.dtype["data"])[0]
+    record_length_padded = np.shape(raw_records.dtype["data"])[0]
 
     _dtype = [
         (("Start time since unix epoch [ns]", "time"), "<i8"),
@@ -109,61 +169,181 @@ def get_records(raw_records, baseline_window):
         (("Width of one sample [ns]", "dt"), "<i2"),
         (("Channel/PMT number", "channel"), "<i2"),
         (
-            ("Length of pulse to which the record belongs (without zero-padding)", "pulse_length"),
+            (
+                "Length of pulse to which the record belongs (without zero-padding)",
+                "pulse_length",
+            ),
             "<i4",
         ),
         (("Fragment number in the pulse", "record_i"), "<i2"),
-        (("Waveform data in raw ADC counts", "data"), "f4", (record_length,)),
+        (
+            ("Baseline in ADC counts. data = int(baseline) - data_orig", "baseline"),
+            "f4",
+        ),
+        (
+            ("Baseline RMS in ADC counts. data = baseline - data_orig", "baseline_rms"),
+            "f4",
+        ),
+        (("Waveform data in raw ADC counts with 0 padding", "data"), "f4", (record_length_padded,)),
     ]
 
     records = np.zeros(len(raw_records), dtype=_dtype)
     strax.copy_to_buffer(raw_records, records, "_rr_to_r_led")
 
-    mask = np.where((records["record_i"] == 0) & (records["length"] == 160))[0]
+    mask = np.where((records["record_i"] == 0) & (records["length"] == LED_cal_record_length))[0]
     records = records[mask]
     bl = records["data"][:, baseline_window[0] : baseline_window[1]].mean(axis=1)
-    records["data"][:, :160] = -1.0 * (records["data"][:, :160].transpose() - bl[:]).transpose()
+    rms = records["data"][:, baseline_window[0] : baseline_window[1]].std(axis=1)
+    records["data"][:, :LED_cal_record_length] = (
+        -1.0 * (records["data"][:, :LED_cal_record_length].transpose() - bl[:]).transpose()
+    )
+    records["baseline"] = bl
+    records["baseline_rms"] = rms
     return records
+
+
+def get_led_windows(
+    records,
+    default_window,
+    led_hit_extension,
+    hit_min_height_over_noise,
+    record_length,
+    area_averaging_length,
+):
+    """Search for hits in the records, if a hit is found, return an interval around the hit given by
+    led_hit_extension. If no hit is found in the record, return the default window.
+
+    :param records: Array of the records to search for LED hits.
+    :param default_window: Default window to use if no LED hit is found given as a tuple (start,
+        end)
+    :param led_hit_extension: The integration window around the first hit found to use. A tuple of
+        form (samples_before, samples_after) the first LED hit.
+    :param hit_min_amplitude: Minimum amplitude of the signal to be considered a hit.
+    :param hit_min_height_over_noise: Minimum height of the signal over noise to be considered a
+        hit. :return (len(records), 2) array: Integration window for each record
+    :param record_length: The length of one led_calibration record
+    :param area_averaging_length: The length (samples) of the window to do the averaging on.
+
+    """
+    if len(records) == 0:  # If input is empty
+        return np.empty((0, 2), dtype=np.int64)  # Return empty array of correct shape
+
+    hits = strax.find_hits(
+        records,
+        min_amplitude=0,  # Always use the height over noise threshold.
+        min_height_over_noise=hit_min_height_over_noise,
+    )
+    # Check if the records are sorted properly by 'record_i' first and 'time' second and if them if
+    # they are not
+    record_i = hits["record_i"]
+    time = hits["time"]
+    if not (
+        np.all(
+            (record_i[:-1] < record_i[1:])
+            | ((record_i[:-1] == record_i[1:]) & (time[:-1] <= time[1:]))
+        )
+    ):
+        hits.sort(order=["record_i", "time"])
+
+    default_windows = np.tile(default_window, (len(records), 1))
+    return _get_led_windows(
+        hits, default_windows, led_hit_extension, record_length, area_averaging_length
+    )
+
+
+@numba.jit(nopython=True)
+def _get_led_windows(
+    hits, default_windows, led_hit_extension, record_length, area_averaging_length
+):
+    windows = default_windows
+    hit_left_min = default_windows[0, 0] - led_hit_extension[0]
+    hit_left_max = record_length - area_averaging_length - led_hit_extension[1]
+    last = -1
+
+    for hit in hits:
+        if hit["record_i"] == last:
+            continue  # If there are multiple hits in one record, ignore after the first
+
+        hit_left = hit["left"]
+        # Limit the position of the window so it stays inside the record.
+        if hit_left < hit_left_min:
+            hit_left = hit_left_min
+        if hit_left > hit_left_max:
+            hit_left = hit_left_max
+
+        left = hit_left + led_hit_extension[0]
+        right = hit_left + led_hit_extension[1]
+
+        windows[hit["record_i"]] = np.array([left, right])
+        last = hit["record_i"]
+
+    return windows
 
 
 _on_off_dtype = np.dtype([("channel", "int16"), ("amplitude", "float32")])
 
 
-def get_amplitude(records, led_window, noise_window):
+@numba.jit(nopython=True)
+def get_amplitude(records, led_windows, noise_window):
     """Needed for the SPE computation.
 
-    Take the maximum in two different regions, where there is the signal and where there is not.
+    Get the maximum of the signal in two different regions, one where there is no signal, and one
+    where there is.
+
+    :param records: Array of records
+    :param ndarray led_windows : 2d array of shape (len(records), 2) with the window to use as the
+        signal on area for each record. Inclusive left boundary and exclusive right boundary.
+    :param tuple noise_window: Tuple with the window, used for the signal off area for all records.
+    :return ndarray ons: 1d array of length len(records). The maximum amplitude in the led window
+        area for each record.
+    :return ndarray offs: 1d array of length len(records). The maximum amplitude in the noise area
+        for each record.
 
     """
-    on = np.zeros((len(records)), dtype=_on_off_dtype)
-    off = np.zeros((len(records)), dtype=_on_off_dtype)
-    on["amplitude"] = np.max(records["data"][:, led_window[0] : led_window[1]], axis=1)
-    on["channel"] = records["channel"]
-    off["amplitude"] = np.max(records["data"][:, noise_window[0] : noise_window[1]], axis=1)
-    off["channel"] = records["channel"]
-    return on, off
+    ons = np.zeros(len(records), dtype=_on_off_dtype)
+    offs = np.zeros(len(records), dtype=_on_off_dtype)
+
+    for i, record in enumerate(records):
+        ons[i]["channel"] = record["channel"]
+        offs[i]["channel"] = record["channel"]
+
+        ons[i]["amplitude"] = np.max(record["data"][led_windows[i, 0] : led_windows[i, 1]])
+        offs[i]["amplitude"] = np.max(record["data"][noise_window[0] : noise_window[1]])
+
+    return ons, offs
 
 
 _area_dtype = np.dtype([("channel", "int16"), ("area", "float32")])
 
 
-def get_area(records, led_window):
+@numba.jit(nopython=True)
+def get_area(records, led_windows, area_averaging_length, area_averaging_step):
     """Needed for the gain computation.
 
-    Sum the data in the defined window to get the area. This is done in 6 integration window and it
-    returns the average area.
+    Integrate the record in the defined window area. To reduce the effects of the noise, this is
+    done with 6 different window lengths, which are then averaged.
+
+    :param records: Array of records
+    :param ndarray led_windows : 2d array of shape (len(records), 2) with the window to use as the
+        integration boundaries.
+    :param area_averaging_length: The total length in records of the window over which to do the
+        averaging of the areas.
+    :param area_averaging_step: The increase in length for each step of the averaging.
+    :return ndarray area: 1d array of length len(records) with the averaged integrated areas for
+        each record.
 
     """
-    left = led_window[0]
-    end_pos = [led_window[1] + 2 * i for i in range(6)]
+    area = np.zeros(len(records), dtype=_area_dtype)
+    end_pos = np.arange(0, area_averaging_length + area_averaging_step, area_averaging_step)
 
-    Area = np.zeros((len(records)), dtype=_area_dtype)
-    for right in end_pos:
-        Area["area"] += records["data"][:, left:right].sum(axis=1)
-    Area["channel"] = records["channel"]
-    Area["area"] = Area["area"] / float(len(end_pos))
+    for i, record in enumerate(records):
+        area[i]["channel"] = record["channel"]
+        for right in end_pos:
+            area[i]["area"] += np.sum(record["data"][led_windows[i, 0] : led_windows[i, 1] + right])
 
-    return Area
+        area[i]["area"] /= float(len(end_pos))
+
+    return area
 
 
 @export
@@ -194,7 +374,10 @@ class nVetoExtTimings(strax.Plugin):
         dtype += strax.time_dt_fields
         dtype += [
             (("Delta time from trigger timing [ns]", "delta_time"), np.int16),
-            (("Index to which pulse (not record) the hitlet belongs to.", "pulse_i"), np.int32),
+            (
+                ("Index to which pulse (not record) the hitlet belongs to.", "pulse_i"),
+                np.int32,
+            ),
         ]
         return dtype
 
