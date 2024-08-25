@@ -29,6 +29,6 @@ class MergedS2sHighEnergy(MergedS2s):
 
     def compute(self, peaklets_he):
         # There are not any lone hits for the high energy channel,
-        #  so create a dummy for the compute method.
+        # so create a dummy for the compute method.
         lone_hits = np.zeros(0, dtype=strax.hit_dtype)
         return super().compute(peaklets_he, lone_hits)
