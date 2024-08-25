@@ -91,7 +91,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             peaklets = peaklets[peaklets["type"] != 1]
 
         if len(peaklets) <= 1:
-            return np.zeros(0, dtype=self.dtype)
+            return self.empty_result()
 
         gap_thresholds = self.s2_merge_gap_thresholds
         max_gap = gap_thresholds[0][1]
@@ -99,7 +99,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         if max_gap < 0:
             # Do not merge at all
-            return np.zeros(0, dtype=self.dtype)
+            return self.empty_result()
 
         if "data_top" not in peaklets.dtype.names:
             peaklets_w_field = np.zeros(

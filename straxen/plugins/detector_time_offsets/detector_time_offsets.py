@@ -30,7 +30,7 @@ class DetectorSynchronization(strax.Plugin):
     epsilon_offset = straxen.URLConfig(
         default=76, type=int, track=True, help="Measured missing offset for nveto in [ns]"
     )
-    sync_max_delay = strax.Config(default=11e3, help="max delay DetectorSynchronization [ns]")
+    sync_max_delay = straxen.URLConfig(default=11e3, help="max delay DetectorSynchronization [ns]")
     sync_expected_min_clock_distance = straxen.URLConfig(
         default=9.9e9, help="min clock distance DetectorSynchronization [ns]"
     )
@@ -120,7 +120,7 @@ class DetectorSynchronization(strax.Plugin):
             # Additional check to avoid spurious signals
             _correct_distance_to_prev_lock = time_to_prev >= self.sync_expected_min_clock_distance
             _correct_distance_to_prev_lock = time_to_prev < self.sync_expected_max_clock_distance
-            if (abs(offset) < self.sync_max_delay) & _correct_distance_to_prev_lock:
+            if (abs(offset) < self.config["sync_max_delay"]) & _correct_distance_to_prev_lock:
                 offsets.append(offset)
                 prev_time = hits_det0["time"][ind]
             else:
