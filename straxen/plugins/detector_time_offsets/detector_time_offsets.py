@@ -18,7 +18,7 @@ class DetectorSynchronization(strax.Plugin):
     data_kind = "detector_time_offsets"
 
     tpc_internal_delay = straxen.URLConfig(
-        default={"0": 4917, "020380": 10137},
+        default={"0": 4917, "020380": 10137, "043040": 0},
         type=dict,
         track=True,
         help="Internal delay between aqmon and regular TPC channels ins [ns]",
@@ -30,7 +30,7 @@ class DetectorSynchronization(strax.Plugin):
     epsilon_offset = straxen.URLConfig(
         default=76, type=int, track=True, help="Measured missing offset for nveto in [ns]"
     )
-    sync_max_delay = strax.Config(default=11e3, help="max delay DetectorSynchronization [ns]")
+    sync_max_delay = straxen.URLConfig(default=11e3, help="max delay DetectorSynchronization [ns]")
     sync_expected_min_clock_distance = straxen.URLConfig(
         default=9.9e9, help="min clock distance DetectorSynchronization [ns]"
     )
@@ -60,20 +60,20 @@ class DetectorSynchronization(strax.Plugin):
             _mask_tpc = rr_tpc["channel"] == AqmonChannels.GPS_SYNC_AM
             extra_offset = self.get_delay()
 
-        hits_tpc = self.get_nim_edge(rr_tpc[_mask_tpc], self.config["adc_threshold_nim_signal"])
+        hits_tpc = self.get_nim_edge(rr_tpc[_mask_tpc], self.adc_threshold_nim_signal)
         hits_tpc["time"] += extra_offset
 
         _mask_mveto = rr_mv["channel"] == AqmonChannels.GPS_SYNC_MV
-        hits_mv = self.get_nim_edge(rr_mv[_mask_mveto], self.config["adc_threshold_nim_signal"])
+        hits_mv = self.get_nim_edge(rr_mv[_mask_mveto], self.adc_threshold_nim_signal)
 
         _mask_nveto = rr_nv["channel"] == AqmonChannels.GPS_SYNC_NV
-        hits_nv = self.get_nim_edge(rr_nv[_mask_nveto], self.config["adc_threshold_nim_signal"])
+        hits_nv = self.get_nim_edge(rr_nv[_mask_nveto], self.adc_threshold_nim_signal)
         nveto_extra_offset = 0
         if not len(hits_nv):
             # During SR0 sync signal was not recorded properly for the
             # neutron-veto, hence take waveform itself as "hits".
             _mask_nveto &= rr_nv["record_i"] == 0
-            nveto_extra_offset = self.config["epsilon_offset"]
+            nveto_extra_offset = self.epsilon_offset
             hits_nv = rr_nv[_mask_nveto]
         hits_nv["time"] += nveto_extra_offset
 
@@ -91,7 +91,7 @@ class DetectorSynchronization(strax.Plugin):
 
     def get_delay(self):
         delay = 0
-        for run_id, _delay in self.config["tpc_internal_delay"].items():
+        for run_id, _delay in self.tpc_internal_delay.items():
             if int(self.run_id) >= int(run_id):
                 delay = _delay
         return delay
