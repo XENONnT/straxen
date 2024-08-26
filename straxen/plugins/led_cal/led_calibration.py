@@ -101,7 +101,7 @@ class LEDCalibration(strax.Plugin):
     )
 
     hit_min_height_over_noise = straxen.URLConfig(
-        default=4,
+        default=6,
         infer_type=False,
         help=(
             "Minimum hit amplitude in numbers of baseline_rms above baseline."
