@@ -118,6 +118,7 @@ class LEDCalibration(strax.Plugin):
         ("time", np.int64, "Start time of the interval (ns since unix epoch)"),
         ("dt", np.int16, "Time resolution in ns"),
         ("length", np.int32, "Length of the interval in samples"),
+        ("hit_position", np.uint8, "Sample index of the hit that defines the window position")
     ]
 
     def compute(self, raw_records):
@@ -151,6 +152,7 @@ class LEDCalibration(strax.Plugin):
 
         area = get_area(records, led_windows, self.area_averaging_length, self.area_averaging_step)
         temp["area"] = area["area"]
+        temp["hit_position"] = led_windows[:, 0] - self.led_hit_extension[0]
         return temp
 
 
