@@ -1,19 +1,20 @@
 import numpy as np
 import strax
 import straxen
+from straxen.plugins.peaks._peak_positions_base import PeakPositionsBaseNT
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsFlow(strax.Plugin):
+class PeakPositionsCNF(PeakPositionsBaseNT):
     """Conditional Normalizing Flow for position reconstruction.
 
     This plugin reconstructs the position of S2 peaks using a conditional normalizing flow model.
     It provides x and y coordinates of the reconstructed position, along with uncertainty contours
     and uncertainty estimates in r and theta. For information on the model, see note_.
 
-    .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2 # noqa: E501
+    .. _note: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:juehang:flow_posrec_proposal_sr2  # noqa: E501
 
     Depends on: 'peaks'
     Provides: 'peak_positions_cnf'
@@ -28,20 +29,12 @@ class PeakPositionsFlow(strax.Plugin):
 
     """
 
+    __version__ = "0.0.3"
     depends_on = "peaks"
     provides = "peak_positions_cnf"
-
-    __version__ = "0.0.3"
-
+    algorithm = "cnf"
     compressor = "zstd"
-    parallel = True  # can set to "process" after #82
-
-    # Configuration options
-    min_reconstruction_area = straxen.URLConfig(
-        help="Skip reconstruction if area (PE) is less than this",
-        default=10,
-        infer_type=False,
-    )
+    parallel = True
 
     n_poly = straxen.URLConfig(
         default=16,
@@ -61,10 +54,6 @@ class PeakPositionsFlow(strax.Plugin):
         help="Scaling parameter for log area",
     )
 
-    n_top_pmts = straxen.URLConfig(
-        default=straxen.n_top_pmts, infer_type=False, help="Number of top PMTs"
-    )
-
     pred_function = straxen.URLConfig(
         default=(
             "jax://resource://flow_20240730.tar.gz?"
@@ -72,6 +61,42 @@ class PeakPositionsFlow(strax.Plugin):
         ),
         help="Compiled JAX function",
     )
+
+    def infer_dtype(self):
+        """Define the data type for the output.
+
+        Returns:
+            dtype: Numpy dtype for the output array
+
+        """
+        dtype = [
+            (
+                (
+                    f"Reconstructed {self.algorithm} S2 X position (cm), uncorrected",
+                    f"x_{self.algorithm}",
+                ),
+                np.float32,
+            ),
+            (
+                (
+                    f"Reconstructed {self.algorithm} S2 Y position (cm), uncorrected",
+                    f"y_{self.algorithm}",
+                ),
+                np.float32,
+            ),
+            (
+                ("Position uncertainty contour", f"position_contours_{self.algorithm}"),
+                np.float32,
+                (self.n_poly + 1, 2),
+            ),
+            (("Position uncertainty in r (cm)", f"r_uncertainty_{self.algorithm}"), np.float32),
+            (
+                ("Position uncertainty in theta (rad)", f"theta_uncertainty_{self.algorithm}"),
+                np.float32,
+            ),
+        ]
+        dtype += strax.time_fields
+        return dtype
 
     def vectorized_prediction_chunk(self, flow_condition, N_chunk_max=4096):
         """Compute predictions for a chunk of data.
@@ -126,27 +151,6 @@ class PeakPositionsFlow(strax.Plugin):
             contour_list.append(contour)
         return np.concatenate(xy_list, axis=0), np.concatenate(contour_list, axis=0)
 
-    def infer_dtype(self):
-        """Define the data type for the output.
-
-        Returns:
-            dtype: Numpy dtype for the output array
-
-        """
-        dtype = [
-            (("Reconstructed flow S2 X position (cm), uncorrected", "x_cnf"), np.float32),
-            (("Reconstructed flow S2 Y position (cm), uncorrected", "y_cnf"), np.float32),
-            (
-                ("Position uncertainty contour", "position_contours_cnf"),
-                np.float32,
-                (self.n_poly + 1, 2),
-            ),
-            (("Position uncertainty in r (cm)", "r_uncertainty_cnf"), np.float32),
-            (("Position uncertainty in theta (rad)", "theta_uncertainty_cnf"), np.float32),
-        ]
-        dtype += strax.time_fields
-        return dtype
-
     def compute(self, peaks):
         """Compute the position reconstruction for the given peaks.
 
@@ -162,11 +166,11 @@ class PeakPositionsFlow(strax.Plugin):
         result["time"], result["endtime"] = peaks["time"], strax.endtime(peaks)
 
         # Set default values to NaN
-        result["x_cnf"] *= float("nan")
-        result["y_cnf"] *= float("nan")
-        result["position_contours_cnf"] *= float("nan")
-        result["r_uncertainty_cnf"] *= np.nan
-        result["theta_uncertainty_cnf"] *= np.nan
+        result[f"x_{self.algorithm}"] *= float("nan")
+        result[f"y_{self.algorithm}"] *= float("nan")
+        result[f"position_contours_{self.algorithm}"] *= float("nan")
+        result[f"r_uncertainty_{self.algorithm}"] *= np.nan
+        result[f"theta_uncertainty_{self.algorithm}"] *= np.nan
 
         # Keep large peaks only
         peak_mask = peaks["area"] > self.min_reconstruction_area
@@ -190,9 +194,9 @@ class PeakPositionsFlow(strax.Plugin):
         xy, contours = self.prediction_loop(flow_data)
 
         # Write output to the result array
-        result["x_cnf"][peak_mask] = xy[:, 0]
-        result["y_cnf"][peak_mask] = xy[:, 1]
-        result["position_contours_cnf"][peak_mask] = contours
+        result[f"x_{self.algorithm}"][peak_mask] = xy[:, 0]
+        result[f"y_{self.algorithm}"][peak_mask] = xy[:, 1]
+        result[f"position_contours_{self.algorithm}"][peak_mask] = contours
 
         # Calculate uncertainties in r and theta
         r_array = np.linalg.norm(contours, axis=2)
@@ -205,7 +209,7 @@ class PeakPositionsFlow(strax.Plugin):
         theta_diff = theta_max - theta_min
         theta_diff[theta_diff > np.pi] -= 2 * np.pi
 
-        result["r_uncertainty_cnf"][peak_mask] = (r_max - r_min) / 2
-        result["theta_uncertainty_cnf"][peak_mask] = np.abs(theta_diff) / 2
+        result[f"r_uncertainty_{self.algorithm}"][peak_mask] = (r_max - r_min) / 2
+        result[f"theta_uncertainty_{self.algorithm}"][peak_mask] = np.abs(theta_diff) / 2
 
         return result
