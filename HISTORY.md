@@ -445,7 +445,7 @@ Patch:
 -  Add MV trigger channel to acqmon hits https://github.com/XENONnT/straxen/pull/1035
 
 Notes:
- - only lineage changes for dtypes > `aqmon_hits`  (https://github.com/XENONnT/straxen/pull/1035)
+ - only lineage changes for dtypes > `aqmon_hits` (https://github.com/XENONnT/straxen/pull/1035)
 
 
 Full Changelog:
@@ -1082,7 +1082,7 @@ patches and fixes:
 - Matplotlib event display (#326)
 - Bokeh interactive event display (#330)
 - New tutorials and updated documentation (#322)
-- Scada-interface updates (#321,  #324)
+- Scada-interface updates (#321, #324)
 
 
 0.14.1 / 2021-01-04

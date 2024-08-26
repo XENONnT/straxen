@@ -113,8 +113,8 @@ class InterpolatingMap:
         method='RectBivariateSpline'
 
     The interpolators are called with
-        'positions' :  [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
-        'map_name'  :  key to switch to map interpolator other than the default 'map'
+        'positions': [[x1, y1], [x2, y2], [x3, y3], [x4, y4], ...]
+        'map_name': key to switch to map interpolator other than the default 'map'
 
     """
 
@@ -209,7 +209,7 @@ class InterpolatingMap:
         """Returns the value of the map at the position given by coordinates.
 
         :param positions: array (n_dim) or (n_points, n_dim) of positions
-        :param map_name: Name of the map to use.  Default is 'map'.
+        :param map_name: Name of the map to use. Default is 'map'.
 
         """
         return self.interpolators[map_name](*args)

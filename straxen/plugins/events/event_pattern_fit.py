@@ -508,7 +508,7 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     """Modified poisson distribution with proper normalization for shifted poisson.
 
     mu - expected number of photons per channel
-    areas  - observed areas per channel
+    areas - observed areas per channel
     mean_pe_photon - mean of area responce for one photon
 
     """
@@ -688,7 +688,8 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
             # TODO:
             # binomial_test = binomtest(
-            #     k=round(area_top), n=round(area_tot), p=aft_prob, alternative='two-sided').pvalue
+            #     k=round(area_top), n=round(area_tot), p=aft_prob, alternative="two-sided"
+            # ).pvalue
         else:
             binomial_test = binom_test(area_top, area_tot, aft_prob)
 

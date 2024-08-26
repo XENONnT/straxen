@@ -97,7 +97,7 @@ class GridFsInterface:
     def get_query_config(self, config):
         """Generate identifier to query against. This is just the configs name.
 
-        :param config: str,  name of the file of interest
+        :param config: str, name of the file of interest
         :return: dict, that can be used in queries
 
         """
@@ -106,7 +106,7 @@ class GridFsInterface:
     def document_format(self, config):
         """Format of the document to upload.
 
-        :param config: str,  name of the file of interest
+        :param config: str, name of the file of interest
         :return: dict, that will be used to add the document
 
         """
@@ -121,7 +121,7 @@ class GridFsInterface:
     def config_exists(self, config):
         """Quick check if this config is already saved in the collection.
 
-        :param config: str,  name of the file of interest
+        :param config: str, name of the file of interest
         :return: bool, is this config name stored in the database
 
         """
@@ -203,7 +203,7 @@ class MongoUploader(GridFsInterface):
 
         :param file_path_dict: dict, dictionary of paths to upload. The
             dict should be of the format:
-            file_path_dict = {'config_name':  '/the_config_path', ...}
+            file_path_dict = {'config_name': '/the_config_path', ...}
 
         :return: None
 
