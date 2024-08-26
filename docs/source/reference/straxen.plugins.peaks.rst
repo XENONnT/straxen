@@ -68,6 +68,14 @@ straxen.plugins.peaks.peak\_positions module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.peaks.peak\_positions\_flow module
+-------------------------------------------------
+
+.. automodule:: straxen.plugins.peaks.peak_positions_flow
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.peaks.peak\_positions\_cnn module
 -------------------------------------------------
 
