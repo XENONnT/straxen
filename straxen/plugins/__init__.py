@@ -89,6 +89,3 @@ from .ref_mon_nv import *
 
 from . import gps_syncing
 from .gps_syncing import *
-
-from . import detector_time_offsets
-from .detector_time_offsets import *
