@@ -45,14 +45,16 @@ class nVETOEventWaveform(strax.Plugin):
 
     def compute(self, events_nv, records_nv, start, end):
         events = events_nv
+        events_waveform = np.zeros(len(events), self.dtype)
 
         # Compute shape like properties:
         _tmp_events = np.zeros(len(events_nv), dtype=_temp_event_data_type())
         strax.copy_to_buffer(events_nv, _tmp_events, "_temp_nv_evts_wf_cpy")
+        _tmp_events["length"] = (events_nv["endtime"] - events_nv["time"]) // 2
+        _tmp_events["dt"] = 2
+        print(records_nv)
         strax.simple_summed_waveform(records_nv, _tmp_events, self.to_pe)
         strax.compute_widths(_tmp_events)
-
-        events_waveform = np.zeros(len(events), self.dtype)
 
         strax.copy_to_buffer(_tmp_events, events_waveform, "_temp_nv_evts_cpy")
         events_waveform["range_50p_area"] = _tmp_events["width"][:, 5]
