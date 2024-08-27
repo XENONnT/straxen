@@ -15,6 +15,6 @@ Frozen installation
 --------------------
 Instead of step 3, you may want to do try a 'frozen install' with `pip install ./straxen` (without the `-e`). This means the straxen code gets copied to a different place. Edits to the source files will only take effect after you run `pip install straxen` again.
 
-Currently you are likely to encounter problems loading the test data in this mode --  I've been too lazy to update the manifest accordingly.
+Currently you are likely to encounter problems loading the test data in this mode -- I've been too lazy to update the manifest accordingly.
 
 Moreover, you must be extra careful if you are outside midway: step 2 really has to be done *before* step 3, not afterwards.

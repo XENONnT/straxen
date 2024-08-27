@@ -108,6 +108,14 @@ straxen.plugins.events.event\_s1\_positions\_cnn module
    :undoc-members:
    :show-inheritance:
 
+straxen.plugins.events.event\_s2\_positions\_flow module
+-------------------------------------------------------
+
+.. automodule:: straxen.plugins.events.event_s2_positions_flow
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 straxen.plugins.events.event\_s2\_positions\_cnn module
 -------------------------------------------------------
 
