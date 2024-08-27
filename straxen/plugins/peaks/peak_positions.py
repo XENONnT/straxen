@@ -1,7 +1,7 @@
+import numpy as np
 import strax
 import straxen
 
-import numpy as np
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 export, __all__ = strax.exporter()
@@ -22,7 +22,12 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
     """
 
     provides = "peak_positions"
-    depends_on = ("peak_positions_cnn", "peak_positions_mlp", "peak_positions_gcn")
+    depends_on = (
+        "peak_positions_cnn",
+        "peak_positions_mlp",
+        "peak_positions_gcn",
+        "peak_positions_cnf",
+    )
     save_when = strax.SaveWhen.NEVER
     __version__ = "0.0.0"
 

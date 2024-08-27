@@ -448,7 +448,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     kernel = np.zeros(nfold)
     kernel[: (nfold - 1)] = 1  # weight last seen by t_diff must be zero since
     # starting time point e.g. n=4:
-    # [0,1,1,1] --> [dt1, dt2, dt3, dt4, ..., dtn]  --> 0*dt1 + dt2 + dt3 + dt4
+    # [0,1,1,1] --> [dt1, dt2, dt3, dt4, ..., dtn] --> 0*dt1 + dt2 + dt3 + dt4
 
     t_cum = convolve1d(t_diff, kernel, mode="constant", origin=(nfold - 1) // 2)
     # Do not have to check the last n-1 events since by definition

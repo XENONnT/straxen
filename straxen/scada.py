@@ -631,10 +631,10 @@ def convert_time_zone(df, tz):
     :return: pandas.DataFrame with converted time index.
 
     Notes:
-        1. ) The input pandas.DataFrame must be indexed via datetime
+        1.) The input pandas.DataFrame must be indexed via datetime
         objects which are timezone aware.
 
-        2.)  You can find a complete list of available timezones via:
+        2.) You can find a complete list of available timezones via:
         ```
         import pytz
         pytz.all_timezones

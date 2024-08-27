@@ -20,7 +20,7 @@ class EventS1PositionBase(strax.Plugin):
 
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True  # can set to "process" after #82
+    parallel = True
 
     min_s1_area_s1_posrec = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this",
