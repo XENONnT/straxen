@@ -12,9 +12,9 @@ export, __all__ = strax.exporter()
 class nVETOEvents(strax.OverlapWindowPlugin):
     """Plugin which computes the boundaries of veto events."""
 
-    __version__ = "0.0.4"
+    __version__ = "0.1.0"
 
-    depends_on = "hitlets_nv", "records_nv"
+    depends_on = "hitlets_nv"
     provides = "events_nv"
     data_kind = "events_nv"
     compressor = "zstd"
@@ -35,12 +35,6 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         help="Minimum number of fully confined hitlets to define an event.",
     )
 
-    gain_model_nv = straxen.URLConfig(
-        default="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id",
-        infer_type=False,
-        help="PMT gain model. Specify as (model_type, model_config, nT = True)",
-    )
-
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
@@ -56,17 +50,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     def get_window_size(self):
         return self.event_left_extension_nv + self.event_resolving_time_nv + 1
 
-    def setup(self):
-        self.channel_range = self.channel_map["nveto"]
-        self.n_channel = (self.channel_range[1] - self.channel_range[0]) + 1
-
-        to_pe = self.gain_model_nv
-
-        # Create to_pe array of size max channel:
-        self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
-        self.to_pe[self.channel_range[0] :] = to_pe[:]
-
-    def compute(self, hitlets_nv, records_nv, start, end):
+    def compute(self, hitlets_nv, start, end):
         events, hitlets_ids_in_event = find_veto_events(
             hitlets_nv,
             self.event_min_hits_nv,
@@ -92,10 +76,9 @@ class nVETOEvents(strax.OverlapWindowPlugin):
 def veto_event_dtype(
     name_event_number: str = "event_number_nv",
     n_pmts: int = 120,
-    n_samples_wf: int = 200,
 ) -> list:
     dtype = []
-    dtype += strax.time_dt_fields  # because mutable
+    dtype += strax.time_fields  # because mutable
     dtype += [
         (("Veto event number in this dataset", name_event_number), np.int64),
         (("Total area of all hitlets in event [pe]", "area"), np.float32),

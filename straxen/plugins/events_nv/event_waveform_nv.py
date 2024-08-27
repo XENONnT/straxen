@@ -84,8 +84,8 @@ def _temp_event_data_type(
 ) -> list:
     """Temp.
 
-    data type which adds field required to use some of the functions used to build the summed
-    waveform for the TPC.
+    data type which adds field required to use some of the functions used to compute the shape of
+    the summed waveform for the TPC.
 
     """
     dtype = veto_event_waveform_dtype()
