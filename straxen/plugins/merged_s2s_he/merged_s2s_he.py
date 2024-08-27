@@ -16,9 +16,6 @@ class MergedS2sHighEnergy(MergedS2s):
     __version__ = "0.1.0"
     child_plugin = True
 
-    # We cannot, we only have the top array, so should not.
-    sum_waveform_top_array = False
-
     @property
     def n_tpc_pmts(self):
         # Have to hack the url config to avoid nasty numba errors for the main MergedS2s plugin
