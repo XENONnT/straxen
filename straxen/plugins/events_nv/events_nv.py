@@ -238,5 +238,4 @@ def _make_event(hitlets: np.ndarray, hitlet_ids: np.ndarray, res: np.ndarray):
         hit = hitlets[ids[0] : ids[1]]
         res[ei]["time"] = hit[0]["time"]
         endtime = np.max(strax.endtime(hit))
-        res[ei]["length"] = (endtime - res[ei]["time"]) // 2
-        res[ei]["dt"] = 2
+        res[ei]["endtime"] = endtime
