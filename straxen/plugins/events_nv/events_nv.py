@@ -25,11 +25,11 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     )
 
     event_resolving_time_nv = straxen.URLConfig(
-        default=200, track=True, type=int, help="Resolving time for window coincidence [ns]."
+        default=300, track=True, type=int, help="Resolving time for window coincidence [ns]."
     )
 
     event_min_hits_nv = straxen.URLConfig(
-        default=3,
+        default=4,
         track=True,
         type=int,
         help="Minimum number of fully confined hitlets to define an event.",

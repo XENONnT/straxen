@@ -41,7 +41,7 @@ class nVETORecorder(strax.Plugin):
     data_kind = {key: key for key in provides}
 
     coincidence_level_recorder_nv = straxen.URLConfig(
-        track=False, type=int, default=3, help="Required coincidence level."
+        track=False, type=int, default=4, help="Required coincidence level."
     )
 
     pre_trigger_time_nv = straxen.URLConfig(
@@ -49,7 +49,7 @@ class nVETORecorder(strax.Plugin):
     )
 
     resolving_time_recorder_nv = straxen.URLConfig(
-        track=False, type=int, default=600, help="Resolving time of the coincidence in ns."
+        track=False, type=int, default=300, help="Resolving time of the coincidence in ns."
     )
 
     baseline_software_trigger_samples_nv = straxen.URLConfig(
