@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 class nVETOEvents(strax.OverlapWindowPlugin):
     """Plugin which computes the boundaries of veto events."""
 
-    __version__ = "0.0.3"
+    __version__ = "0.1.0"
 
     depends_on = "hitlets_nv"
     provides = "events_nv"
@@ -60,6 +60,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
             n_channel=self.n_channel,
         )
 
+        # Compute basic properties:
         if len(hitlets_ids_in_event):
             compute_nveto_event_properties(
                 events, hitlets_nv, hitlets_ids_in_event, start_channel=self.channel_range[0]
@@ -69,16 +70,13 @@ class nVETOEvents(strax.OverlapWindowPlugin):
         n_events = len(events)
         events[self.name_event_number] = np.arange(n_events) + self.events_seen
         self.events_seen += n_events
-
-        # Don't extend beyond the chunk boundaries
-        # This will often happen for events near the invalid boundary of the
-        # overlap processing (which should be thrown away)
-        events["time"] = np.clip(events["time"], start, end)
-        events["endtime"] = np.clip(events["endtime"], start, end)
         return events
 
 
-def veto_event_dtype(name_event_number: str = "event_number_nv", n_pmts: int = 120) -> list:
+def veto_event_dtype(
+    name_event_number: str = "event_number_nv",
+    n_pmts: int = 120,
+) -> list:
     dtype = []
     dtype += strax.time_fields  # because mutable
     dtype += [
@@ -95,6 +93,14 @@ def veto_event_dtype(name_event_number: str = "event_number_nv", n_pmts: int = 1
             np.float32,
         ),
         (("Weighted variance of time [ns]", "center_time_spread"), np.float32),
+        (
+            ("Minimal amplitude-to-amplitude gap between neighboring hitlets [ns]", "min_gap"),
+            np.int8,
+        ),
+        (
+            ("Maximal amplitude-to-amplitude gap between neighboring hitlets [ns]", "max_gap"),
+            np.int8,
+        ),
     ]
     return dtype
 
@@ -116,17 +122,22 @@ def compute_nveto_event_properties(
 
     """
     for e, (s_i, e_i) in zip(events, contained_hitlets_ids):
-        hitlet = hitlets[s_i:e_i]
-        event_area = np.sum(hitlet["area"])
+        hitlets_in_event = hitlets[s_i:e_i]
+        event_area = np.sum(hitlets_in_event["area"])
         e["area"] = event_area
-        e["n_hits"] = len(hitlet)
-        e["n_contributing_pmt"] = len(np.unique(hitlet["channel"]))
+        e["n_hits"] = len(hitlets_in_event)
+        e["n_contributing_pmt"] = len(np.unique(hitlets_in_event["channel"]))
 
-        t = hitlet["time"] - hitlet[0]["time"]
+        t = hitlets_in_event["time"] - hitlets_in_event[0]["time"]
+
+        dt = np.diff(hitlets_in_event["time"] + hitlets_in_event["time_amplitude"])
+        e["min_gap"] = np.min(dt)
+        e["max_gap"] = np.max(dt)
+
         if event_area:
-            e["center_time"] = np.sum(t * hitlet["area"]) / event_area
+            e["center_time"] = np.sum(t * hitlets_in_event["area"]) / event_area
             if e["n_hits"] > 1 and e["center_time"]:
-                w = hitlet["area"] / e["area"]  # normalized weights
+                w = hitlets_in_event["area"] / e["area"]  # normalized weights
                 # Definition of variance
                 e["center_time_spread"] = np.sqrt(
                     np.sum(w * np.power(t - e["center_time"], 2)) / np.sum(w)
@@ -135,7 +146,7 @@ def compute_nveto_event_properties(
                 e["center_time_spread"] = np.inf
 
         # Compute per channel properties:
-        for hit in hitlet:
+        for hit in hitlets_in_event:
             ch = hit["channel"] - start_channel
             e["area_per_channel"][ch] += hit["area"]
 
@@ -226,4 +237,5 @@ def _make_event(hitlets: np.ndarray, hitlet_ids: np.ndarray, res: np.ndarray):
     for ei, ids in enumerate(hitlet_ids):
         hit = hitlets[ids[0] : ids[1]]
         res[ei]["time"] = hit[0]["time"]
-        res[ei]["endtime"] = np.max(strax.endtime(hit))
+        endtime = np.max(strax.endtime(hit))
+        res[ei]["endtime"] = endtime
