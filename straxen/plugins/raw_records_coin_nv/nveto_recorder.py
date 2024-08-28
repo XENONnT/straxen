@@ -63,7 +63,7 @@ class nVETORecorder(strax.Plugin):
         infer_type=False,
         default=15,
         track=False,
-        help=("Minimum hit amplitude in ADC counts above baseline " "for the software trigger. "),
+        help=("Minimum hit amplitude in ADC counts above baseline for the software trigger."),
     )
 
     channel_map = straxen.URLConfig(
