@@ -22,9 +22,10 @@ def test_nveto_recorder_no_trigger_monitoring(self: PluginTestCase):
     st = self.st.new_context()
     st.set_config(dict(keep_n_chunks_for_monitoring=1))
     st.make(self.run_id, "records_nv")
-    meta_raw = st.get_meta(self.run_id, "raw_records_nv")
+    meta_raw = st.get_metadata(self.run_id, "raw_records_nv")
     chunks = meta_raw["chunks"]
-    start, end = chunks[0][["start", "end"]]
+    start = chunks[0]["start"]
+    end = chunks[0]["end"]
     rr = st.get_array(self.run_id, "raw_records_nv", time_range=(start, end))
     rrc = st.get_array(self.run_id, "raw_records_coin_nv", time_range=(start, end))
     assert np.all(
