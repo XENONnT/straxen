@@ -150,6 +150,7 @@ def pax_to_records(
     ),
 )
 class RecordsFromPax(strax.Plugin):
+    __version__ = "0.0.0"
     provides = "raw_records"
     data_kind = "raw_records"
     compressor = "zstd"
