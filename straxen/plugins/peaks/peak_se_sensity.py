@@ -15,8 +15,8 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
 
     """
 
-    __version__ = "0.2.0"
-    depends_on = ("peak_basics", "peak_positions")
+    __version__ = "0.3.0"
+    depends_on = ("peak_basics", "peak_positions", "cut_time_veto_peak")
     provides = "peak_se_density"
     save_when = strax.SaveWhen.EXPLICIT
 
@@ -58,6 +58,7 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
         mask = peaks["type"] == 2
         mask &= (peaks["area"] > 10) & (peaks["area"] < 80)
         mask &= (peaks["range_50p_area"] > 80) & (peaks["range_50p_area"] < 700)
+        mask &= peaks["cut_time_veto_peak"]
         return mask
 
     @staticmethod
