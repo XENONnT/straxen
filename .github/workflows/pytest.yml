@@ -61,6 +61,7 @@ jobs:
         run: |
           pip install pytest hypothesis coverage coveralls
           pip install .[tests] --force-reinstall
+          pip install git+https://github.com/AxFoundation/strax.git
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.11.0
