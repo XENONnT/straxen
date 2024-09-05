@@ -1,11 +1,3 @@
-2.2.5 / 2024-08-17
--------------------
-* Generate only one instance for `MongoDownloader` by @dachengx in https://github.com/XENONnT/straxen/pull/1398
-* Load whole run for `VetoIntervals` regardless the run length by @dachengx in https://github.com/XENONnT/straxen/pull/1399
-
-**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.4...v2.2.5
-
-
 2.2.4 / 2024-07-01
 -------------------
 * Parse USERDISK base on hostname in RunDB by @dachengx in https://github.com/XENONnT/straxen/pull/1384

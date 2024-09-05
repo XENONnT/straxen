@@ -173,18 +173,6 @@ def set_state():
     update_thread.start()
 
 
-def main():
-    load_context(args.context, extra_dirs=args.extra_dirs)
-    set_state()
-
-    while True:
-        try:
-            hug.API(__name__).http.serve(port=args.port)
-        except pymongo.errors.NotMasterError:
-            print("Ran into the infamous pymongo.errors.NotMasterError. Sleep for a sec")
-            time.sleep(60)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Start a microservice to return strax data as json"
@@ -201,4 +189,12 @@ if __name__ == "__main__":
     max_load_mb = args.max_load_mb
     max_return_mb = args.max_return_mb
 
-    main()
+    load_context(args.context, extra_dirs=args.extra_dirs)
+    set_state()
+
+    while True:
+        try:
+            hug.API(__name__).http.serve(port=args.port)
+        except pymongo.errors.NotMasterError:
+            print("Ran into the infamous pymongo.errors.NotMasterError. Sleep for a sec")
+            time.sleep(60)
