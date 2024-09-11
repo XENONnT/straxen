@@ -6,9 +6,8 @@ import straxen
 
 
 class PeakSEDensity(strax.OverlapWindowPlugin):
-    """
-    This plugin is designed to calculate a score 
-    based on the position relations to single electrons.
+    """This plugin is designed to calculate a score based on the position relations to single
+    electrons.
 
     References:
         * v0.2.0: xenon:xenonnt:ac:sr1:hotspot_veto_cut:wimp_roi
@@ -23,7 +22,10 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
 
     dtype = strax.time_fields + [
         (("Neiboring single-electron rate [Hz/cm^2]", "se_density"), np.float32),
-        (("Sum of the PDF of the SE position nearby probability.", "se_nearby_probability"), np.float32),
+        (
+            ("Sum of the PDF of the SE position nearby probability.", "se_nearby_probability"),
+            np.float32,
+        ),
     ]
 
     se_time_search_window_left = straxen.URLConfig(
@@ -46,13 +48,13 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
     )
 
     para_a = straxen.URLConfig(
-        default={"sr1_phase0": 16.43, "sr1_phase1": 13.34}, 
-        help="Parameter A in the position resolution function."
+        default={"sr1_phase0": 16.43, "sr1_phase1": 13.34},
+        help="Parameter A in the position resolution function.",
     )
-    
+
     para_b = straxen.URLConfig(
-        default={"sr1_phase0": 0.04, "sr1_phase1": 0.08}, 
-        help="Parameter B in the position resolution function."
+        default={"sr1_phase0": 0.04, "sr1_phase1": 0.08},
+        help="Parameter B in the position resolution function.",
     )
 
     def get_window_size(self):
@@ -97,7 +99,6 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
             mask_in_circle = radius < distance_range
             se_density[index] = np.sum(mask_in_circle) / normalize_factor
         return se_density
-    
 
     @staticmethod
     @njit
@@ -106,15 +107,17 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
         for index, peak_i in enumerate(peaks):
             indices = se_indices[index]
             se_in_time = se_peaks[indices[0] : indices[1]]
-            peak_area_top = peak_i['area'] * (peak_i['area_fraction_top']+ eps)
-            se_area_top = se_in_time['area'] * (se_in_time['area_fraction_top'] + eps)
-            peak_position_resolution = para_a*1/np.sqrt(peak_area_top) + para_b
-            se_position_resolution = para_a*1/np.sqrt(se_area_top) + para_b
-            combined_position_resolution = np.sqrt(se_position_resolution**2 + peak_position_resolution**2)
-            d_squre = (se_in_time['x'] - peak_i['x'])**2 + (se_in_time['y'] - peak_i['y'])**2
-            constant = 1/(2*np.pi*combined_position_resolution**2)
-            exponent = np.exp(-1/2*(d_squre/combined_position_resolution**2))
-            _se_nearby_prob = constant*exponent
+            peak_area_top = peak_i["area"] * (peak_i["area_fraction_top"] + eps)
+            se_area_top = se_in_time["area"] * (se_in_time["area_fraction_top"] + eps)
+            peak_position_resolution = para_a * 1 / np.sqrt(peak_area_top) + para_b
+            se_position_resolution = para_a * 1 / np.sqrt(se_area_top) + para_b
+            combined_position_resolution = np.sqrt(
+                se_position_resolution**2 + peak_position_resolution**2
+            )
+            d_squre = (se_in_time["x"] - peak_i["x"]) ** 2 + (se_in_time["y"] - peak_i["y"]) ** 2
+            constant = 1 / (2 * np.pi * combined_position_resolution**2)
+            exponent = np.exp(-1 / 2 * (d_squre / combined_position_resolution**2))
+            _se_nearby_prob = constant * exponent
             se_nearby_probability[index] = np.sum(_se_nearby_prob)
         return se_nearby_probability
 
@@ -145,8 +148,9 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
             _peaks,
             se_peaks,
             split_result,
-            self.para_a[self.sr_phase], self.para_b[self.sr_phase], 
-            eps
+            self.para_a[self.sr_phase],
+            self.para_b[self.sr_phase],
+            eps,
         )
         return _se_density, _se_nearby_probability
 
@@ -160,12 +164,15 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
         se_nearby_probability = np.zeros(len(peaks))
 
         # calculate SE density
-        _se_density,  _se_nearby_probability = self.compute_se_density(peaks, _peaks)
+        _se_density, _se_nearby_probability = self.compute_se_density(peaks, _peaks)
 
         # sort back to original order
         se_density[argsort] = _se_density
         se_nearby_probability[argsort] = _se_nearby_probability
 
-        return dict(time=peaks["time"], endtime=strax.endtime(peaks), 
-                    se_density=se_density,
-                    se_nearby_probability=se_nearby_probability)
+        return dict(
+            time=peaks["time"],
+            endtime=strax.endtime(peaks),
+            se_density=se_density,
+            se_nearby_probability=se_nearby_probability,
+        )
