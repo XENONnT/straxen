@@ -1,10 +1,10 @@
-#!/usr/bin/env python
 """Small utility to print versions of software.
 
 Example:
     straxen_print_versions strax straxen cutax wfsim pema
 
 """
+
 import argparse
 
 

@@ -1,15 +1,15 @@
-#!/usr/bin/env python
+import os
 import argparse
 import pymongo
 import hug
-import strax
-import straxen
-import os
 import socket
 from datetime import datetime, timedelta
 import pytz
 import time
 import threading
+
+import strax
+import straxen
 
 st: strax.Context
 max_load_mb = 1000
