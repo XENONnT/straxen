@@ -90,8 +90,16 @@ class LEDCalibration(strax.Plugin):
         ),
     )
 
+    default_window_offset = straxen.URLConfig(
+        default=-3,
+        infer_type=False,
+        help=(
+            "The offset between the mean of all hits found in a record and the default windows"
+            "position."
+        ),
+    )
     noise_window = straxen.URLConfig(
-        default=(10, 48), infer_type=False, help="Window (samples) to analyse the noise"
+        default=(10, 50), infer_type=False, help="Window (samples) to analyse the noise"
     )
 
     channel_list = straxen.URLConfig(
@@ -257,7 +265,7 @@ def get_led_windows(
     if len(hits) == 0: # This really should not be the case. But in case it is:
         default_hit_position = default_position
     else:
-        default_hit_position = np.mean(hits['left'])
+        default_hit_position = np.mean(hits['left']) + self.default_window_offset
 
     triggered = np.zeros(len(records), dtype=bool)
 
