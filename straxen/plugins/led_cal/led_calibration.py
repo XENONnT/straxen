@@ -154,6 +154,7 @@ class LEDCalibration(strax.Plugin):
             self.hit_min_height_over_noise_led_cal,
             self.led_cal_record_length,
             self.area_averaging_length,
+            self.default_window_offset,
         )
 
         on, off = get_amplitude(records, led_windows, self.noise_window)
@@ -224,6 +225,7 @@ def get_led_windows(
     hit_min_height_over_noise,
     record_length,
     area_averaging_length,
+    default_window_offset
 ):
     """Search for hits in the records, if a hit is found, return an interval around the hit given by
     led_hit_extension. If no hit is found in the record, return the default window.
@@ -265,7 +267,7 @@ def get_led_windows(
     if len(hits) == 0: # This really should not be the case. But in case it is:
         default_hit_position = default_position
     else:
-        default_hit_position = np.mean(hits['left']) + self.default_window_offset
+        default_hit_position = np.mean(hits['left']) + default_window_offset
 
     triggered = np.zeros(len(records), dtype=bool)
 
