@@ -55,7 +55,7 @@ class LEDCalibration(strax.Plugin):
         help="Window (samples) for baseline calculation.",
     )
 
-    default_led_position = straxen.URLConfig(
+    minimum_led_position = straxen.URLConfig(
         default=60,
         infer_type=False,
         help="Default window (samples) to integrate and get the maximum amplitude \
@@ -94,7 +94,7 @@ class LEDCalibration(strax.Plugin):
         default=-3,
         infer_type=False,
         help=(
-            "The offset between the mean of all hits found in a record and the default windows"
+            "Offset between the mean of all hits found in a record and the default windows"
             "position."
         ),
     )
@@ -108,7 +108,7 @@ class LEDCalibration(strax.Plugin):
         help="List of PMTs. Defalt value: all the PMTs",
     )
 
-    hit_min_height_over_noise_led_cal = straxen.URLConfig(
+    led_cal_hit_min_height_over_noise = straxen.URLConfig(
         default=6,
         infer_type=False,
         help=(
@@ -149,9 +149,9 @@ class LEDCalibration(strax.Plugin):
 
         led_windows, triggered = get_led_windows(
             records,
-            self.default_led_position,
+            self.minimum_led_position,
             self.led_hit_extension,
-            self.hit_min_height_over_noise_led_cal,
+            self.led_cal_hit_min_height_over_noise,
             self.led_cal_record_length,
             self.area_averaging_length,
             self.default_window_offset,
@@ -220,7 +220,7 @@ def get_records(raw_records, baseline_window, led_cal_record_length):
 
 def get_led_windows(
     records,
-    default_position,
+    minimum_led_position,
     led_hit_extension,
     hit_min_height_over_noise,
     record_length,
@@ -231,8 +231,8 @@ def get_led_windows(
     led_hit_extension. If no hit is found in the record, return the default window.
 
     :param records: Array of the records to search for LED hits.
-    :param default_window: Default window to use if no LED hit is found given as a tuple (start,
-        end)
+    :param minimum_led_position: The minimum position of the LED hits. Hits before this sample are
+        ignored.
     :param led_hit_extension: The integration window around the first hit found to use. A tuple of
         form (samples_before, samples_after) the first LED hit.
     :param hit_min_amplitude: Minimum amplitude of the signal to be considered a hit.
@@ -251,7 +251,7 @@ def get_led_windows(
         min_height_over_noise=hit_min_height_over_noise,
     )
 
-    hits = hits[hits['left'] >= default_position]
+    hits = hits[hits['left'] >= minimum_led_position]
     # Check if the records are sorted properly by 'record_i' first and 'time' second and sort them
     # if they are not
     record_i = hits["record_i"]
@@ -265,7 +265,7 @@ def get_led_windows(
         hits.sort(order=["record_i", "time"])
 
     if len(hits) == 0: # This really should not be the case. But in case it is:
-        default_hit_position = default_position
+        default_hit_position = minimum_led_position
     else:
         default_hit_position = np.mean(hits['left']) + default_window_offset
 
