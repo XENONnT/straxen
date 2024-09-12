@@ -118,6 +118,7 @@ class LEDCalibration(strax.Plugin):
         (("Start time of the interval (ns since unix epoch)", "time"), np.int64),
         (("Time resolution in ns", "dt"), np.int16),
         (("Length of the interval in samples", "length"), np.int32),
+        (("Whether there was a hit found in the record", "triggered"), bool),
         (("Sample index of the hit that defines the window position", "hit_position"), np.uint8),
         (("Window used for integration", "integration_window"), np.uint8, (2,))
     ]
@@ -138,7 +139,7 @@ class LEDCalibration(strax.Plugin):
         temp = np.zeros(len(records), dtype=self.dtype)
         strax.copy_to_buffer(records, temp, "_recs_to_temp_led")
 
-        led_windows = get_led_windows(
+        led_windows, triggered = get_led_windows(
             records,
             self.default_led_position,
             self.led_hit_extension,
@@ -154,6 +155,7 @@ class LEDCalibration(strax.Plugin):
         area = get_area(records, led_windows, self.area_averaging_length, self.area_averaging_step)
         temp["area"] = area["area"]
 
+        temp['triggered'] = triggered
         temp["hit_position"] = led_windows[:, 0] - self.led_hit_extension[0]
         temp['integration_window'] = led_windows#.astype(np.uint8)
         return temp
@@ -240,7 +242,6 @@ def get_led_windows(
     )
 
     hits = hits[hits['left'] >= default_position]
-    
     # Check if the records are sorted properly by 'record_i' first and 'time' second and sort them
     # if they are not
     record_i = hits["record_i"]
@@ -258,15 +259,17 @@ def get_led_windows(
     else:
         default_hit_position = np.mean(hits['left'])
 
+    triggered = np.zeros(len(records), dtype=bool)
+
     default_windows = np.tile(default_hit_position + np.array(led_hit_extension), (len(records), 1))
     return _get_led_windows(
-        hits, default_windows, led_hit_extension, record_length, area_averaging_length
+        hits, default_windows, led_hit_extension, record_length, area_averaging_length, triggered
     )
 
 
 @numba.jit(nopython=True)
 def _get_led_windows(
-    hits, default_windows, led_hit_extension, record_length, area_averaging_length
+    hits, default_windows, led_hit_extension, record_length, area_averaging_length, triggered
 ):
     windows = default_windows
     hit_left_max = record_length - area_averaging_length - led_hit_extension[1]
@@ -275,6 +278,8 @@ def _get_led_windows(
     for hit in hits:
         if hit["record_i"] == last:
             continue  # If there are multiple hits in one record, ignore after the first
+        
+        triggered[hit['record_i']] = True
 
         hit_left = hit["left"]
         # Limit the position of the window so it stays inside the record.
@@ -287,7 +292,7 @@ def _get_led_windows(
         windows[hit["record_i"]] = np.array([left, right])
         last = hit["record_i"]
 
-    return windows
+    return windows, triggered
 
 
 _on_off_dtype = np.dtype([("channel", "int16"), ("amplitude", "float32")])
