@@ -56,20 +56,20 @@ class LEDCalibration(strax.Plugin):
     )
 
     default_led_position = straxen.URLConfig(
-        default=70,
+        default=60,
         infer_type=False,
         help="Default window (samples) to integrate and get the maximum amplitude \
             if no hit was found in the record.",
     )
 
     led_hit_extension = straxen.URLConfig(
-        default=(-5, 24),
+        default=(-8, 32),
         infer_type=False,
         help="The extension around the LED hit to integrate.",
     )
 
     area_averaging_length = straxen.URLConfig(
-        default=10,
+        default=8,
         infer_type=False,
         help=(
             "The total length of the averaging window for the area calculation."
