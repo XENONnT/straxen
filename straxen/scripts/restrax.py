@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Restrax: Rechunking live data
 =============================================
@@ -12,6 +11,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
 """
+
 __version__ = "0.3.1"
 
 import argparse
