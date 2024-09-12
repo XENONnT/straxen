@@ -14,11 +14,6 @@ repos:
     hooks:
     -   id: black
         args: [--safe, --line-length=100, --preview]
-    -   id: black
-        types_or: [file]
-        files: ^bin/
-        args: [--safe, --line-length=100, --preview]
-        language_version: python3
     -   id: black-jupyter
         types_or: [file]
         files: \.ipynb$

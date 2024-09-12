@@ -1,5 +1,5 @@
-#!/usr/bin/env python
 """Process a single run with straxen."""
+
 import argparse
 import datetime
 import logging
@@ -186,7 +186,7 @@ def setup_context(args):
     return st
 
 
-def main(args):
+def run(args):
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
         format="%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s",
@@ -346,13 +346,17 @@ def start_alive_thread(log, print_timeout):
     thread.start()
 
 
-if __name__ == "__main__":
+def main():
     args = parse_args()
     if args.profile_ram:
         from memory_profiler import memory_usage
 
-        mem = memory_usage(proc=(main, [args], dict()))
+        mem = memory_usage(proc=(run, (args,)))
         print(f"Memory profiler says peak RAM usage was: {max(mem):.1f} MB")
         sys.exit()
     else:
-        sys.exit(main(args))
+        sys.exit(run(args))
+
+
+if __name__ == "__main__":
+    main()
