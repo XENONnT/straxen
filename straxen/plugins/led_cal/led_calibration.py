@@ -55,8 +55,8 @@ class LEDCalibration(strax.Plugin):
         help="Window (samples) for baseline calculation.",
     )
 
-    default_led_window = straxen.URLConfig(
-        default=(78, 107),
+    default_led_position = straxen.URLConfig(
+        default=70,
         infer_type=False,
         help="Default window (samples) to integrate and get the maximum amplitude \
             if no hit was found in the record.",
@@ -100,7 +100,7 @@ class LEDCalibration(strax.Plugin):
         help="List of PMTs. Defalt value: all the PMTs",
     )
 
-    hit_min_height_over_noise = straxen.URLConfig(
+    hit_min_height_over_noise_led_cal = straxen.URLConfig(
         default=6,
         infer_type=False,
         help=(
@@ -111,14 +111,15 @@ class LEDCalibration(strax.Plugin):
     )
 
     dtype = [
-        ("area", np.float32, "Area averaged in integration windows"),
-        ("amplitude_led", np.float32, "Amplitude in LED window"),
-        ("amplitude_noise", np.float32, "Amplitude in off LED window"),
-        ("channel", np.int16, "Channel"),
-        ("time", np.int64, "Start time of the interval (ns since unix epoch)"),
-        ("dt", np.int16, "Time resolution in ns"),
-        ("length", np.int32, "Length of the interval in samples"),
-        ("hit_position", np.uint8, "Sample index of the hit that defines the window position")
+        (("Area averaged in integration windows", "area"), np.float32),
+        (("Amplitude in LED window", "amplitude_led"), np.float32),
+        (("Amplitude in off LED window", "amplitude_noise"), np.float32),
+        (("Channel", "channel"), np.int16),
+        (("Start time of the interval (ns since unix epoch)", "time"), np.int64),
+        (("Time resolution in ns", "dt"), np.int16),
+        (("Length of the interval in samples", "length"), np.int32),
+        (("Sample index of the hit that defines the window position", "hit_position"), np.uint8),
+        (("Window used for integration", "integration_window"), np.uint8, (2,))
     ]
 
     def compute(self, raw_records):
@@ -139,9 +140,9 @@ class LEDCalibration(strax.Plugin):
 
         led_windows = get_led_windows(
             records,
-            self.default_led_window,
+            self.default_led_position,
             self.led_hit_extension,
-            self.hit_min_height_over_noise,
+            self.hit_min_height_over_noise_led_cal,
             self.led_cal_record_length,
             self.area_averaging_length,
         )
@@ -152,7 +153,9 @@ class LEDCalibration(strax.Plugin):
 
         area = get_area(records, led_windows, self.area_averaging_length, self.area_averaging_step)
         temp["area"] = area["area"]
+
         temp["hit_position"] = led_windows[:, 0] - self.led_hit_extension[0]
+        temp['integration_window'] = led_windows#.astype(np.uint8)
         return temp
 
 
@@ -206,7 +209,7 @@ def get_records(raw_records, baseline_window, led_cal_record_length):
 
 def get_led_windows(
     records,
-    default_window,
+    default_position,
     led_hit_extension,
     hit_min_height_over_noise,
     record_length,
@@ -235,8 +238,11 @@ def get_led_windows(
         min_amplitude=0,  # Always use the height over noise threshold.
         min_height_over_noise=hit_min_height_over_noise,
     )
-    # Check if the records are sorted properly by 'record_i' first and 'time' second and if them if
-    # they are not
+
+    hits = hits[hits['left'] >= default_position]
+    
+    # Check if the records are sorted properly by 'record_i' first and 'time' second and sort them
+    # if they are not
     record_i = hits["record_i"]
     time = hits["time"]
     if not (
@@ -247,7 +253,12 @@ def get_led_windows(
     ):
         hits.sort(order=["record_i", "time"])
 
-    default_windows = np.tile(default_window, (len(records), 1))
+    if len(hits) == 0: # This really should not be the case. But in case it is:
+        default_hit_position = default_position
+    else:
+        default_hit_position = np.mean(hits['left'])
+
+    default_windows = np.tile(default_hit_position + np.array(led_hit_extension), (len(records), 1))
     return _get_led_windows(
         hits, default_windows, led_hit_extension, record_length, area_averaging_length
     )
@@ -258,7 +269,6 @@ def _get_led_windows(
     hits, default_windows, led_hit_extension, record_length, area_averaging_length
 ):
     windows = default_windows
-    hit_left_min = default_windows[0, 0] - led_hit_extension[0]
     hit_left_max = record_length - area_averaging_length - led_hit_extension[1]
     last = -1
 
@@ -268,8 +278,6 @@ def _get_led_windows(
 
         hit_left = hit["left"]
         # Limit the position of the window so it stays inside the record.
-        if hit_left < hit_left_min:
-            hit_left = hit_left_min
         if hit_left > hit_left_max:
             hit_left = hit_left_max
 
