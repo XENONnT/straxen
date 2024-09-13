@@ -91,14 +91,6 @@ class LEDCalibration(strax.Plugin):
         ),
     )
 
-    default_window_offset = straxen.URLConfig(
-        default=-3,
-        infer_type=False,
-        help=(
-            "Offset between the mean of all hits found in a record and the default windows"
-            "position."
-        ),
-    )
     noise_window = straxen.URLConfig(
         default=(10, 50), infer_type=False, help="Window (samples) to analyse the noise"
     )
