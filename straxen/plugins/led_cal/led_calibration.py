@@ -12,6 +12,7 @@ import strax
 import straxen
 import numba
 import numpy as np
+import scipy.stats as sps
 
 # This makes sure shorthands for only the necessary functions
 # are made available under straxen.[...]
@@ -267,7 +268,7 @@ def get_led_windows(
     if len(hits) == 0: # This really should not be the case. But in case it is:
         default_hit_position = minimum_led_position
     else:
-        default_hit_position = np.mean(hits['left']) + default_window_offset
+        default_hit_position, _ = sps.mode(hits['left'])
 
     triggered = np.zeros(len(records), dtype=bool)
 
