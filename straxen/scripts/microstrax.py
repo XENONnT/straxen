@@ -53,7 +53,7 @@ def get_data(
     max_n: hug.types.number = 1000,
     start: hug.types.float_number = None,
     end: hug.types.float_number = None,
-    selection_str: hug.types.text = None,
+    selection: hug.types.text = None,
 ):
     try:
         st
@@ -116,7 +116,7 @@ def get_data(
             f"take more than {max_load_mb} MB RAM to load."
         )
 
-    x = st.get_array(run_id, target, time_range=time_range, selection_str=selection_str)
+    x = st.get_array(run_id, target, time_range=time_range, selection=selection)
     if max_n:
         x = x[:max_n]
     size_mb = x.nbytes / int(1e6)

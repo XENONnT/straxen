@@ -1,10 +1,11 @@
 # .coveragerc to control coverage.py
 [report]
 omit =
-        ./straxen/storage/rucio_remote.py
-        ./straxen/legacy/plugins_1t/pax_interface.py
-        ./straxen/entry_points.py
-        ./straxen/daq_core.py
+    straxen/storage/rucio_remote.py
+    straxen/legacy/plugins_1t/pax_interface.py
+    straxen/entry_points.py
+    straxen/daq_core.py
+    straxen/scripts/*.py
 
 # Regexes for lines to exclude from consideration
 exclude_lines =

@@ -39,7 +39,7 @@ def mini_analysis(
             known_kwargs = (
                 "time_range seconds_range time_within time_selection "
                 "ignore_time_warning "
-                "selection_str t_reference to_pe config"
+                "selection t_reference to_pe config"
             ).split()
             for k in kwargs:
                 if k not in known_kwargs and k not in parameters:
@@ -76,7 +76,7 @@ def mini_analysis(
                 **{k: kwargs.get(k) for k in ("time_range seconds_range time_within".split())},
             )
             kwargs.setdefault("time_selection", default_time_selection)
-            kwargs.setdefault("selection_str", None)
+            kwargs.setdefault("selection", None)
 
             kwargs["t_reference"], _ = context.estimate_run_start_and_end(run_id, requires)
 
@@ -103,7 +103,7 @@ def mini_analysis(
                         # Already have data, just apply cuts
                         kwargs[dkind] = strax.apply_selection(
                             kwargs[dkind],
-                            selection_str=kwargs["selection_str"],
+                            selection=kwargs["selection"],
                             time_range=kwargs["time_range"],
                             time_selection=kwargs["time_selection"],
                         )
@@ -111,7 +111,7 @@ def mini_analysis(
                         kwargs[dkind] = context.get_array(
                             run_id,
                             dtypes,
-                            selection_str=kwargs["selection_str"],
+                            selection=kwargs["selection"],
                             time_range=kwargs["time_range"],
                             time_selection=kwargs["time_selection"],
                             # Arguments for new context, if needed
