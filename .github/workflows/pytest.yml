@@ -25,7 +25,7 @@ on:
       - development
 
 jobs:
-  test:
+  update:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     env:

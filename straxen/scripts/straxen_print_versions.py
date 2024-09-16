@@ -1,7 +1,7 @@
 """Small utility to print versions of software.
 
 Example:
-    straxen_print_versions strax straxen cutax wfsim pema
+    straxen-print_versions strax straxen cutax wfsim pema
 
 """
 

@@ -10,8 +10,10 @@ if you want to complain please contact:
 from immutabledict import immutabledict
 import strax
 import straxen
+
 import numba
 import numpy as np
+import scipy.stats as sps
 
 # This makes sure shorthands for only the necessary functions
 # are made available under straxen.[...]
@@ -55,21 +57,21 @@ class LEDCalibration(strax.Plugin):
         help="Window (samples) for baseline calculation.",
     )
 
-    default_led_window = straxen.URLConfig(
-        default=(78, 107),
+    minimum_led_position = straxen.URLConfig(
+        default=60,
         infer_type=False,
         help="Default window (samples) to integrate and get the maximum amplitude \
             if no hit was found in the record.",
     )
 
     led_hit_extension = straxen.URLConfig(
-        default=(-5, 24),
+        default=(-8, 32),
         infer_type=False,
         help="The extension around the LED hit to integrate.",
     )
 
     area_averaging_length = straxen.URLConfig(
-        default=10,
+        default=8,
         infer_type=False,
         help=(
             "The total length of the averaging window for the area calculation."
@@ -91,7 +93,7 @@ class LEDCalibration(strax.Plugin):
     )
 
     noise_window = straxen.URLConfig(
-        default=(10, 48), infer_type=False, help="Window (samples) to analyse the noise"
+        default=(10, 50), infer_type=False, help="Window (samples) to analyse the noise"
     )
 
     channel_list = straxen.URLConfig(
@@ -100,8 +102,8 @@ class LEDCalibration(strax.Plugin):
         help="List of PMTs. Defalt value: all the PMTs",
     )
 
-    hit_min_height_over_noise = straxen.URLConfig(
-        default=4,
+    led_cal_hit_min_height_over_noise = straxen.URLConfig(
+        default=6,
         infer_type=False,
         help=(
             "Minimum hit amplitude in numbers of baseline_rms above baseline."
@@ -111,13 +113,16 @@ class LEDCalibration(strax.Plugin):
     )
 
     dtype = [
-        ("area", np.float32, "Area averaged in integration windows"),
-        ("amplitude_led", np.float32, "Amplitude in LED window"),
-        ("amplitude_noise", np.float32, "Amplitude in off LED window"),
-        ("channel", np.int16, "Channel"),
-        ("time", np.int64, "Start time of the interval (ns since unix epoch)"),
-        ("dt", np.int16, "Time resolution in ns"),
-        ("length", np.int32, "Length of the interval in samples"),
+        (("Area averaged in integration windows", "area"), np.float32),
+        (("Amplitude in LED window", "amplitude_led"), np.float32),
+        (("Amplitude in off LED window", "amplitude_noise"), np.float32),
+        (("Channel", "channel"), np.int16),
+        (("Start time of the interval (ns since unix epoch)", "time"), np.int64),
+        (("Time resolution in ns", "dt"), np.int16),
+        (("Length of the interval in samples", "length"), np.int32),
+        (("Whether there was a hit found in the record", "triggered"), bool),
+        (("Sample index of the hit that defines the window position", "hit_position"), np.uint8),
+        (("Window used for integration", "integration_window"), np.uint8, (2,))
     ]
 
     def compute(self, raw_records):
@@ -136,12 +141,12 @@ class LEDCalibration(strax.Plugin):
         temp = np.zeros(len(records), dtype=self.dtype)
         strax.copy_to_buffer(records, temp, "_recs_to_temp_led")
 
-        led_windows = get_led_windows(
+        led_windows, triggered = get_led_windows(
             records,
-            self.default_led_window,
+            self.minimum_led_position,
             self.led_hit_extension,
-            self.hit_min_height_over_noise,
-            self.LED_cal_record_length,
+            self.led_cal_hit_min_height_over_noise,
+            self.led_cal_record_length,
             self.area_averaging_length,
         )
 
@@ -151,6 +156,10 @@ class LEDCalibration(strax.Plugin):
 
         area = get_area(records, led_windows, self.area_averaging_length, self.area_averaging_step)
         temp["area"] = area["area"]
+
+        temp['triggered'] = triggered
+        temp["hit_position"] = led_windows[:, 0] - self.led_hit_extension[0]
+        temp['integration_window'] = led_windows#.astype(np.uint8)
         return temp
 
 
@@ -204,18 +213,18 @@ def get_records(raw_records, baseline_window, LED_cal_record_length):
 
 def get_led_windows(
     records,
-    default_window,
+    minimum_led_position,
     led_hit_extension,
     hit_min_height_over_noise,
     record_length,
-    area_averaging_length,
+    area_averaging_length
 ):
     """Search for hits in the records, if a hit is found, return an interval around the hit given by
     led_hit_extension. If no hit is found in the record, return the default window.
 
     :param records: Array of the records to search for LED hits.
-    :param default_window: Default window to use if no LED hit is found given as a tuple (start,
-        end)
+    :param minimum_led_position: The minimum position of the LED hits. Hits before this sample are
+        ignored.
     :param led_hit_extension: The integration window around the first hit found to use. A tuple of
         form (samples_before, samples_after) the first LED hit.
     :param hit_min_amplitude: Minimum amplitude of the signal to be considered a hit.
@@ -233,8 +242,10 @@ def get_led_windows(
         min_amplitude=0,  # Always use the height over noise threshold.
         min_height_over_noise=hit_min_height_over_noise,
     )
-    # Check if the records are sorted properly by 'record_i' first and 'time' second and if them if
-    # they are not
+
+    hits = hits[hits['left'] >= minimum_led_position]
+    # Check if the records are sorted properly by 'record_i' first and 'time' second and sort them
+    # if they are not
     record_i = hits["record_i"]
     time = hits["time"]
     if not (
@@ -245,29 +256,35 @@ def get_led_windows(
     ):
         hits.sort(order=["record_i", "time"])
 
-    default_windows = np.tile(default_window, (len(records), 1))
+    if len(hits) == 0: # This really should not be the case. But in case it is:
+        default_hit_position = minimum_led_position
+    else:
+        default_hit_position, _ = sps.mode(hits['left'])
+
+    triggered = np.zeros(len(records), dtype=bool)
+
+    default_windows = np.tile(default_hit_position + np.array(led_hit_extension), (len(records), 1))
     return _get_led_windows(
-        hits, default_windows, led_hit_extension, record_length, area_averaging_length
+        hits, default_windows, led_hit_extension, record_length, area_averaging_length, triggered
     )
 
 
 @numba.jit(nopython=True)
 def _get_led_windows(
-    hits, default_windows, led_hit_extension, record_length, area_averaging_length
+    hits, default_windows, led_hit_extension, record_length, area_averaging_length, triggered
 ):
     windows = default_windows
-    hit_left_min = default_windows[0, 0] - led_hit_extension[0]
     hit_left_max = record_length - area_averaging_length - led_hit_extension[1]
     last = -1
 
     for hit in hits:
         if hit["record_i"] == last:
             continue  # If there are multiple hits in one record, ignore after the first
+        
+        triggered[hit['record_i']] = True
 
         hit_left = hit["left"]
         # Limit the position of the window so it stays inside the record.
-        if hit_left < hit_left_min:
-            hit_left = hit_left_min
         if hit_left > hit_left_max:
             hit_left = hit_left_max
 
@@ -277,7 +294,7 @@ def _get_led_windows(
         windows[hit["record_i"]] = np.array([left, right])
         last = hit["record_i"]
 
-    return windows
+    return windows, triggered
 
 
 _on_off_dtype = np.dtype([("channel", "int16"), ("amplitude", "float32")])
