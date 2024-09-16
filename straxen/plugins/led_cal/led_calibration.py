@@ -159,7 +159,7 @@ class LEDCalibration(strax.Plugin):
 
         temp['triggered'] = triggered
         temp["hit_position"] = led_windows[:, 0] - self.led_hit_extension[0]
-        temp['integration_window'] = led_windows#.astype(np.uint8)
+        temp['integration_window'] = led_windows
         return temp
 
 
@@ -260,6 +260,8 @@ def get_led_windows(
         default_hit_position = minimum_led_position
     else:
         default_hit_position, _ = sps.mode(hits['left'])
+        if isinstance(default_hit_position, np.ndarray):
+            default_hit_position = default_hit_position[0]
 
     triggered = np.zeros(len(records), dtype=bool)
 
