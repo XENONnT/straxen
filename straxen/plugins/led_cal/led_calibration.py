@@ -102,7 +102,7 @@ class LEDCalibration(strax.Plugin):
         help="List of PMTs. Defalt value: all the PMTs",
     )
 
-    led_cal_hit_min_height_over_noise = straxen.URLConfig(
+    LED_cal_hit_min_height_over_noise = straxen.URLConfig(
         default=6,
         infer_type=False,
         help=(
@@ -145,8 +145,8 @@ class LEDCalibration(strax.Plugin):
             records,
             self.minimum_led_position,
             self.led_hit_extension,
-            self.led_cal_hit_min_height_over_noise,
-            self.led_cal_record_length,
+            self.LED_cal_hit_min_height_over_noise,
+            self.LED_cal_record_length,
             self.area_averaging_length,
         )
 
