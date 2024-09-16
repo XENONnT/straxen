@@ -40,7 +40,9 @@ class EventSEDensity(strax.Plugin):
             for type_ in ["s1", "alt_s1", "s2", "alt_s2"]:
                 type_index = event[f"{type_}_index"]
                 if type_index != -1:
-                    result[f"{type_}_se_nearby_probability"][event_i] = sp["se_nearby_probability"][type_index]
+                    result[f"{type_}_se_nearby_probability"][event_i] = sp["se_nearby_probability"][
+                        type_index
+                    ]
 
         # 2. Set time and endtime for events
         result["time"] = events["time"]
