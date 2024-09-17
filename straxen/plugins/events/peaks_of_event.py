@@ -6,6 +6,7 @@ MAX_NUMBER_OF_S1_PEAKS_PER_EVENT = 5
 MAX_NUMBER_OF_S2_PEAKS_PER_EVENT = 5
 PEAK_WAVEFORM_LENGTH = 200
 
+
 class MultiPeakData(strax.Plugin):
     """Plugin that extracts information of multiple peaks in an event."""
 
@@ -91,22 +92,40 @@ class MultiPeakData(strax.Plugin):
                     s1_peaks["time"][0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT] - peaks_in_event["time"][0]
                 )
                 result[i]["s2_delta_time_i"][0:n_s2_peaks_in_event] = (
-                    s2_peaks["time"][0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]- peaks_in_event["time"][0]
+                    s2_peaks["time"][0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT] - peaks_in_event["time"][0]
                 )
 
-                result[i]["s1_peak_dt_i"][0:n_s1_peaks_in_event] = s1_peaks["dt"][0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
-                result[i]["s2_peak_dt_i"][0:n_s2_peaks_in_event] = s2_peaks["dt"][0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
+                result[i]["s1_peak_dt_i"][0:n_s1_peaks_in_event] = s1_peaks["dt"][
+                    0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT
+                ]
+                result[i]["s2_peak_dt_i"][0:n_s2_peaks_in_event] = s2_peaks["dt"][
+                    0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT
+                ]
 
-                result[i]["s2_x_position_i"][0:n_s2_peaks_in_event] = s2_peaks["x"][0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
-                result[i]["s2_y_position_i"][0:n_s2_peaks_in_event] = s2_peaks["y"][0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
-                result[i]["s2_aft_i"][0:n_s2_peaks_in_event] = s2_peaks["area_fraction_top"][0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
+                result[i]["s2_x_position_i"][0:n_s2_peaks_in_event] = s2_peaks["x"][
+                    0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT
+                ]
+                result[i]["s2_y_position_i"][0:n_s2_peaks_in_event] = s2_peaks["y"][
+                    0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT
+                ]
+                result[i]["s2_aft_i"][0:n_s2_peaks_in_event] = s2_peaks["area_fraction_top"][
+                    0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT
+                ]
 
-                result[i]["s1_aft_i"][0:n_s1_peaks_in_event] = s1_peaks["area_fraction_top"][0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
+                result[i]["s1_aft_i"][0:n_s1_peaks_in_event] = s1_peaks["area_fraction_top"][
+                    0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT
+                ]
 
-                result[i]["s1_waveform_i"][0:n_s1_peaks_in_event] = s1_peaks["data"][0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
-                result[i]["s2_waveform_i"][0:n_s2_peaks_in_event] = s2_peaks["data"][0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
+                result[i]["s1_waveform_i"][0:n_s1_peaks_in_event] = s1_peaks["data"][
+                    0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT
+                ]
+                result[i]["s2_waveform_i"][0:n_s2_peaks_in_event] = s2_peaks["data"][
+                    0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT
+                ]
 
-                result[i]["s1_waveform_start_i"][0:n_s1_peaks_in_event] = s1_peaks["data_start"][:, :PEAK_WAVEFORM_START_LENGTH][0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
+                result[i]["s1_waveform_start_i"][0:n_s1_peaks_in_event] = s1_peaks["data_start"][
+                    :, :PEAK_WAVEFORM_START_LENGTH
+                ][0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
 
         # If waveform_start was not explicitly saved, we can take it from the regular waveform
         mask = result["s1_peak_dt_i"] == 10
