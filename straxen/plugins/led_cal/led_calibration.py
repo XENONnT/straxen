@@ -234,7 +234,7 @@ def get_led_windows(
 
     """
     if len(records) == 0:  # If input is empty, return empty arrays of correct shape
-        return np.empty((0, 2), dtype=np.int64), np.empty((0, 1), dtype=bool)
+        return np.empty((0, 2), dtype=np.int64), np.empty(0, dtype=bool)
 
     hits = strax.find_hits(
         records,
