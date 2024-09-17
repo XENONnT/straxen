@@ -233,8 +233,8 @@ def get_led_windows(
     :param area_averaging_length: The length (samples) of the window to do the averaging on.
 
     """
-    if len(records) == 0:  # If input is empty
-        return np.empty((0, 2), dtype=np.int64)  # Return empty array of correct shape
+    if len(records) == 0:  # If input is empty, return empty arrays of correct shape
+        return np.empty((0, 2), dtype=np.int64), np.empty((0, 1), dtype=bool)
 
     hits = strax.find_hits(
         records,
