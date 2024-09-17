@@ -123,9 +123,7 @@ class MultiPeakData(strax.Plugin):
                     0:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT
                 ]
 
-                result[i]["s1_waveform_start_i"][0:n_s1_peaks_in_event] = s1_peaks["data_start"][
-                    :, :PEAK_WAVEFORM_START_LENGTH
-                ][0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
+                result[i]["s1_waveform_start_i"][0:n_s1_peaks_in_event] = s1_peaks["data_start"][0:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
 
         # If waveform_start was not explicitly saved, we can take it from the regular waveform
         mask = result["s1_peak_dt_i"] == 10
