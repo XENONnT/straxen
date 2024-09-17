@@ -26,7 +26,7 @@ class PeakPositionsBaseNT(strax.Plugin):
     depends_on = "peaks"
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True  # can set to "process" after #82
+    parallel = True
 
     min_reconstruction_area = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this",

@@ -68,6 +68,11 @@ def _is_on_pytest():
     return "PYTEST_CURRENT_TEST" in os_environ
 
 
+@export
+def mongo_uri_not_set():
+    return "TEST_MONGO_URI" not in os.environ
+
+
 def _get_fake_daq_reader():
     class DAQReader(straxen.DAQReader):
         """Dummy version of the DAQ reader to make sure that all the testing data produced here will

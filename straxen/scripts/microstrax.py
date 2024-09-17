@@ -1,15 +1,15 @@
-#!/usr/bin/env python
+import os
 import argparse
 import pymongo
 import hug
-import strax
-import straxen
-import os
 import socket
 from datetime import datetime, timedelta
 import pytz
 import time
 import threading
+
+import strax
+import straxen
 
 st: strax.Context
 max_load_mb = 1000
@@ -53,7 +53,7 @@ def get_data(
     max_n: hug.types.number = 1000,
     start: hug.types.float_number = None,
     end: hug.types.float_number = None,
-    selection_str: hug.types.text = None,
+    selection: hug.types.text = None,
 ):
     try:
         st
@@ -116,7 +116,7 @@ def get_data(
             f"take more than {max_load_mb} MB RAM to load."
         )
 
-    x = st.get_array(run_id, target, time_range=time_range, selection_str=selection_str)
+    x = st.get_array(run_id, target, time_range=time_range, selection=selection)
     if max_n:
         x = x[:max_n]
     size_mb = x.nbytes / int(1e6)
@@ -173,6 +173,18 @@ def set_state():
     update_thread.start()
 
 
+def main():
+    load_context(args.context, extra_dirs=args.extra_dirs)
+    set_state()
+
+    while True:
+        try:
+            hug.API(__name__).http.serve(port=args.port)
+        except pymongo.errors.NotMasterError:
+            print("Ran into the infamous pymongo.errors.NotMasterError. Sleep for a sec")
+            time.sleep(60)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Start a microservice to return strax data as json"
@@ -189,12 +201,4 @@ if __name__ == "__main__":
     max_load_mb = args.max_load_mb
     max_return_mb = args.max_return_mb
 
-    load_context(args.context, extra_dirs=args.extra_dirs)
-    set_state()
-
-    while True:
-        try:
-            hug.API(__name__).http.serve(port=args.port)
-        except pymongo.errors.NotMasterError:
-            print("Ran into the infamous pymongo.errors.NotMasterError. Sleep for a sec")
-            time.sleep(60)
+    main()

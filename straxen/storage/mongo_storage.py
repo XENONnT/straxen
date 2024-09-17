@@ -3,6 +3,7 @@ import tempfile
 from datetime import datetime
 from warnings import warn
 import pytz
+from typing import Tuple, Dict
 from strax import exporter, to_str_tuple
 import gridfs
 from tqdm import tqdm
@@ -96,7 +97,7 @@ class GridFsInterface:
     def get_query_config(self, config):
         """Generate identifier to query against. This is just the configs name.
 
-        :param config: str,  name of the file of interest
+        :param config: str, name of the file of interest
         :return: dict, that can be used in queries
 
         """
@@ -105,7 +106,7 @@ class GridFsInterface:
     def document_format(self, config):
         """Format of the document to upload.
 
-        :param config: str,  name of the file of interest
+        :param config: str, name of the file of interest
         :return: dict, that will be used to add the document
 
         """
@@ -120,7 +121,7 @@ class GridFsInterface:
     def config_exists(self, config):
         """Quick check if this config is already saved in the collection.
 
-        :param config: str,  name of the file of interest
+        :param config: str, name of the file of interest
         :return: bool, is this config name stored in the database
 
         """
@@ -202,7 +203,7 @@ class MongoUploader(GridFsInterface):
 
         :param file_path_dict: dict, dictionary of paths to upload. The
             dict should be of the format:
-            file_path_dict = {'config_name':  '/the_config_path', ...}
+            file_path_dict = {'config_name': '/the_config_path', ...}
 
         :return: None
 
@@ -253,15 +254,32 @@ class MongoUploader(GridFsInterface):
 class MongoDownloader(GridFsInterface):
     """Class to download files from GridFs."""
 
-    def __init__(self, store_files_at=None, *args, **kwargs):
+    _instances: Dict[Tuple, "MongoDownloader"] = {}
+    _initialized: Dict[Tuple, bool] = {}
+
+    def __new__(cls, *args, **kwargs):
+        key = (args, frozenset(kwargs.items()))
+        if key not in cls._instances:
+            cls._instances[key] = super(MongoDownloader, cls).__new__(cls)
+            cls._initialized[key] = False
+        return cls._instances[key]
+
+    def __init__(self, *args, **kwargs):
+        key = (args, frozenset(kwargs.items()))
+        if not self._initialized[key]:
+            self._instances[key].initialize(*args, **kwargs)
+            self._initialized[key] = True
+        return
+
+    def initialize(self, store_files_at=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # We are going to set a place where to store the files. It's
         # either specified by the user or we use these defaults:
         if store_files_at is None:
             store_files_at = (
-                "/tmp/straxen_resource_cache/",
                 "./resource_cache",
+                "/tmp/straxen_resource_cache",
             )
         elif not isinstance(store_files_at, (tuple, str, list)):
             raise ValueError(f"{store_files_at} should be tuple of paths!")

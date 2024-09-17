@@ -199,15 +199,15 @@ def get_cmt_options(context: strax.Context) -> ty.Dict[str, ty.Dict[str, tuple]]
                 before_cmt, cmt, after_cmt = opt.partition("cmt://")
                 p = context._get_plugins((data_type,), runid_test_str)[data_type]
                 context._set_plugin_config(p, runid_test_str, tolerant=False)
-                del p.run_id
+                del p._Plugin__run_id
 
                 p.config[option_key] = after_cmt
                 try:
                     correction_name = getattr(p, option_key)
                 except AttributeError:
-                    # make sure the correction name does not depend on runid
+                    # make sure the correction name does not depend on run_id
                     raise RuntimeError(
-                        "Correction names should not depend on runids! "
+                        "Correction names should not depend on run_ids! "
                         f"Please check your option for {option_key}"
                     )
 
