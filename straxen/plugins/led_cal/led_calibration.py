@@ -121,7 +121,7 @@ class LEDCalibration(strax.Plugin):
         (("Length of the interval in samples", "length"), np.int32),
         (("Whether there was a hit found in the record", "triggered"), bool),
         (("Sample index of the hit that defines the window position", "hit_position"), np.uint8),
-        (("Window used for integration", "integration_window"), np.uint8, (2,))
+        (("Window used for integration", "integration_window"), np.uint8, (2,)),
     ]
 
     def compute(self, raw_records):
@@ -156,9 +156,9 @@ class LEDCalibration(strax.Plugin):
         area = get_area(records, led_windows, self.area_averaging_length, self.area_averaging_step)
         temp["area"] = area["area"]
 
-        temp['triggered'] = triggered
+        temp["triggered"] = triggered
         temp["hit_position"] = led_windows[:, 0] - self.led_hit_extension[0]
-        temp['integration_window'] = led_windows
+        temp["integration_window"] = led_windows
         return temp
 
 
@@ -216,7 +216,7 @@ def get_led_windows(
     led_hit_extension,
     hit_min_height_over_noise,
     record_length,
-    area_averaging_length
+    area_averaging_length,
 ):
     """Search for hits in the records, if a hit is found, return an interval around the hit given by
     led_hit_extension. If no hit is found in the record, return the default window.
@@ -242,7 +242,7 @@ def get_led_windows(
         min_height_over_noise=hit_min_height_over_noise,
     )
 
-    hits = hits[hits['left'] >= minimum_led_position]
+    hits = hits[hits["left"] >= minimum_led_position]
     # Check if the records are sorted properly by 'record_i' first and 'time' second and sort them
     # if they are not
     record_i = hits["record_i"]
@@ -255,10 +255,10 @@ def get_led_windows(
     ):
         hits.sort(order=["record_i", "time"])
 
-    if len(hits) == 0: # This really should not be the case. But in case it is:
+    if len(hits) == 0:  # This really should not be the case. But in case it is:
         default_hit_position = minimum_led_position
     else:
-        default_hit_position, _ = sps.mode(hits['left'])
+        default_hit_position, _ = sps.mode(hits["left"])
         if isinstance(default_hit_position, np.ndarray):
             default_hit_position = default_hit_position[0]
 
@@ -281,8 +281,8 @@ def _get_led_windows(
     for hit in hits:
         if hit["record_i"] == last:
             continue  # If there are multiple hits in one record, ignore after the first
-        
-        triggered[hit['record_i']] = True
+
+        triggered[hit["record_i"]] = True
 
         hit_left = hit["left"]
         # Limit the position of the window so it stays inside the record.
