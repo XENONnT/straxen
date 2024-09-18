@@ -7,7 +7,7 @@ class EventSEDensity(strax.Plugin):
     events.
 
     References:
-        * v0.0.0: xenon:xenonnt:analysis:hot_spot_cut_summary
+        * v0.1.0: xenon:xenonnt:ac:sr1:hotspot_veto_cut:wimp_roi
 
     """
 
@@ -22,8 +22,8 @@ class EventSEDensity(strax.Plugin):
                 dtype += [
                     (
                         (
-                            f"Neiboring single-electron rate of {description} S{s_i} [Hz/cm^2]",
-                            f"{main_or_alt}s{s_i}_se_density",
+                            f"Neiboring single-electron score of {description} S{s_i} [Hz/cm^2]",
+                            f"{main_or_alt}s{s_i}_se_nearby_probability",
                         ),
                         np.float32,
                     ),
@@ -40,7 +40,7 @@ class EventSEDensity(strax.Plugin):
             for type_ in ["s1", "alt_s1", "s2", "alt_s2"]:
                 type_index = event[f"{type_}_index"]
                 if type_index != -1:
-                    result[f"{type_}_se_density"][event_i] = sp["se_density"][type_index]
+                    result[f"{type_}_se_nearby_probability"][event_i] = sp["se_nearby_probability"][type_index]
 
         # 2. Set time and endtime for events
         result["time"] = events["time"]
