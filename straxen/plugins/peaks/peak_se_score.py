@@ -21,8 +21,10 @@ class PeakSEScore(strax.OverlapWindowPlugin):
     save_when = strax.SaveWhen.EXPLICIT
 
     dtype = strax.time_fields + [
-        (("Sum of the PDF of the SE position nearby probability.", "se_score"),
-            np.float32,),
+        (
+            ("Sum of the PDF of the SE position nearby probability.", "se_score"),
+            np.float32,
+        ),
     ]
 
     se_time_search_window_left = straxen.URLConfig(
@@ -38,7 +40,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
     def get_window_size(self):
         # This method is required by the OverlapWindowPlugin class
         return 2 * (self.se_time_search_window_left + self.se_time_search_window_right)
-    
+
     def setup(self):
         self._para_a = 1
         self._para_b = 1
@@ -46,8 +48,10 @@ class PeakSEScore(strax.OverlapWindowPlugin):
 
     def select_se(self, peaks):
         """Function which select single electrons from peaks.
+
         :param peaks: peaks data contains single electrons.
         :return: single electron peaks data
+
         """
         mask = peaks["type"] == 2
         mask &= (peaks["area"] > 10) & (peaks["area"] < 80)
@@ -85,7 +89,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         split_peaks["time"] = _peaks["center_time"] - self.se_time_search_window_left
         split_peaks["endtime"] = _peaks["center_time"] + self.se_time_search_window_right
         split_result = strax.touching_windows(se_peaks, split_peaks)
-        #get se score
+        # get se score
         eps = np.finfo(float).eps
         _se_nearby_probability = self.get_se_count_and_pdf_sum(
             _peaks,

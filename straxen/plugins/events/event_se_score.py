@@ -1,12 +1,14 @@
 import numpy as np
 import strax
 
+
 class EventSEScore(strax.Plugin):
     """This plugin is designed to calculate the single electron rate density for main and alt S2 in
     events.
 
     References:
         * v0.1.0: xenon:xenonnt:ac:sr1:hotspot_veto_cut:wimp_roi
+
     """
 
     __version__ = "0.1.0"
@@ -38,9 +40,7 @@ class EventSEScore(strax.Plugin):
             for type_ in ["s1", "alt_s1", "s2", "alt_s2"]:
                 type_index = event[f"{type_}_index"]
                 if type_index != -1:
-                    result[f"{type_}_se_score"][event_i] = sp["se_score"][
-                        type_index
-                    ]
+                    result[f"{type_}_se_score"][event_i] = sp["se_score"][type_index]
 
         # 2. Set time and endtime for events
         result["time"] = events["time"]
