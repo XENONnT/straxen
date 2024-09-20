@@ -73,5 +73,5 @@ from .event_basics_som import *
 from . import event_nearest_triggering
 from .event_nearest_triggering import *
 
-from . import event_se_nearby_score
-from .event_se_nearby_score import *
+from . import event_se_score
+from .event_se_score import *

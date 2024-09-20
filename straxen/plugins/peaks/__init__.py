@@ -49,5 +49,5 @@ from .peak_basics_som import *
 from . import peak_nearest_triggering
 from .peak_nearest_triggering import *
 
-from . import peak_se_nearby_score
-from .peak_se_nearby_score import *
+from . import peak_se_score
+from .peak_se_score import *
