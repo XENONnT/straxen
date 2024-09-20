@@ -60,6 +60,7 @@ jobs:
       - name: Install requirements
         run: |
           pip install -r extra_requirements/requirements-tests.txt
+          pip install git+https://github.com/AxFoundation/strax.git@v1.6.5 --force-reinstall
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.11.0
