@@ -50,12 +50,12 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         help="Area range for single electron selection.[PE]",
     )
 
-    para_a_place_holder = straxen.URLConfig(
+    para_a = straxen.URLConfig(
         default=1,
         help="Place holder for Parameter A in the position resolution function.",
     )
 
-    para_b_place_holder = straxen.URLConfig(
+    para_b = straxen.URLConfig(
         default=1,
         help="Place holder for Parameter B in the position resolution function.",
     )
@@ -65,8 +65,8 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         return 2 * (self.se_time_search_window_left + self.se_time_search_window_right)
 
     def setup(self):
-        self._para_a = self.para_a_place_holder
-        self._para_b = self.para_b_place_holder
+        self._para_a = self.para_a
+        self._para_b = self.para_b
 
     def select_se(self, peaks):
         """Function which select single electrons from peaks.
