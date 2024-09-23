@@ -242,6 +242,7 @@ def get_led_windows(
         min_height_over_noise=hit_min_height_over_noise,
     )
 
+    maximum_led_position = record_length - area_averaging_length - led_hit_extension[1]
     hits = hits[hits["left"] >= minimum_led_position]
     # Check if the records are sorted properly by 'record_i' first and 'time' second and sort them
     # if they are not
@@ -259,23 +260,26 @@ def get_led_windows(
         default_hit_position = minimum_led_position
     else:
         default_hit_position, _ = sps.mode(hits["left"])
+
         if isinstance(default_hit_position, np.ndarray):
             default_hit_position = default_hit_position[0]
+
+        if default_hit_position > maximum_led_position:
+            default_hit_position = maximum_led_position
 
     triggered = np.zeros(len(records), dtype=bool)
 
     default_windows = np.tile(default_hit_position + np.array(led_hit_extension), (len(records), 1))
     return _get_led_windows(
-        hits, default_windows, led_hit_extension, record_length, area_averaging_length, triggered
+        hits, default_windows, led_hit_extension, maximum_led_position, triggered
     )
 
 
 @numba.jit(nopython=True)
 def _get_led_windows(
-    hits, default_windows, led_hit_extension, record_length, area_averaging_length, triggered
+    hits, default_windows, led_hit_extension, maximum_led_position, triggered
 ):
     windows = default_windows
-    hit_left_max = record_length - area_averaging_length - led_hit_extension[1]
     last = -1
 
     for hit in hits:
@@ -286,8 +290,8 @@ def _get_led_windows(
 
         hit_left = hit["left"]
         # Limit the position of the window so it stays inside the record.
-        if hit_left > hit_left_max:
-            hit_left = hit_left_max
+        if hit_left > maximum_led_position:
+            hit_left = maximum_led_position
 
         left = hit_left + led_hit_extension[0]
         right = hit_left + led_hit_extension[1]
