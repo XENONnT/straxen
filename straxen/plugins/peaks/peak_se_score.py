@@ -40,13 +40,13 @@ class PeakSEScore(strax.OverlapWindowPlugin):
 
     se_selection_area_roi = straxen.URLConfig(
         default=[10, 80],
-        type=int,
+        type=list,
         help="Area range for single electron selection.[PE]",
     )
 
     se_selection_width_roi = straxen.URLConfig(
         default=[80, 700],
-        type=int,
+        type=list,
         help="Area range for single electron selection.[PE]",
     )
 
