@@ -276,9 +276,7 @@ def get_led_windows(
 
 
 @numba.jit(nopython=True)
-def _get_led_windows(
-    hits, default_windows, led_hit_extension, maximum_led_position, triggered
-):
+def _get_led_windows(hits, default_windows, led_hit_extension, maximum_led_position, triggered):
     windows = default_windows
     last = -1
 
