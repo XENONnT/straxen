@@ -10,7 +10,8 @@ class PeakSEScore(strax.OverlapWindowPlugin):
     electrons.
 
     References:
-        * v0.2.0: xenon:xenonnt:ac:sr1:hotspot_veto_cut:wimp_roi
+        * v0.2.0: xenon:xenonnt:analysis:hot_spot_cut_summary
+        * v0.4.0: xenon:xenonnt:ac:sr1:hotspot_veto_cut:wimp_roi
         * position resolution: xenon:xenonnt:svetter:data_driven_resolution_sr1a0_vs_sr1a1
 
     """
@@ -21,8 +22,10 @@ class PeakSEScore(strax.OverlapWindowPlugin):
     save_when = strax.SaveWhen.EXPLICIT
 
     dtype = strax.time_fields + [
-        (("Sum of the PDF of the SE position nearby probability.", "se_score"),
-            np.float32,),
+        (
+            ("Sum of the PDF of the SE position nearby probability.", "se_score"),
+            np.float32,
+        ),
     ]
 
     se_time_search_window_left = straxen.URLConfig(
@@ -35,23 +38,50 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         help="Time searching window right side extension, one max drift time [ns]",
     )
 
+    se_selection_area_roi = straxen.URLConfig(
+        default=[10, 80],
+        type=int,
+        help="Area range for single electron selection.[PE]",
+    )
+
+    se_selection_width_roi = straxen.URLConfig(
+        default=[80, 700],
+        type=int,
+        help="Area range for single electron selection.[PE]",
+    )
+
+    para_a_place_holder = straxen.URLConfig(
+        default=1,
+        help="Place holder for Parameter A in the position resolution function.",
+    )
+
+    para_b_place_holder = straxen.URLConfig(
+        default=1,
+        help="Place holder for Parameter B in the position resolution function.",
+    )
+
     def get_window_size(self):
         # This method is required by the OverlapWindowPlugin class
         return 2 * (self.se_time_search_window_left + self.se_time_search_window_right)
-    
+
     def setup(self):
-        self._para_a = 1
-        self._para_b = 1
-        self._sr_phase = 1
+        self._para_a = self.para_a_place_holder
+        self._para_b = self.para_b_place_holder
 
     def select_se(self, peaks):
         """Function which select single electrons from peaks.
+
         :param peaks: peaks data contains single electrons.
         :return: single electron peaks data
+
         """
         mask = peaks["type"] == 2
-        mask &= (peaks["area"] > 10) & (peaks["area"] < 80)
-        mask &= (peaks["range_50p_area"] > 80) & (peaks["range_50p_area"] < 700)
+        mask &= (peaks["area"] > self.se_selection_area_roi[0]) & (
+            peaks["area"] < self.se_selection_area_roi[1]
+        )
+        mask &= (peaks["range_50p_area"] > self.se_selection_width_roi[0]) & (
+            peaks["range_50p_area"] < self.se_selection_width_roi[1]
+        )
         return mask
 
     @staticmethod
@@ -85,7 +115,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         split_peaks["time"] = _peaks["center_time"] - self.se_time_search_window_left
         split_peaks["endtime"] = _peaks["center_time"] + self.se_time_search_window_right
         split_result = strax.touching_windows(se_peaks, split_peaks)
-        #get se score
+        # get se score
         eps = np.finfo(float).eps
         _se_nearby_probability = self.get_se_count_and_pdf_sum(
             _peaks,
