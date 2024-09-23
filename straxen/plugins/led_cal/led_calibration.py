@@ -70,7 +70,7 @@ class LEDCalibration(strax.Plugin):
     )
 
     area_averaging_length = straxen.URLConfig(
-        default=8,
+        default=7,
         infer_type=False,
         help=(
             "The total length of the averaging window for the area calculation."
@@ -81,7 +81,7 @@ class LEDCalibration(strax.Plugin):
     )
 
     area_averaging_step = straxen.URLConfig(
-        default=2,
+        default=1,
         infer_type=False,
         help=(
             "The step size used for the different windows, averaged for the area calculation."
