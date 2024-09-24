@@ -50,12 +50,12 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         help="Area range for single electron selection.[PE]",
     )
 
-    para_a = straxen.URLConfig(
+    para_a_naive = straxen.URLConfig(
         default=1,
         help="Place holder for Parameter A in the position resolution function.",
     )
 
-    para_b = straxen.URLConfig(
+    para_b_naive = straxen.URLConfig(
         default=1,
         help="Place holder for Parameter B in the position resolution function.",
     )
@@ -65,8 +65,8 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         return 2 * (self.se_time_search_window_left + self.se_time_search_window_right)
 
     def setup(self):
-        self._para_a = self.para_a
-        self._para_b = self.para_b
+        self._para_a = self.para_a_naive
+        self._para_b = self.para_b_naive
 
     def select_se(self, peaks):
         """Function which select single electrons from peaks.
@@ -82,6 +82,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         mask &= (peaks["range_50p_area"] > self.se_selection_width_roi[0]) & (
             peaks["range_50p_area"] < self.se_selection_width_roi[1]
         )
+        mask &= peaks["area_fraction_top"] != 0
         return mask
 
     @staticmethod
@@ -93,8 +94,8 @@ class PeakSEScore(strax.OverlapWindowPlugin):
             se_in_time = se_peaks[indices[0] : indices[1]]
             peak_area_top = peak_i["area"] * (peak_i["area_fraction_top"] + eps)
             se_area_top = se_in_time["area"] * (se_in_time["area_fraction_top"] + eps)
-            peak_position_resolution = para_a * 1 / np.sqrt(peak_area_top) + para_b
-            se_position_resolution = para_a * 1 / np.sqrt(se_area_top) + para_b
+            peak_position_resolution = para_a / np.sqrt(peak_area_top) + para_b
+            se_position_resolution = para_a / np.sqrt(se_area_top) + para_b
             combined_position_resolution = np.sqrt(
                 se_position_resolution**2 + peak_position_resolution**2
             )
@@ -122,8 +123,8 @@ class PeakSEScore(strax.OverlapWindowPlugin):
             _peaks,
             se_peaks,
             split_result,
-            self._para_a[self._sr_phase],
-            self._para_b[self._sr_phase],
+            self._para_a,
+            self._para_b,
             eps,
         )
         return _se_nearby_probability
@@ -132,13 +133,15 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         # sort peaks by center_time
         argsort = np.argsort(peaks["center_time"], kind="mergesort")
         _peaks = np.sort(peaks, order="center_time")
+        mask_nan = np.isnan(_peaks["x"]) | np.isnan(_peaks["y"])
         # prepare output
         se_nearby_probability = np.zeros(len(peaks))
+        _se_nearby_probability = np.zeros(len(peaks))
+        _se_nearby_probability[mask_nan] = np.nan
         # calculate SE Score
-        _se_nearby_probability = self.compute_se_score(peaks, _peaks)
+        _se_nearby_probability[~mask_nan] = self.compute_se_score(peaks, _peaks[~mask_nan])
         # sort back to original order
         se_nearby_probability[argsort] = _se_nearby_probability
-
         return dict(
             time=peaks["time"],
             endtime=strax.endtime(peaks),
