@@ -116,6 +116,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         split_peaks["endtime"] = _peaks["center_time"] + self.se_time_search_window_right
         split_result = strax.touching_windows(se_peaks, split_peaks)
         # get se score
+        # eps: smallest positive float, used to prevent division by zero.
         eps = np.finfo(float).eps
         _se_nearby_probability = self.get_se_count_and_pdf_sum(
             _peaks,
