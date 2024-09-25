@@ -118,6 +118,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
                 se_position_resolution**2 + peak_position_resolution**2
             )
             d_squre = (se_in_time["x"] - peak_i["x"]) ** 2 + (se_in_time["y"] - peak_i["y"]) ** 2
+            # 2D Gaussian with zero off-diagonal covairance matirx elements
             constant = 1 / (2 * np.pi * combined_position_resolution**2)
             exponent = np.exp(-1 / 2 * (d_squre / combined_position_resolution**2))
             _se_nearby_prob = constant * exponent
