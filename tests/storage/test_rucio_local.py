@@ -88,7 +88,7 @@ class TestRucioLocal(unittest.TestCase):
 
     @staticmethod
     def write_md(rucio_path, did, content: dict):
-        md_did = f"{did}-metadata.json"
+        md_did = strax.RUN_METADATA_PATTERN % did
         md_path = straxen.storage.rucio_local.rucio_path(rucio_path, md_did)
         os.makedirs(os.path.split(md_path)[0], exist_ok=True)
         with open(md_path, mode="w") as f:
