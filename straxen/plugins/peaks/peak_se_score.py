@@ -87,13 +87,31 @@ class PeakSEScore(strax.OverlapWindowPlugin):
 
     @staticmethod
     @njit
-    def get_se_count_and_pdf_sum(peaks, se_peaks, se_indices, para_a, para_b, eps):
+    def get_se_count_and_pdf_sum(peaks, se_peaks, se_indices, para_a, para_b):
+        """Function to calculate the single electron (SE) score for each peak.
+
+        This function calculates the probability of nearby SE events for each peak
+        based on their spatial and temporal proximity. The probability is calculated
+        using a Gaussian distribution, where the standard deviation is the combined
+        position resolution of the peak and the SE event.
+
+        Parameters:
+        :peaks (np.ndarray): Array of peaks.
+        :se_peaks (np.ndarray): Array of single electron peaks.
+        :se_indices (np.ndarray): Array of indices for SE that are
+        in temporal proximity to each peak.
+        :para_a (float): Parameter 'a' used in the calculation of position resolution.
+        :para_b (float): Parameter 'b' used in the calculation of position resolution.
+
+        :return: np.ndarray: Array of probabilities of nearby SE events for each peak.
+
+        """
         se_nearby_probability = np.zeros(len(peaks))
         for index, peak_i in enumerate(peaks):
             indices = se_indices[index]
             se_in_time = se_peaks[indices[0] : indices[1]]
-            peak_area_top = peak_i["area"] * (peak_i["area_fraction_top"] + eps)
-            se_area_top = se_in_time["area"] * (se_in_time["area_fraction_top"] + eps)
+            peak_area_top = peak_i["area"] * peak_i["area_fraction_top"]
+            se_area_top = se_in_time["area"] * se_in_time["area_fraction_top"]
             peak_position_resolution = para_a / np.sqrt(peak_area_top) + para_b
             se_position_resolution = para_a / np.sqrt(se_area_top) + para_b
             combined_position_resolution = np.sqrt(
@@ -117,15 +135,12 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         split_peaks["endtime"] = _peaks["center_time"] + self.se_time_search_window_right
         split_result = strax.touching_windows(se_peaks, split_peaks)
         # get se score
-        # eps: smallest positive float, used to prevent division by zero.
-        eps = np.finfo(float).eps
         _se_nearby_probability = self.get_se_count_and_pdf_sum(
             _peaks,
             se_peaks,
             split_result,
             self._para_a,
             self._para_b,
-            eps,
         )
         return _se_nearby_probability
 
@@ -136,8 +151,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         mask_nan = np.isnan(_peaks["x"]) | np.isnan(_peaks["y"])
         # prepare output
         se_nearby_probability = np.zeros(len(peaks))
-        _se_nearby_probability = np.zeros(len(peaks))
-        _se_nearby_probability[mask_nan] = np.nan
+        _se_nearby_probability = np.full(len(peaks), np.nan)
         # calculate SE Score
         _se_nearby_probability[~mask_nan] = self.compute_se_score(peaks, _peaks[~mask_nan])
         # sort back to original order
