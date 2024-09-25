@@ -123,7 +123,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             rse = admix.downloader.determine_rse(rses)
             self.dset_cache[dset_did] = rse
 
-        metadata_did = f"{dset_did}-metadata.json"
+        metadata_did = strax.RUN_METADATA_PATTERN % dset_did
         downloaded = admix.download(metadata_did, rse=rse, location=self.staging_dir)
         if len(downloaded) != 1:
             raise ValueError(f"{metadata_did} should be a single file. We found {len(downloaded)}.")
