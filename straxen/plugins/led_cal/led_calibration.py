@@ -62,7 +62,7 @@ class LEDCalibration(strax.Plugin):
         help=(
             "The minimum sample index to consider for LED hits. Hits before this sample are"
             "ignored."
-        )
+        ),
     )
 
     led_hit_extension = straxen.URLConfig(
@@ -224,8 +224,8 @@ def get_led_windows(
     led_hit_extension. If no hit is found in the record, return the default window.
 
     :param records: Array of the records to search for LED hits.
-    :param minimum_led_position: The minimum simple index of the LED hits. Hits before this sample are
-        ignored.
+    :param minimum_led_position: The minimum simple index of the LED hits. Hits before this sample
+        are ignored.
     :param led_hit_extension: The integration window around the first hit found to use. A tuple of
         form (samples_before, samples_after) the first LED hit.
     :param hit_min_amplitude: Minimum amplitude of the signal to be considered a hit.
