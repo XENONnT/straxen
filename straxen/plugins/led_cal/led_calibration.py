@@ -60,7 +60,7 @@ class LEDCalibration(strax.Plugin):
         default=60,
         infer_type=False,
         help=(
-            "The minimum sample index to consider for LED hits. Hits before this sample are"
+            "The minimum sample index to consider for LED hits. Hits before this sample are "
             "ignored."
         ),
     )
@@ -75,9 +75,9 @@ class LEDCalibration(strax.Plugin):
         default=7,
         infer_type=False,
         help=(
-            "The total length of the averaging window for the area calculation."
-            "To mitigate a possiple bias from noise, the area is integrated multiple times with"
-            "sligntly different window lengths and then averaged. integration_averaging_length"
+            "The total length of the averaging window for the area calculation. "
+            "To mitigate a possiple bias from noise, the area is integrated multiple times with "
+            "sligntly different window lengths and then averaged. integration_averaging_length "
             "should be divisible by step."
         ),
     )
@@ -86,9 +86,9 @@ class LEDCalibration(strax.Plugin):
         default=1,
         infer_type=False,
         help=(
-            "The step size used for the different windows, averaged for the area calculation."
-            "To mitigate a possiple bias from noise, the area is integrated multiple times with"
-            "sligntly different window lengths and then averaged. integration_averaging_length"
+            "The step size used for the different windows, averaged for the area calculation. "
+            "To mitigate a possiple bias from noise, the area is integrated multiple times with "
+            "sligntly different window lengths and then averaged. integration_averaging_length "
             "should be divisible by step."
         ),
     )
@@ -107,7 +107,7 @@ class LEDCalibration(strax.Plugin):
         default=6,
         infer_type=False,
         help=(
-            "Minimum hit amplitude in numbers of baseline_rms above baseline."
+            "Minimum hit amplitude in numbers of baseline_rms above baseline. "
             "Actual threshold used is max(hit_min_amplitude, hit_min_"
             "height_over_noise * baseline_rms)."
         ),
