@@ -77,8 +77,8 @@ class LEDCalibration(strax.Plugin):
         help=(
             "The total length of the averaging window for the area calculation. "
             "To mitigate a possiple bias from noise, the area is integrated multiple times with "
-            "sligntly different window lengths and then averaged. integration_averaging_length "
-            "should be divisible by step."
+            "sligntly different window lengths and then averaged. area_averaging_length should "
+            "be divisible by area_averaging_step."
         ),
     )
 
@@ -88,8 +88,8 @@ class LEDCalibration(strax.Plugin):
         help=(
             "The step size used for the different windows, averaged for the area calculation. "
             "To mitigate a possiple bias from noise, the area is integrated multiple times with "
-            "sligntly different window lengths and then averaged. integration_averaging_length "
-            "should be divisible by step."
+            "sligntly different window lengths and then averaged. area_averaging_length should "
+            "be divisible by area_averaging_step."
         ),
     )
 
