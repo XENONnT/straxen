@@ -101,6 +101,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         :param download_heavy: Whether or not to allow downloads of the
             heaviest data (raw_records*, less aqmon and MV)
         :param kwargs: Passed to strax.FileSystemBackend
+        :param rses_only: tuple, limits RSE selection to these options if provided
         """
         mess = (
             f"You told the rucio backend to download data to {staging_dir}, "
