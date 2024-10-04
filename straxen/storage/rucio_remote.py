@@ -122,17 +122,8 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         """
         Determine the appropriate Rucio Storage Element (RSE) for a dataset.
 
-        Parameters:
-        -----------
-        dset_did : str
-            The dataset identifier.
-
-        Returns:
-        --------
-        str
-            The name of the selected RSE (selection based on the list of available RSEs).
-
-        Notes:
+        :param dset_did (str) :The dataset identifier.
+        :return (str) : The selected RSEs.
         ------
         Uses self.rses_only to filter available RSEs if set.
         """
