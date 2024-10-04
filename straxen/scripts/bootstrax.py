@@ -296,7 +296,7 @@ if not args.production:
     log.warning(
         "\n---------------"
         "\nBe aware, bootstrax not running in production mode. Specify with --production."
-        f"\nWriting new data to {output_folder}. Not saving this location in the runsDB."
+        f"\nWriting new data to {output_folder}. Not saving this location in the RunDB."
         "\nNot writing to the runs-database."
         "\n---------------"
     )
@@ -955,7 +955,7 @@ def delete_live_data(rd, live_data_path):
 
 
 def _delete_data(rd, path, data_type):
-    """After completing the processing and updating the runsDB, remove the live_data."""
+    """After completing the processing and updating the RunDB, remove the live_data."""
 
     if data_type == "live" and not args.delete_live and args.production:
         message = "Unsafe operation. Trying to delete live data!"
