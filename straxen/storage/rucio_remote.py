@@ -40,6 +40,7 @@ class RucioRemoteFrontend(strax.StorageFrontend):
         :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
         :param args: Passed to strax.StorageFrontend
         :param kwargs: Passed to strax.StorageFrontend
+        :param rses_only: tuple, limits RSE selection to these options if provided
         """
         super().__init__(*args, **kwargs)
         self.readonly = True
@@ -100,6 +101,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         :param download_heavy: Whether or not to allow downloads of the
             heaviest data (raw_records*, less aqmon and MV)
         :param kwargs: Passed to strax.FileSystemBackend
+        :param rses_only: tuple, limits RSE selection to these options if provided
         """
         mess = (
             f"You told the rucio backend to download data to {staging_dir}, "
@@ -119,6 +121,14 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         self.rses_only = strax.to_str_tuple(rses_only)
 
     def _get_rse(self, dset_did):
+        """Determine the appropriate Rucio Storage Element (RSE) for a dataset.
+
+        :param dset_did (str) :The dataset identifier.
+        :return (str) : The selected RSEs.
+        ------
+        Uses self.rses_only to filter available RSEs if set.
+
+        """
         rses = admix.rucio.get_rses(dset_did)
         rses = list(set(rses) & set(self.rses_only)) if self.rses_only else rses
         rse = admix.downloader.determine_rse(rses)
