@@ -40,6 +40,7 @@ class RucioRemoteFrontend(strax.StorageFrontend):
         :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
         :param args: Passed to strax.StorageFrontend
         :param kwargs: Passed to strax.StorageFrontend
+        :param rses_only: tuple, limits RSE selection to these options if provided
         """
         super().__init__(*args, **kwargs)
         self.readonly = True
