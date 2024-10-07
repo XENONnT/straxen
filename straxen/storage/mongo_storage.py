@@ -9,7 +9,7 @@ import gridfs
 from tqdm import tqdm
 from shutil import move
 import hashlib
-from pymongo.collection import Collection as pymongo_collection
+from pymongo.collection import Collection
 import utilix
 from straxen import uconfig
 
@@ -78,7 +78,7 @@ class GridFsInterface:
             collection = utilix.rundb.xent_collection(**mongo_kwargs, collection="fs.files")
         else:
             # Check the user input is fine for what we want to do.
-            if not isinstance(collection, pymongo_collection):
+            if not isinstance(collection, Collection):
                 raise ValueError("Provide PyMongo collection (see docstring)!")
             if file_database is not None:
                 raise ValueError("Already provided a collection!")

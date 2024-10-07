@@ -101,13 +101,13 @@ class RunDB(strax.StorageFrontend):
             mongo_database = uconfig.get("rundb_admin", "mongo_rdb_database")
 
         # setup mongo kwargs...
-        # utilix.rundb.pymongo_collection will take the following variables as kwargs
+        # utilix.rundb.xent_collection will take the following variables as kwargs
         #     url: mongo url, including auth
         #     user: the user
         #     password: the password for the above user
         #     database: the mongo database name
         # finally, it takes the collection name as an arg (not a kwarg).
-        # if no collection arg is passed, it defaults to the runsDB collection
+        # if no collection arg is passed, it defaults to the RunDB collection
         # See github.com/XENONnT/utilix/blob/master/utilix/rundb.py for more details
         mongo_kwargs = {
             "url": mongo_url,
