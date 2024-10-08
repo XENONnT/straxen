@@ -601,6 +601,11 @@ def infer_target(rd: dict) -> dict:
     nv_ref_mon = [
         "nVeto_LASER_calibration",
     ]
+    nv_calibration_modes = [
+        "nVeto_LASER_calibration_LONG_window",
+        "nVeto_LED_calibration",
+        "nVeto_LED_calibration_2",
+    ]
     mode = str(rd.get("mode"))
     detectors = list(rd.get("detectors"))  # type: ignore
 
@@ -626,6 +631,12 @@ def infer_target(rd: dict) -> dict:
         # also use source field, outcome is the same)
         if "event_info" in targets or "event_info" in post_process:
             targets = list(targets) + ["event_info_double"]
+    elif np.any([m in mode for m in nv_calibration_modes]):
+        log.debug("NV calibration-modes")
+        # In any other NV calibration mode we would like to
+        # keep our raw data without applying the software trigger.
+        targets = "raw_records_nv"
+        post_process = "raw_records_nv"
 
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
