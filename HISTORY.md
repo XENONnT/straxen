@@ -1,3 +1,12 @@
+2.2.6 / 2024-10-08
+-------------------
+* Specify strax version in pytest.yml by @chnlkx in https://github.com/XENONnT/straxen/pull/1431
+* Update definition of the SE Score (previously the SE density) for SR1 WIMP by @chnlkx in https://github.com/XENONnT/straxen/pull/1430
+* Copy https://github.com/XENONnT/straxen/pull/1417 by @dachengx in https://github.com/XENONnT/straxen/pull/1438
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.4...v2.2.6
+
+
 2.2.4 / 2024-07-01
 -------------------
 * Parse USERDISK base on hostname in RunDB by @dachengx in https://github.com/XENONnT/straxen/pull/1384
