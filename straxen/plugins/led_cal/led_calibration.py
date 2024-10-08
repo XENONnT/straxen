@@ -124,6 +124,7 @@ class LEDCalibration(strax.Plugin):
         (("Whether there was a hit found in the record", "triggered"), bool),
         (("Sample index of the hit that defines the window position", "hit_position"), np.uint8),
         (("Window used for integration", "integration_window"), np.uint8, (2,)),
+        (("Baseline from the record", "baseline"), np.float32),
     ]
 
     def compute(self, raw_records):
@@ -161,6 +162,7 @@ class LEDCalibration(strax.Plugin):
         temp["triggered"] = triggered
         temp["hit_position"] = led_windows[:, 0] - self.led_hit_extension[0]
         temp["integration_window"] = led_windows
+        temp["baseline"] = records["baseline"]
         return temp
 
 
