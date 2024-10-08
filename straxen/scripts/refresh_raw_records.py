@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 from ast import literal_eval
 import json
@@ -67,7 +65,7 @@ def main():
     ##
     folder = st.storage[0].find(st.key_for(run_id, "raw_records"), fuzzy_for="raw_records")[1]
     md = st.get_metadata(run_id, "raw_records")
-    metadata_fn = os.path.join(folder, strax.dirname_to_prefix(folder) + "-metadata.json")
+    metadata_fn = os.path.join(folder, strax.RUN_METADATA_PATTERN % strax.dirname_to_prefix(folder))
     assert osp.exists(metadata_fn)
     dtype = np.dtype(literal_eval(md["dtype"]))
     record_length = strax.record_length_from_dtype(dtype)

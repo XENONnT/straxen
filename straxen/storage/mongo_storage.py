@@ -9,7 +9,7 @@ import gridfs
 from tqdm import tqdm
 from shutil import move
 import hashlib
-from pymongo.collection import Collection as pymongo_collection
+from pymongo.collection import Collection
 import utilix
 from straxen import uconfig
 
@@ -78,7 +78,7 @@ class GridFsInterface:
             collection = utilix.rundb.xent_collection(**mongo_kwargs, collection="fs.files")
         else:
             # Check the user input is fine for what we want to do.
-            if not isinstance(collection, pymongo_collection):
+            if not isinstance(collection, Collection):
                 raise ValueError("Provide PyMongo collection (see docstring)!")
             if file_database is not None:
                 raise ValueError("Already provided a collection!")
@@ -255,15 +255,23 @@ class MongoDownloader(GridFsInterface):
     """Class to download files from GridFs."""
 
     _instances: Dict[Tuple, "MongoDownloader"] = {}
+    _initialized: Dict[Tuple, bool] = {}
 
     def __new__(cls, *args, **kwargs):
         key = (args, frozenset(kwargs.items()))
         if key not in cls._instances:
             cls._instances[key] = super(MongoDownloader, cls).__new__(cls)
-            cls._instances[key].__init__(*args, **kwargs)
+            cls._initialized[key] = False
         return cls._instances[key]
 
-    def __init__(self, store_files_at=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        key = (args, frozenset(kwargs.items()))
+        if not self._initialized[key]:
+            self._instances[key].initialize(*args, **kwargs)
+            self._initialized[key] = True
+        return
+
+    def initialize(self, store_files_at=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # We are going to set a place where to store the files. It's
