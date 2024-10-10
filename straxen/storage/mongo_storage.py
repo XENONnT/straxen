@@ -18,65 +18,42 @@ export, __all__ = exporter()
 
 @export 
 class GridFsBase:
-    """Base class to upload/download the files to a database using GridFS.
+    """Base class for GridFS operations."""
 
-    It is subclassed by a PyMongo version as well as one that goes through the runDB API
-
-    """
-
-    def __init__(self, config_identifier="config_name", **kwargs):
-        # This is the identifier under which we store the files.
+    def __init__(self, config_identifier: str = "config_name", **kwargs: Any) -> None:
         self.config_identifier = config_identifier
 
-    def get_query_config(self, config):
-        """Generate identifier to query against. This is just the configs name.
-
-        :param config: str, name of the file of interest
-        :return: dict, that can be used in queries
-
-        """
+    def get_query_config(self, config: str) -> Dict[str, str]:
+        """Generate query identifier for a config."""
         return {self.config_identifier: config}
 
-    def document_format(self, config):
-        """Format of the document to upload.
-
-        :param config: str, name of the file of interest
-        :return: dict, that will be used to add the document
-
-        """
+    def document_format(self, config: str) -> Dict[str, Any]:
+        """Format document for upload."""
         doc = self.get_query_config(config)
         doc.update({"added": datetime.utcnow()})
         return doc
 
-    def config_exists(self, config):
+    def config_exists(self, config: str) -> bool:
+        """Check if a config exists."""
         raise NotImplementedError
 
-    def md5_stored(self, abs_path):
+    def md5_stored(self, abs_path: str) -> bool:
+        """Check if file with given MD5 is stored."""
         raise NotImplementedError
 
-    def test_find(self):
+    def test_find(self) -> None:
+        """Test the find operation."""
         raise NotImplementedError
 
-    def list_files(self):
+    def list_files(self) -> None:
+        """List all files in the database."""
         raise NotImplementedError
 
     @staticmethod
-    def compute_md5(abs_path):
-        """
-        NB: RAM intensive operation!
-        Get the md5 hash of a file stored under abs_path
-
-        :param abs_path: str, absolute path to a file
-        :return: str, the md5-hash of the requested file
-        """
-        # This function is copied from:
-        # stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
-
+    def compute_md5(abs_path: str) -> str:
+        """Compute MD5 hash of a file. RAM intensive operation."""
         if not os.path.exists(abs_path):
-            # if there is no file, there is nothing to compute
             return ""
-        # Also, disable all the  Use of insecure MD2, MD4, MD5, or SHA1
-        # hash function violations in this function.
         # bandit: disable=B303
         hash_md5 = hashlib.md5()
         with open(abs_path, "rb") as f:
@@ -87,7 +64,7 @@ class GridFsBase:
 @export
 class GridFsInterfaceMongo(GridFsBase):
     """
-    Base class to upload/download the files to a database using GridFS
+    Class to upload/download the files to a database using GridFS
     for PyMongo:
     https://pymongo.readthedocs.io/en/stable/api/gridfs/index.html#module-gridfs
 
