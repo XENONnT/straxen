@@ -9,8 +9,8 @@ import gridfs
 from tqdm import tqdm
 from shutil import move
 import hashlib
-from pymongo.collection import Collection, DB
-import utilix
+from pymongo.collection import Collection
+from utilix.rundb import DB, xent_collection
 from straxen import uconfig, logger
 
 
@@ -119,7 +119,7 @@ class GridFsInterfaceMongo(GridFsBase):
             }
             # We can safely hard-code the collection as that is always
             # the same with GridFS.
-            collection = utilix.rundb.xent_collection(**mongo_kwargs, collection="fs.files")
+            collection = xent_collection(**mongo_kwargs, collection="fs.files")
         else:
             # Check the user input is fine for what we want to do.
             if not isinstance(collection, Collection):
