@@ -536,8 +536,7 @@ class APIDownloader(GridFsInterfaceAPI):
         write_to: Optional[str] = None,
         human_readable_file_name: bool = False,
     ) -> str:
-        """
-        Download the config_name if it exists.
+        """Download the config_name if it exists.
 
         :param config_name: The name under which the file is stored.
         :param write_to: Optional path to write the file to.
