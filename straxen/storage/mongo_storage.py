@@ -52,7 +52,11 @@ class GridFsBase:
 
     @staticmethod
     def compute_md5(abs_path: str) -> str:
-        """Compute MD5 hash of a file. RAM intensive operation."""
+        """Compute MD5 hash of a file.
+
+        RAM intensive operation.
+
+        """
         if not os.path.exists(abs_path):
             return ""
         # bandit: disable=B303
@@ -440,7 +444,11 @@ class GridFsInterfaceAPI(GridFsBase):
         return self.db.count_files(query) > 0
 
     def md5_stored(self, abs_path: str) -> bool:
-        """Check if file with same MD5 is stored. RAM intensive."""
+        """Check if file with same MD5 is stored.
+
+        RAM intensive.
+
+        """
         if not os.path.exists(abs_path):
             return False
         query = {"md5": self.compute_md5(abs_path)}
@@ -468,10 +476,11 @@ class APIUploader(GridFsInterfaceAPI):
         super().__init__(config_identifier=config_identifier)
 
     def upload_single(self, config: str, abs_path: str) -> None:
-        """
-        Upload a single file to gridfs.
+        """Upload a single file to gridfs.
+
         :param config: str, the name under which this file should be stored
         :param abs_path: str, the absolute path of the file
+
         """
         if not os.path.exists(abs_path):
             raise CouldNotLoadError(f"{abs_path} does not exist")
@@ -532,9 +541,10 @@ class APIDownloader(GridFsInterfaceAPI):
 
         :param config_name: The name under which the file is stored.
         :param write_to: Optional path to write the file to.
-        :param human_readable_file_name: Store the file under its human-readable name.
-            Not recommended as the user might not know if it's the latest version.
+        :param human_readable_file_name: Store the file under its human-readable name. Not
+            recommended as the user might not know if it's the latest version.
         :return: The absolute path of the downloaded file.
+
         """
         target_file_name = (
             config_name if human_readable_file_name else self.db.get_file_md5(config_name)
@@ -560,12 +570,12 @@ class APIDownloader(GridFsInterfaceAPI):
         return destination_path
 
     def _check_store_files_at(self, cache_folder_alternatives: Tuple[str, ...]) -> str:
-        """
-        Find a writable folder from the given alternatives.
+        """Find a writable folder from the given alternatives.
 
         :param cache_folder_alternatives: Tuple of folder paths to check.
         :return: The first writable folder path.
         :raises PermissionError: If no writable folder is found.
+
         """
         if not isinstance(cache_folder_alternatives, (tuple, list)):
             raise ValueError("cache_folder_alternatives must be tuple")
