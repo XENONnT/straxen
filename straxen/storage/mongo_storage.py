@@ -85,7 +85,7 @@ class GridFsBase:
         return hash_md5.hexdigest()
 
 @export
-class GridFsInterface:
+class GridFsInterfaceMongo(GridFsBase):
     """
     Base class to upload/download the files to a database using GridFS
     for PyMongo:
@@ -256,7 +256,7 @@ class GridFsInterface:
 
 
 @export
-class MongoUploader(GridFsInterface):
+class MongoUploader(GridFsInterfaceMongo):
     """Class to upload files to GridFs."""
 
     def __init__(self, readonly=False, *args, **kwargs):
@@ -318,7 +318,7 @@ class MongoUploader(GridFsInterface):
 
 
 @export
-class MongoDownloader(GridFsInterface):
+class MongoDownloader(GridFsInterfaceMongo):
     """Class to download files from GridFs."""
 
     _instances: Dict[Tuple, "MongoDownloader"] = {}
