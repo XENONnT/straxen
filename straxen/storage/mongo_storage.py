@@ -55,7 +55,7 @@ class GridFsBase:
         """Test the find operation."""
         raise NotImplementedError
 
-    def list_files(self) -> None:
+    def list_files(self) -> List[str]:
         """List all files in the database."""
         raise NotImplementedError
 
@@ -517,12 +517,14 @@ class APIDownloader(GridFsInterfaceAPI):
                 "./resource_cache",
                 "/tmp/straxen_resource_cache",
             )
-        elif not isinstance(store_files_at, (tuple, str, list)):
-            raise ValueError(f"{store_files_at} should be tuple of paths!")
         elif isinstance(store_files_at, str):
-            store_files_at = to_str_tuple(store_files_at)
+            store_files_at = (store_files_at,)
+        elif isinstance(store_files_at, list):
+            store_files_at = tuple(store_files_at)
+        elif not isinstance(store_files_at, tuple):
+            raise ValueError(f"{store_files_at} should be a string, list, or tuple of paths!")
 
-        self.storage_options = store_files_at
+        self.storage_options: Tuple[str, ...] = store_files_at
 
     def download_single(
         self,
@@ -530,18 +532,14 @@ class APIDownloader(GridFsInterfaceAPI):
         write_to: Optional[str] = None,
         human_readable_file_name: bool = False,
     ) -> str:
-        """Download the config_name if it exists.
-
-        :param config_name: The name under which the file is stored.
-        :param write_to: Optional path to write the file to.
-        :param human_readable_file_name: Store the file under its human-readable name. Not
-            recommended as the user might not know if it's the latest version.
-        :return: The absolute path of the downloaded file.
-
-        """
+        """Download the config_name if it exists."""
         target_file_name = (
             config_name if human_readable_file_name else self.db.get_file_md5(config_name)
         )
+
+        # check if self.storage_options is None or empty
+        if not self.storage_options:
+            raise ValueError("No storage options available")
 
         if write_to is None:
             for cache_folder in self.storage_options:
@@ -552,6 +550,11 @@ class APIDownloader(GridFsInterfaceAPI):
             store_files_at = self._check_store_files_at(self.storage_options)
         else:
             store_files_at = write_to
+
+        # make sure store_files_at is a string
+        if not isinstance(store_files_at, str):
+            raise TypeError(f"Expected string for store_files_at, got {type(store_files_at)}")
+
         destination_path = os.path.join(store_files_at, target_file_name)
 
         with tempfile.TemporaryDirectory() as temp_directory_name:
@@ -562,27 +565,14 @@ class APIDownloader(GridFsInterfaceAPI):
                 warn(f"File {destination_path} already exists. Not overwriting.")
         return destination_path
 
-    def _check_store_files_at(self, cache_folder_alternatives: Tuple[str, ...]) -> str:
-        """Find a writable folder from the given alternatives.
-
-        :param cache_folder_alternatives: Tuple of folder paths to check.
-        :return: The first writable folder path.
-        :raises PermissionError: If no writable folder is found.
-
-        """
-        if not isinstance(cache_folder_alternatives, (tuple, list)):
-            raise ValueError("cache_folder_alternatives must be tuple")
-        for folder in cache_folder_alternatives:
-            if not os.path.exists(folder):
-                try:
-                    os.makedirs(folder)
-                except (PermissionError, OSError):
-                    continue
-            if os.access(folder, os.W_OK):
-                return folder
-        raise PermissionError(
-            f"Cannot write to any of the cache_folder_alternatives: {cache_folder_alternatives}"
-        )
+    def _check_store_files_at(self, options: Union[str, Tuple[str, ...]]) -> str:
+        """Check and return a valid storage location."""
+        if isinstance(options, str):
+            return options
+        for option in options:
+            if os.path.isdir(option):
+                return option
+        raise ValueError("No valid storage location found")
 
 
 class DownloadWarning(UserWarning):
