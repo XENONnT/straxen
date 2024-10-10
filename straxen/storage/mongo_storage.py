@@ -16,7 +16,8 @@ from utilix import uconfig, logger
 
 export, __all__ = exporter()
 
-@export 
+
+@export
 class GridFsBase:
     """Base class for GridFS operations."""
 
@@ -51,7 +52,11 @@ class GridFsBase:
 
     @staticmethod
     def compute_md5(abs_path: str) -> str:
-        """Compute MD5 hash of a file. RAM intensive operation."""
+        """Compute MD5 hash of a file.
+
+        RAM intensive operation.
+
+        """
         if not os.path.exists(abs_path):
             return ""
         # bandit: disable=B303
@@ -60,6 +65,7 @@ class GridFsBase:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
+
 
 @export
 class GridFsInterfaceMongo(GridFsBase):
@@ -231,6 +237,7 @@ class GridFsInterfaceMongo(GridFsBase):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
 
+
 @export
 class MongoUploader(GridFsInterfaceMongo):
     """Class to upload files to GridFs."""
@@ -291,6 +298,7 @@ class MongoUploader(GridFsInterfaceMongo):
         print(f"uploading {config}")
         with open(abs_path, "rb") as file:
             self.grid_fs.put(file, **doc)
+
 
 @export
 class MongoDownloader(GridFsInterfaceMongo):
@@ -421,26 +429,31 @@ class MongoDownloader(GridFsInterfaceMongo):
             f"Cannot write to any of the cache_folder_alternatives: {cache_folder_alternatives}"
         )
 
-@export 
+
+@export
 class GridFsInterfaceAPI(GridFsBase):
     """Interface to gridfs using the runDB API."""
-    
+
     def __init__(self, config_identifier: str = "config_name") -> None:
         super().__init__(config_identifier=config_identifier)
         self.db = DB()
-        
+
     def config_exists(self, config: str) -> bool:
         """Check if config is saved in the collection."""
         query = self.get_query_config(config)
         return self.db.count_files(query) > 0
-    
+
     def md5_stored(self, abs_path: str) -> bool:
-        """Check if file with same MD5 is stored. RAM intensive."""
+        """Check if file with same MD5 is stored.
+
+        RAM intensive.
+
+        """
         if not os.path.exists(abs_path):
             return False
         query = {"md5": self.compute_md5(abs_path)}
         return self.db.count_files(query) > 0
-    
+
     def test_find(self) -> None:
         """Test the connection to the collection."""
         if self.db.get_files({}, projection={"_id": 1}) is None:
@@ -454,24 +467,27 @@ class GridFsInterfaceAPI(GridFsBase):
             if self.config_identifier in doc
         ]
 
+
 @export
 class APIUploader(GridFsInterfaceAPI):
     """Upload files to gridfs using the runDB API."""
-    
+
     def __init__(self, config_identifier: str = "config_name") -> None:
         super().__init__(config_identifier=config_identifier)
 
     def upload_single(self, config: str, abs_path: str) -> None:
-        """
-        Upload a single file to gridfs.
+        """Upload a single file to gridfs.
+
         :param config: str, the name under which this file should be stored
         :param abs_path: str, the absolute path of the file
+
         """
         if not os.path.exists(abs_path):
             raise CouldNotLoadError(f"{abs_path} does not exist")
 
         logger.info(f"uploading file {config} from {abs_path}")
         self.db.upload_file(abs_path, config)
+
 
 @export
 class APIDownloader(GridFsInterfaceAPI):
@@ -493,9 +509,13 @@ class APIDownloader(GridFsInterfaceAPI):
             self._instances[key].initialize(*args, **kwargs)
             self._initialized[key] = True
 
-    def initialize(self, config_identifier: str = "config_name", 
-                   store_files_at: Optional[Union[str, Tuple[str, ...], List[str]]] = None, 
-                   *args: Any, **kwargs: Any) -> None:
+    def initialize(
+        self,
+        config_identifier: str = "config_name",
+        store_files_at: Optional[Union[str, Tuple[str, ...], List[str]]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(config_identifier=config_identifier)
 
         if store_files_at is None:
@@ -509,19 +529,25 @@ class APIDownloader(GridFsInterfaceAPI):
             store_files_at = to_str_tuple(store_files_at)
 
         self.storage_options = store_files_at
-        
-    def download_single(self, config_name: str, write_to: Optional[str] = None, 
-                        human_readable_file_name: bool = False) -> str:
-        """
-        Download the config_name if it exists.
+
+    def download_single(
+        self,
+        config_name: str,
+        write_to: Optional[str] = None,
+        human_readable_file_name: bool = False,
+    ) -> str:
+        """Download the config_name if it exists.
 
         :param config_name: The name under which the file is stored.
         :param write_to: Optional path to write the file to.
-        :param human_readable_file_name: Store the file under its human-readable name.
-            Not recommended as the user might not know if it's the latest version.
+        :param human_readable_file_name: Store the file under its human-readable name. Not
+            recommended as the user might not know if it's the latest version.
         :return: The absolute path of the downloaded file.
+
         """
-        target_file_name = config_name if human_readable_file_name else self.db.get_file_md5(config_name)
+        target_file_name = (
+            config_name if human_readable_file_name else self.db.get_file_md5(config_name)
+        )
 
         if write_to is None:
             for cache_folder in self.storage_options:
@@ -543,12 +569,12 @@ class APIDownloader(GridFsInterfaceAPI):
         return destination_path
 
     def _check_store_files_at(self, cache_folder_alternatives: Tuple[str, ...]) -> str:
-        """
-        Find a writable folder from the given alternatives.
+        """Find a writable folder from the given alternatives.
 
         :param cache_folder_alternatives: Tuple of folder paths to check.
         :return: The first writable folder path.
         :raises PermissionError: If no writable folder is found.
+
         """
         if not isinstance(cache_folder_alternatives, (tuple, list)):
             raise ValueError("cache_folder_alternatives must be tuple")
@@ -563,6 +589,7 @@ class APIDownloader(GridFsInterfaceAPI):
         raise PermissionError(
             f"Cannot write to any of the cache_folder_alternatives: {cache_folder_alternatives}"
         )
+
 
 class DownloadWarning(UserWarning):
     pass
