@@ -458,15 +458,14 @@ class GridFsInterfaceAPI(GridFsBase):
 class APIUploader(GridFsInterfaceAPI):
     """Upload files to gridfs using the runDB API."""
     
-    def __init__(self, config_identifier="config_name"):
-        GridFsInterfaceAPI.__init__(self, config_identifier=config_identifier)
+    def __init__(self, config_identifier: str = "config_name") -> None:
+        super().__init__(config_identifier=config_identifier)
 
-    def upload_single(self, config, abs_path):
-        """Upload a single file to gridfs.
-
+    def upload_single(self, config: str, abs_path: str) -> None:
+        """
+        Upload a single file to gridfs.
         :param config: str, the name under which this file should be stored
         :param abs_path: str, the absolute path of the file
-
         """
         if not os.path.exists(abs_path):
             raise CouldNotLoadError(f"{abs_path} does not exist")
@@ -481,21 +480,22 @@ class APIDownloader(GridFsInterfaceAPI):
     _instances: Dict[Tuple, "APIDownloader"] = {}
     _initialized: Dict[Tuple, bool] = {}
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> "APIDownloader":
         key = (args, frozenset(kwargs.items()))
         if key not in cls._instances:
             cls._instances[key] = super(APIDownloader, cls).__new__(cls)
             cls._initialized[key] = False
         return cls._instances[key]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         key = (args, frozenset(kwargs.items()))
         if not self._initialized[key]:
             self._instances[key].initialize(*args, **kwargs)
             self._initialized[key] = True
-        return
 
-    def initialize(self, config_identifier="config_name", store_files_at=None, *args, **kwargs):
+    def initialize(self, config_identifier: str = "config_name", 
+                   store_files_at: Optional[Union[str, Tuple[str, ...], List[str]]] = None, 
+                   *args: Any, **kwargs: Any) -> None:
         super().__init__(config_identifier=config_identifier)
 
         if store_files_at is None:
@@ -510,48 +510,59 @@ class APIDownloader(GridFsInterfaceAPI):
 
         self.storage_options = store_files_at
         
-    def download_single(self, config_name: str, write_to=None, human_readable_file_name=False):
-        """Download the config_name if it exists.
-
-        :param config_name: str, the name under which the file is stored
-        :param human_readable_file_name: bool, store the file also under it's human readable name.
-            It is better not to use this as the user might not know if the version of the file is
-            the latest.
-        :return: str, the absolute path of the file requested
-
+    def download_single(self, config_name: str, write_to: Optional[str] = None, 
+                        human_readable_file_name: bool = False) -> str:
         """
+        Download the config_name if it exists.
 
-        if human_readable_file_name:
-            target_file_name = config_name
-        else:
-            target_file_name = self.db.get_file_md5(config_name)
+        :param config_name: The name under which the file is stored.
+        :param write_to: Optional path to write the file to.
+        :param human_readable_file_name: Store the file under its human-readable name.
+            Not recommended as the user might not know if it's the latest version.
+        :return: The absolute path of the downloaded file.
+        """
+        target_file_name = config_name if human_readable_file_name else self.db.get_file_md5(config_name)
 
         if write_to is None:
             for cache_folder in self.storage_options:
                 possible_path = os.path.join(cache_folder, target_file_name)
                 if os.path.exists(possible_path):
-                    # Great! This already exists. Let's just return
-                    # where it is stored.
                     return possible_path
 
-            # Apparently the file does not exist, let's find a place to
-            # store the file and download it.
             store_files_at = self._check_store_files_at(self.storage_options)
         else:
             store_files_at = write_to
         destination_path = os.path.join(store_files_at, target_file_name)
 
-        # Let's open a temporary directory, download the file, and
-        # try moving it to the destination_path. This prevents
-        # simultaneous writes of the same file.
         with tempfile.TemporaryDirectory() as temp_directory_name:
             temp_path = self.db.download_file(config_name, save_dir=temp_directory_name)
             if not os.path.exists(destination_path):
-                # Move the file to the place we want to store it.
                 move(temp_path, destination_path)
             else:
                 warn(f"File {destination_path} already exists. Not overwriting.")
         return destination_path
+
+    def _check_store_files_at(self, cache_folder_alternatives: Tuple[str, ...]) -> str:
+        """
+        Find a writable folder from the given alternatives.
+
+        :param cache_folder_alternatives: Tuple of folder paths to check.
+        :return: The first writable folder path.
+        :raises PermissionError: If no writable folder is found.
+        """
+        if not isinstance(cache_folder_alternatives, (tuple, list)):
+            raise ValueError("cache_folder_alternatives must be tuple")
+        for folder in cache_folder_alternatives:
+            if not os.path.exists(folder):
+                try:
+                    os.makedirs(folder)
+                except (PermissionError, OSError):
+                    continue
+            if os.access(folder, os.W_OK):
+                return folder
+        raise PermissionError(
+            f"Cannot write to any of the cache_folder_alternatives: {cache_folder_alternatives}"
+        )
 
 class DownloadWarning(UserWarning):
     pass
