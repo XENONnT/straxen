@@ -11,7 +11,7 @@ from shutil import move
 import hashlib
 from pymongo.collection import Collection, DB
 import utilix
-from straxen import uconfig
+from straxen import uconfig, logger
 
 
 export, __all__ = exporter()
@@ -316,7 +316,6 @@ class MongoUploader(GridFsInterfaceMongo):
         with open(abs_path, "rb") as file:
             self.grid_fs.put(file, **doc)
 
-
 @export
 class MongoDownloader(GridFsInterfaceMongo):
     """Class to download files from GridFs."""
@@ -502,7 +501,26 @@ class GridFsInterfaceAPI(GridFsBase):
             if self.config_identifier in doc
         ]
 
+@export
+class APIUploader(GridFsInterfaceAPI):
+    """Upload files to gridfs using the runDB API."""
+    
+    def __init__(self, config_identifier="config_name"):
+        GridFsInterfaceAPI.__init__(self, config_identifier=config_identifier)
 
+    def upload_single(self, config, abs_path):
+        """Upload a single file to gridfs.
+
+        :param config: str, the name under which this file should be stored
+        :param abs_path: str, the absolute path of the file
+
+        """
+        if not os.path.exists(abs_path):
+            raise CouldNotLoadError(f"{abs_path} does not exist")
+
+        logger.info(f"uploading file {config} from {abs_path}")
+        self.db.upload_file(abs_path, config)
+    
 
 class DownloadWarning(UserWarning):
     pass
