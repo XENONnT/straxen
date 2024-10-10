@@ -3,7 +3,7 @@ import tempfile
 from datetime import datetime
 from warnings import warn
 import pytz
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any, List, Optional, Union
 from strax import exporter, to_str_tuple
 import gridfs
 from tqdm import tqdm
