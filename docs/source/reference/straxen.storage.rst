@@ -7,7 +7,7 @@ Submodules
 straxen.storage.mongo\_storage module
 -------------------------------------
 
-.. automodule:: straxen.storage.mongo_storage
+.. automodule:: utilix.mongo_storage
    :members:
    :undoc-members:
    :show-inheritance:

@@ -56,7 +56,7 @@ A concrete plugin example
                 downloader = straxen.MongoDownloader()
                 try:
                     self.model_file = downloader.download_single(self.model_file)
-                except straxen.mongo_storage.CouldNotLoadError as e:
+                except utilix.mongo_storage.CouldNotLoadError as e:
                     raise RuntimeError(f'Model files {self.model_file} is not found') from e
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tar = tarfile.open(self.model_file, mode="r:gz")

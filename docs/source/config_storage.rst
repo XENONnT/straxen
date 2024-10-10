@@ -55,7 +55,7 @@ Therefore, this manner of loading data is intended only for testing purposes.
 
 How does the downloading work?
 --------------------------------------
-In :py:mod:`straxen/mongo_storage.py` there are two classes that take care of the
+In :py:mod:`utilix/mongo_storage.py` there are two classes that take care of the
 downloading and the uploading of files to the `files` database. In this
 database we store configuration files under a :py:obj:`config_identifier` i.e. the
 :py:obj:`'file_name'`. This is the label that is used to find the document one is

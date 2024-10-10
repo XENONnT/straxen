@@ -1,5 +1,6 @@
 import unittest
 import straxen
+import utilix
 import os
 import pymongo
 from straxen import mongo_uri_not_set
@@ -99,7 +100,7 @@ class TestMongoDownloader(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.uploader.upload_from_dict("A string is not a dict")
 
-        with self.assertRaises(straxen.mongo_storage.CouldNotLoadError):
+        with self.assertRaises(utilix.mongo_storage.CouldNotLoadError):
             self.uploader.upload_single("no_such_file", "no_such_file")
 
         with self.assertWarns(UserWarning):
