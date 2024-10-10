@@ -125,7 +125,9 @@ class Peaklets(strax.Plugin):
     )
 
     waveform_start_max_downsampling = straxen.URLConfig(
-        default=6, type=int, help="Only save the start of the waveform for peaks with a downsampling factor smaller or equal to this value"
+        default=6,
+        type=int,
+        help="Only save the start of the waveform for peaks with a downsampling factor smaller or equal to this value",
     )
 
     saturation_correction_on = straxen.URLConfig(
@@ -579,7 +581,15 @@ def peak_saturation_correction(
         peaks[peak_i]["dt"] = dt
 
     strax.sum_waveform(
-        peaks, hitlets, records, rlinks, to_pe, n_top_channels, peak_list, save_waveform_start, max_downsample_factor_waveform_start
+        peaks,
+        hitlets,
+        records,
+        rlinks,
+        to_pe,
+        n_top_channels,
+        peak_list,
+        save_waveform_start,
+        max_downsample_factor_waveform_start,
     )
     return peak_list
 
