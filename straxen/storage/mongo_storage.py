@@ -11,7 +11,7 @@ from shutil import move
 import hashlib
 from pymongo.collection import Collection
 from utilix.rundb import DB, xent_collection
-from straxen import uconfig, logger
+from utilix import uconfig, logger
 
 
 export, __all__ = exporter()
