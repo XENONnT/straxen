@@ -28,10 +28,19 @@ class GridFsBase:
         """Generate query identifier for a config."""
         return {self.config_identifier: config}
 
-    def document_format(self, config: str) -> Dict[str, Any]:
-        """Format document for upload."""
+    def document_format(self, config):
+        """Format of the document to upload.
+
+        :param config: str, name of the file of interest
+        :return: dict, that will be used to add the document
+
+        """
         doc = self.get_query_config(config)
-        doc.update({"added": datetime.utcnow()})
+        doc.update(
+            {
+                "added": datetime.now(tz=pytz.utc),
+            }
+        )
         return doc
 
     def config_exists(self, config: str) -> bool:
@@ -152,21 +161,6 @@ class GridFsInterfaceMongo(GridFsBase):
 
         """
         return {self.config_identifier: config}
-
-    def document_format(self, config):
-        """Format of the document to upload.
-
-        :param config: str, name of the file of interest
-        :return: dict, that will be used to add the document
-
-        """
-        doc = self.get_query_config(config)
-        doc.update(
-            {
-                "added": datetime.now(tz=pytz.utc),
-            }
-        )
-        return doc
 
     def config_exists(self, config):
         """Quick check if this config is already saved in the collection.
