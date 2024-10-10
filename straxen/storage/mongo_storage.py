@@ -520,7 +520,85 @@ class APIUploader(GridFsInterfaceAPI):
 
         logger.info(f"uploading file {config} from {abs_path}")
         self.db.upload_file(abs_path, config)
-    
+
+@export
+class APIDownloader(GridFsInterfaceAPI):
+    """Download files from gridfs using the runDB API."""
+
+    _instances: Dict[Tuple, "APIDownloader"] = {}
+    _initialized: Dict[Tuple, bool] = {}
+
+    def __new__(cls, *args, **kwargs):
+        key = (args, frozenset(kwargs.items()))
+        if key not in cls._instances:
+            cls._instances[key] = super(APIDownloader, cls).__new__(cls)
+            cls._initialized[key] = False
+        return cls._instances[key]
+
+    def __init__(self, *args, **kwargs):
+        key = (args, frozenset(kwargs.items()))
+        if not self._initialized[key]:
+            self._instances[key].initialize(*args, **kwargs)
+            self._initialized[key] = True
+        return
+
+    def initialize(self, config_identifier="config_name", store_files_at=None, *args, **kwargs):
+        super().__init__(config_identifier=config_identifier)
+
+        if store_files_at is None:
+            store_files_at = (
+                "./resource_cache",
+                "/tmp/straxen_resource_cache",
+            )
+        elif not isinstance(store_files_at, (tuple, str, list)):
+            raise ValueError(f"{store_files_at} should be tuple of paths!")
+        elif isinstance(store_files_at, str):
+            store_files_at = to_str_tuple(store_files_at)
+
+        self.storage_options = store_files_at
+        
+    def download_single(self, config_name: str, write_to=None, human_readable_file_name=False):
+        """Download the config_name if it exists.
+
+        :param config_name: str, the name under which the file is stored
+        :param human_readable_file_name: bool, store the file also under it's human readable name.
+            It is better not to use this as the user might not know if the version of the file is
+            the latest.
+        :return: str, the absolute path of the file requested
+
+        """
+
+        if human_readable_file_name:
+            target_file_name = config_name
+        else:
+            target_file_name = self.db.get_file_md5(config_name)
+
+        if write_to is None:
+            for cache_folder in self.storage_options:
+                possible_path = os.path.join(cache_folder, target_file_name)
+                if os.path.exists(possible_path):
+                    # Great! This already exists. Let's just return
+                    # where it is stored.
+                    return possible_path
+
+            # Apparently the file does not exist, let's find a place to
+            # store the file and download it.
+            store_files_at = self._check_store_files_at(self.storage_options)
+        else:
+            store_files_at = write_to
+        destination_path = os.path.join(store_files_at, target_file_name)
+
+        # Let's open a temporary directory, download the file, and
+        # try moving it to the destination_path. This prevents
+        # simultaneous writes of the same file.
+        with tempfile.TemporaryDirectory() as temp_directory_name:
+            temp_path = self.db.download_file(config_name, save_dir=temp_directory_name)
+            if not os.path.exists(destination_path):
+                # Move the file to the place we want to store it.
+                move(temp_path, destination_path)
+            else:
+                warn(f"File {destination_path} already exists. Not overwriting.")
+        return destination_path
 
 class DownloadWarning(UserWarning):
     pass
