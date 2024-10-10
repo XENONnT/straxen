@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Restrax: Rechunking live data
 =============================================
@@ -12,6 +11,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
 """
+
 __version__ = "0.3.1"
 
 import argparse
@@ -98,38 +98,36 @@ def parse_args():
 
 def main():
     args = parse_args()
+    restrax = ReStrax(args=args)
+
     while True:
         try:
-            run_restrax(args)
+            run_restrax(restrax, args)
             if args.process:
                 break
         except (KeyboardInterrupt, SystemExit):
             break
         except Exception as fatal_error:
-            # Open a class, just to log the error
-            re_temp = ReStrax(args=args)
-            re_temp.log.error(
-                f"Fatal warning:\tran into {fatal_error}. Try logging error and restart restrax"
+            restrax.log.error(
+                f"Fatal warning: ran into {fatal_error}. Trying to log error and restart ReStrax."
             )
             try:
-                re_temp.log_warning(
-                    f"Fatal warning:\tran into {fatal_error}",
+                restrax.log_warning(
+                    f"Fatal warning: ran into {fatal_error}",
                     priority="error",
                 )
             except Exception as warning_error:
-                re_temp.error(f"Fatal warning:\tcould not log {warning_error}")
+                restrax.error(f"Fatal warning: could not log {warning_error}")
 
             if not args.undying:
                 raise
 
-            # This usually only takes a minute or two
+            restrax.log.warning("Restarting main loop after 60 seconds due to fatal error.")
             time.sleep(60)
-            re_temp.warning("Restarting main loop")
 
 
-def run_restrax(args):
-    """Run the infinite loop of restrax."""
-    restrax = ReStrax(args=args)
+def run_restrax(restrax, args):
+    """Run the infinite loop of ReStrax."""
     restrax.infinite_loop(close=bool(args.process))
 
 
@@ -367,16 +365,25 @@ class ReStrax(daq_core.DataBases):
 
     def set_restrax_failed(self, run_doc: dict, reason: str) -> None:
         """Update the rundoc with the restrax fail state."""
+
         update = {
             "restrax.state": "failed",
             "restrax.ended": now(),
             "restrax.reason": reason,
         }
+
         if self.production:
             self.run_coll.update_one(
                 {"_id": run_doc["_id"]},
                 {"$set": update},
             )
+
+            # Perform the $inc update to increment n_tries
+            result_inc = self.run_coll.update_one(
+                {"_id": run_doc["_id"]}, {"$inc": {"restrax.n_tries": 1}}
+            )
+            self.log.debug(f"Increment update result: {result_inc.raw_result}")
+
         self.log.debug(f'Fail {run_doc["number"]} with {update}')
         if run_doc.get("restrax", {}).get("n_tries", 0) >= self.max_tries:
             self.log_warning(
@@ -458,7 +465,12 @@ class ReStrax(daq_core.DataBases):
             chunk.get("nbytes", 0)
             for chunk in storage_backend.get_metadata(data_doc["location"]).get("chunks", [dict()])
         )
-        data_docs = sorted(data_docs, key=size, reverse=True)
+        try:
+            data_docs = sorted(data_docs, key=size, reverse=True)
+        except Exception as exception:
+            self.set_restrax_failed(run_doc, str(exception))
+            self.log.error(f"Ran into {exception}")
+            raise exception
         return data_docs
 
     def run_software_veto(self, run_doc: dict):

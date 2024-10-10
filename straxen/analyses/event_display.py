@@ -12,8 +12,7 @@ export, __all__ = strax.exporter()
 # Default attributes to display in the event_display (looks little
 # complicated but just repeats same fields for S1 S1)
 # Should be of form as below where {v} wil be filled with the value of
-# event['key']:
-#  (('key', '{v} UNIT'), ..)
+# event['key']: (('key', '{v} UNIT'), ..)
 PEAK_DISPLAY_DEFAULT_INFO: list = sum(
     [
         [

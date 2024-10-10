@@ -82,7 +82,7 @@ class CorrectionsManagementServices:
             read the .xenon_config for the users "pymongo_user" has
             readonly permissions to the corrections DB
             the "CMT admin user" has r/w permission to corrections DB
-            and read permission to runsDB
+            and read permission to RunDB
         :param password: DB password
         :param is_nt: bool if True we are looking at nT if False we are looking at 1T
         """
@@ -143,7 +143,7 @@ class CorrectionsManagementServices:
                 f"{corrections_w_file} "
             )
 
-    # entry for e.g. for super runs
+    # entry for e.g. for superruns
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
     def _get_correction(self, run_id, correction, version):
@@ -312,7 +312,7 @@ class CorrectionsManagementServices:
         return file_name
 
     def get_start_time(self, run_id):
-        """Smart logic to return start time from runsDB.
+        """Smart logic to return start time from RunDB.
 
         :param run_id: run id from runDB
         :return: run start time

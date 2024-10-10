@@ -100,6 +100,6 @@ class EventWaveform(strax.Plugin):
                     if type_ == "s1":
                         result["s1_n_channels"][event_i] = (type_area_per_channel > 0).sum()
                         result["s1_top_n_channels"][event_i] = (
-                            type_area_per_channel[: self.config["n_top_pmts"]] > 0
+                            type_area_per_channel[: self.n_top_pmts] > 0
                         ).sum()
         return result

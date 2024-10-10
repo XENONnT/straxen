@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Bootstrax: XENONnT online processing manager
 =============================================
@@ -15,6 +14,7 @@ How to use
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
+
 __version__ = "2.0.1"
 
 import os
@@ -296,7 +296,7 @@ if not args.production:
     log.warning(
         "\n---------------"
         "\nBe aware, bootstrax not running in production mode. Specify with --production."
-        f"\nWriting new data to {output_folder}. Not saving this location in the runsDB."
+        f"\nWriting new data to {output_folder}. Not saving this location in the RunDB."
         "\nNot writing to the runs-database."
         "\n---------------"
     )
@@ -363,7 +363,7 @@ if not args.undying:
     daq_db.command("ping")
 
 
-def main():
+def run():
     if args.cores == -1:
         # Use all of the available cores on this machine
         args.cores = multiprocessing.cpu_count()
@@ -410,7 +410,7 @@ def main():
 
     else:
         # Start processing
-        main_loop()
+        loop()
 
 
 ##
@@ -418,7 +418,7 @@ def main():
 ##
 
 
-def main_loop():
+def loop():
     """Infinite loop looking for runs to process."""
     # Ensure we're the only bootstrax on this host
     any_other_running = list(bs_coll.find({"host": hostname, "pid": {"$ne": os.getpid()}}))
@@ -955,7 +955,7 @@ def delete_live_data(rd, live_data_path):
 
 
 def _delete_data(rd, path, data_type):
-    """After completing the processing and updating the runsDB, remove the live_data."""
+    """After completing the processing and updating the RunDB, remove the live_data."""
 
     if data_type == "live" and not args.delete_live and args.production:
         message = "Unsafe operation. Trying to delete live data!"
@@ -1579,7 +1579,7 @@ def process_run(rd, send_heartbeats=args.production):
                             "raw_records_mv",
                             "raw_records_nv",
                         ):
-                            md = st.get_meta(run_id, rr_type)
+                            md = st.get_metadata(run_id, rr_type)
                             if len(md["chunks"]) and (
                                 "first_time" in md["chunks"][0]
                                 and "last_endtime" in md["chunks"][0]
@@ -1811,13 +1811,13 @@ def cleanup_db():
             abandon(mongo_id=rd["_id"])
 
 
-if __name__ == "__main__":
+def main():
     if not args.undying:
-        main()
+        run()
     else:
         while True:
             try:
-                main()
+                run()
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as fatal_error:
@@ -1831,4 +1831,8 @@ if __name__ == "__main__":
                     log.error(f"Fatal warning:\tcould not log {warning_error}")
                 # This usually only takes a minute or two
                 time.sleep(60)
-                log.warning("Restarting main loop")
+                log.warning("Restarting run loop")
+
+
+if __name__ == "__main__":
+    main()

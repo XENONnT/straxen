@@ -43,7 +43,7 @@ class OnlinePeakMonitor(strax.Plugin):
         type=str,
         default="",
         help=(
-            "Selection (like selection_str) applied to data for "
+            "Selection (like selection) applied to data for "
             '"area_vs_width_hist_clean", cuts should be separated using "&"'
             "For example: (tight_coincidence > 2) & (area_fraction_top < 0.1)"
             'Default is no selection (other than "area_vs_width_min_gap")'
@@ -70,7 +70,7 @@ class OnlinePeakMonitor(strax.Plugin):
         type=str,
         default="(area >= 50) & (area <= 250)",
         help=(
-            "Selection (like selection_str) applied to data for "
+            "Selection (like selection) applied to data for "
             '"lone-hits", cuts should be separated using "&")'
         ),
     )
@@ -149,7 +149,7 @@ class OnlinePeakMonitor(strax.Plugin):
             mask &= np.hstack([lh_timedelta > self.lone_hits_min_gap, True])
         else:
             mask = []
-        masked_lh = strax.apply_selection(lone_hits[mask], selection_str=self.lone_hits_cut_string)
+        masked_lh = strax.apply_selection(lone_hits[mask], selection=self.lone_hits_cut_string)
 
         # Make histogram of ADC counts
         # NB: LONE HITS AREA ARE IN ADC!
