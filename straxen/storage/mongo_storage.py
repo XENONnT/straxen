@@ -3,7 +3,7 @@ import tempfile
 from datetime import datetime
 from warnings import warn
 import pytz
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Any, List
 from strax import exporter, to_str_tuple
 import gridfs
 from tqdm import tqdm
@@ -231,7 +231,6 @@ class GridFsInterfaceMongo(GridFsBase):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
 
-
 @export
 class MongoUploader(GridFsInterfaceMongo):
     """Class to upload files to GridFs."""
@@ -426,52 +425,29 @@ class MongoDownloader(GridFsInterfaceMongo):
 class GridFsInterfaceAPI(GridFsBase):
     """Interface to gridfs using the runDB API."""
     
-    def __init__(self, config_identifier="config_name"):
+    def __init__(self, config_identifier: str = "config_name") -> None:
         super().__init__(config_identifier=config_identifier)
-        # all the credentials logic is handled by the utilix config, so don't need lengthy setup
         self.db = DB()
         
-    def config_exists(self, config):
-        """Quick check if this config is already saved in the collection.
-
-        :param config: str, name of the file of interest
-        :return: bool, is this config name stored in the database
-
-        """
+    def config_exists(self, config: str) -> bool:
+        """Check if config is saved in the collection."""
         query = self.get_query_config(config)
         return self.db.count_files(query) > 0
     
-    def md5_stored(self, abs_path):
-        """
-        NB: RAM intensive operation!
-        Carefully compare if the MD5 identifier is the same as the file
-        as stored under abs_path.
-
-        :param abs_path: str, absolute path to the file name
-        :return: bool, returns if the exact same file is already stored
-            in the database
-
-        """
+    def md5_stored(self, abs_path: str) -> bool:
+        """Check if file with same MD5 is stored. RAM intensive."""
         if not os.path.exists(abs_path):
-            # A file that does not exist does not have the same MD5
             return False
         query = {"md5": self.compute_md5(abs_path)}
         return self.db.count_files(query) > 0
     
-    def test_find(self):
-        """Test the connection to the self.collection to see if we can perform a collection.find
-        operation."""
+    def test_find(self) -> None:
+        """Test the connection to the collection."""
         if self.db.get_files({}, projection={"_id": 1}) is None:
             raise ConnectionError("Could not find any data in this collection")
 
-    def list_files(self):
-        """Get a complete list of files that are stored in the database.
-
-        Note that the config_identifier attribute is used to filter the results.
-
-        :return: list, list of the names of the items stored in this database
-
-        """
+    def list_files(self) -> List[str]:
+        """Get list of files stored in the database."""
         return [
             doc[self.config_identifier]
             for doc in self.db.get_files({}, projection={self.config_identifier: 1})
