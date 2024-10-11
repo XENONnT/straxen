@@ -14,7 +14,7 @@ function. For example, one can download a file:
 
 .. code-block:: python
 
-    import straxen
+    import utilix
     downloader = utilix.mongo_storage.MongoDownloader()
     # The downloader allows one to download files from the mongo database by
     # looking for the requested name in the files database. The downloader
