@@ -60,9 +60,6 @@ Jinja2 = { version = "3.1.4", optional = true }
 urllib3 = { version = "2.2.2", optional = true }
 lxml_html_clean = { version = "*", optional = true }
 
-[tool.poetry.overrides]
-utilix = "*"
-
 [tool.poetry.extras]
 tests = [
   "sharedarray",
