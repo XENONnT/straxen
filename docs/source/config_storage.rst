@@ -89,7 +89,7 @@ with this :py:obj:`md5-hash` is uploaded, :py:class:`utilix.mongo_storage.MongoU
 need to upload. This however does mean that if there is already a file :py:obj:`'file_name'`
 stored and you modify the :py:obj:`'file_name'`-file, it will be uploaded again! This is
 a feature, not a bug. When a user requests the :py:obj:`'file_name'`-file, the
-:py:class:`straxen.MongoDownloader` will fetch the :py:obj:`'file_name'`-file that was uploaded
+:py:class:`utilix.mongo_storage.MongoDownloader` will fetch the :py:obj:`'file_name'`-file that was uploaded
 last.
 
 
@@ -98,7 +98,7 @@ Downloading
 Assuming that an admin user uploaded the :py:obj:`'file_name'`-file, any user (no
 required admin rights) can now download the :py:obj:`'file_name'`-file (see above for the
 example). When the user executes :py:obj:`MongoUploader.download_single('file_name')`,
-the :py:class:`straxen.MongoDownloader` will check if the file is downloaded already. If
+the :py:class:`utilix.mongo_storage.MongoDownloader` will check if the file is downloaded already. If
 this is the case it will simply return the path of the file. Otherwise, it will
 start downloading the file. It is important to notice that the files are saved
 under their :py:obj:`md5-hash`-name. This means that wherever the files are stored,
@@ -112,8 +112,8 @@ already stored but it would be if the file has been changed as explained above.
 
 Straxen Mongo config loader classes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Both the :py:class:`utilix.mongo_storage.MongoUploader` and :py:class:`straxen.MongoDownloader` share a common
+Both the :py:class:`utilix.mongo_storage.MongoUploader` and :py:class:`utilix.mongo_storage.MongoDownloader` share a common
 parent class, the :py:class:`straxen.GridFsInterface` that provides the appropriate
 shared functionality and connection to the database. The important difference
 is the :py:obj:`readonly` argument that naturally has to be :py:obj:`False` for the
-:py:class:`utilix.mongo_storage.MongoUploader` but :py:obj:`True` for the :py:class:`straxen.MongoDownloader`.
+:py:class:`utilix.mongo_storage.MongoUploader` but :py:obj:`True` for the :py:class:`utilix.mongo_storage.MongoDownloader`.

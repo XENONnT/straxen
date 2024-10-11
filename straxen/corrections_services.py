@@ -288,7 +288,7 @@ class CorrectionsManagementServices:
         return to_pe
 
     def get_config_from_cmt(self, run_id, model_type, version="ONLINE"):
-        """Smart logic to return NN weights file name to be downloader by straxen.MongoDownloader()
+        """Smart logic to return NN weights file name to be downloader by utilix.mongo_storage.MongoDownloader()
 
         :param run_id: run id from runDB
         :param model_type: model type and neural network type; model_mlp, or model_gcn or model_cnn

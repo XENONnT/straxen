@@ -53,7 +53,7 @@ A concrete plugin example
                 print(f"Path is local. Loading {self.algorithm} TF model locally "
                     f"from disk.")
             else:
-                downloader = straxen.MongoDownloader()
+                downloader = utilix.mongo_storage.MongoDownloader()
                 try:
                     self.model_file = downloader.download_single(self.model_file)
                 except utilix.mongo_storage.CouldNotLoadError as e:

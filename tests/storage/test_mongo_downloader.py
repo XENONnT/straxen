@@ -2,7 +2,6 @@ import unittest
 
 import utilix
 import straxen
-import utilix
 import os
 import pymongo
 from straxen import mongo_uri_not_set
@@ -35,7 +34,7 @@ class TestMongoDownloader(unittest.TestCase):
         client = pymongo.MongoClient(uri)
         database = client[db_name]
         collection = database[collection_name]
-        self.downloader = straxen.MongoDownloader(
+        self.downloader = utilix.mongo_storage.MongoDownloader(
             collection=collection,
             readonly=True,
             file_database=None,
@@ -79,7 +78,7 @@ class TestMongoDownloader(unittest.TestCase):
         self.downloader.test_find()
         self.downloader.download_all()
         # Now the test on init should work, let's double try
-        straxen.MongoDownloader(
+        utilix.mongo_storage.MongoDownloader(
             collection=self.collection,
             file_database=None,
             _test_on_init=True,
@@ -88,12 +87,12 @@ class TestMongoDownloader(unittest.TestCase):
     def test_invalid_methods(self):
         """The following examples should NOT work, let's make sure the right errors are raised."""
         with self.assertRaises(ValueError):
-            straxen.MongoDownloader(
+            utilix.mongo_storage.MongoDownloader(
                 collection=self.collection,
                 file_database="NOT NONE",
             )
         with self.assertRaises(ValueError):
-            straxen.MongoDownloader(
+            utilix.mongo_storage.MongoDownloader(
                 collection="invalid type",
             )
         with self.assertRaises(PermissionError):
@@ -109,7 +108,7 @@ class TestMongoDownloader(unittest.TestCase):
             self.uploader.upload_from_dict({"something": "no_such_file"})
 
         with self.assertRaises(ValueError):
-            straxen.MongoDownloader(
+            utilix.mongo_storage.MongoDownloader(
                 collection=self.collection,
                 file_database=None,
                 _test_on_init=False,
