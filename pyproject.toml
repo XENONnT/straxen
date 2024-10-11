@@ -50,6 +50,7 @@ requests = "*"
 xedocs = "*"
 sharedarray = { url = "https://xenon.isi.edu/python/SharedArray-3.2.3.tar.gz", optional = true }
 base_environment = { git = "https://github.com/XENONnT/base_environment.git", optional = true }
+utilix = {version = "*", allow-prereleases = false}
 commonmark = { version = "0.9.1", optional = true }
 nbsphinx = { version = "0.8.9", optional = true }
 recommonmark = { version = "0.7.1", optional = true }
@@ -59,14 +60,10 @@ Jinja2 = { version = "3.1.4", optional = true }
 urllib3 = { version = "2.2.2", optional = true }
 lxml_html_clean = { version = "*", optional = true }
 
-[tool.poetry.group.overrides.dependencies]
-utilix = "*"
-
 [tool.poetry.extras]
 tests = [
   "sharedarray",
   "base_environment",
-  "overrides",
 ]
 docs = [
   "commonmark",
