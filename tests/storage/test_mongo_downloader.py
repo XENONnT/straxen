@@ -1,4 +1,6 @@
 import unittest
+
+import utilix
 import straxen
 import utilix
 import os
@@ -39,7 +41,7 @@ class TestMongoDownloader(unittest.TestCase):
             file_database=None,
             _test_on_init=False,
         )
-        self.uploader = straxen.MongoUploader(
+        self.uploader = utilix.mongo_storage.MongoUploader(
             collection=collection,
             readonly=False,
             file_database=None,
@@ -95,7 +97,7 @@ class TestMongoDownloader(unittest.TestCase):
                 collection="invalid type",
             )
         with self.assertRaises(PermissionError):
-            straxen.MongoUploader(readonly=True)
+            utilix.mongo_storage.MongoUploader(readonly=True)
 
         with self.assertRaises(ValueError):
             self.uploader.upload_from_dict("A string is not a dict")
