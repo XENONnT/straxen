@@ -66,6 +66,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
         default=True, type=bool, help="Save the start time of the waveform with 10 ns dt"
     )
 
+    waveform_start_max_downsampling = straxen.URLConfig(
+        default=6,
+        type=int,
+        help="Only save the start of the waveform for peaks with a downsampling factor smaller or equal to this value",
+    )
+
     merged_s2s_get_window_size_factor = straxen.URLConfig(
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
     )
@@ -144,6 +150,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
             start_merge_at,
             end_merge_at,
             max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
+            save_waveform_start=self.save_waveform_start,
+            max_downsample_factor_waveform_start=self.waveform_start_max_downsampling,
         )
         merged_s2s["type"] = 2
 
