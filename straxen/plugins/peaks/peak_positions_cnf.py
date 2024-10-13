@@ -42,6 +42,12 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
         help="Size of uncertainty contour",
     )
 
+    N_chunk_max = straxen.URLConfig(
+        default=4096,
+        infer_type=False,
+        help="Maximum size of chunk for vectorised JAX function",
+    )
+
     sig = straxen.URLConfig(
         default=0.393,
         infer_type=False,
@@ -98,12 +104,11 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
         dtype += strax.time_fields
         return dtype
 
-    def vectorized_prediction_chunk(self, flow_condition, N_chunk_max=4096):
+    def vectorized_prediction_chunk(self, flow_condition):
         """Compute predictions for a chunk of data.
 
         Args:
             flow_condition: Input data for the flow model
-            N_chunk_max: Maximum chunk size (default: 4096)
 
         Returns:
             xy: Predicted x and y coordinates
@@ -111,20 +116,19 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
         """
         N_entries = flow_condition.shape[0]
-        if N_entries > N_chunk_max:
+        if N_entries > self.N_chunk_max:
             raise ValueError("Chunk greater than max size")
         else:
-            inputs = np.zeros((N_chunk_max, self.n_top_pmts + 1))
+            inputs = np.zeros((self.N_chunk_max, self.n_top_pmts + 1))
             inputs[:N_entries] = flow_condition
             xy, contour = self.pred_function(inputs)
             return xy[:N_entries], contour[:N_entries]
 
-    def prediction_loop(self, flow_condition, N_chunk_max=4096):
+    def prediction_loop(self, flow_condition):
         """Compute predictions for arbitrary-size inputs using a loop.
 
         Args:
             flow_condition: Input data for the flow model
-            N_chunk_max: Maximum chunk size (default: 4096)
 
         Returns:
             xy: Predicted x and y coordinates
@@ -132,21 +136,23 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
         """
         N_entries = flow_condition.shape[0]
-        if N_entries <= N_chunk_max:
-            return self.vectorized_prediction_chunk(flow_condition, N_chunk_max=N_chunk_max)
-        N_chunks = N_entries // N_chunk_max
+        if N_entries <= self.N_chunk_max:
+            return self.vectorized_prediction_chunk(flow_condition)
+        N_chunks = N_entries // self.N_chunk_max
 
         xy_list = []
         contour_list = []
         for i in range(N_chunks):
             xy, contour = self.vectorized_prediction_chunk(
-                flow_condition[i * N_chunk_max : (i + 1) * N_chunk_max]
+                flow_condition[i * self.N_chunk_max : (i + 1) * self.N_chunk_max]
             )
             xy_list.append(xy)
             contour_list.append(contour)
 
-        if N_chunks * N_chunk_max < N_entries:
-            xy, contour = self.vectorized_prediction_chunk(flow_condition[(i + 1) * N_chunk_max :])
+        if N_chunks * self.N_chunk_max < N_entries:
+            xy, contour = self.vectorized_prediction_chunk(
+                flow_condition[(i + 1) * self.N_chunk_max :]
+            )
             xy_list.append(xy)
             contour_list.append(contour)
         return np.concatenate(xy_list, axis=0), np.concatenate(contour_list, axis=0)
