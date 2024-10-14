@@ -421,6 +421,7 @@ def dependency_tree(
     st,
     target="event_info",
     include_class=False,
+    include_level=False,
     exclude_pattern=None,
     dump_plot=True,
     to_dir="./",
@@ -452,9 +453,15 @@ def dependency_tree(
     for d, p in plugins.items():
         if any([fnmatch.fnmatch(d, pattern) for pattern in exclude_pattern]):
             continue
+        label = d
+        if include_class:
+            label += f"\n{p.__class__.__name__}"
+        if include_level:
+            label += f"\nlevel: {st.tree_levels[d]['level']} "
+            label += f"order: {st.tree_levels[d]['order']}"
         graph.node(
             d,
-            label=f"{d}\n{p.__class__.__name__}" if include_class else None,
+            label=label,
             style="filled",
             fillcolor=kind_colors.get(p.data_kind_for(d), "grey"),
         )
