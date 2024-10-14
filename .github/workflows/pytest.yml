@@ -63,10 +63,6 @@ jobs:
           pip install .[tests] --force-reinstall
           pip install git+https://github.com/AxFoundation/strax.git --force-reinstall
 
-      - name: Upgrade utilix to the latest version
-        run: |
-          pip install --upgrade utilix
-
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.11.0
         with:
