@@ -16,6 +16,7 @@ import numpy as np
 from immutabledict import immutabledict
 
 from utilix import xent_collection
+import utilix
 from scipy.interpolate import interp1d
 
 
@@ -42,7 +43,7 @@ def get_resource(name: str, fmt: str = "text", **kwargs):
     """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
     passed directly to straxen.get_resource."""
     if fmt == "abs_path":
-        downloader = straxen.MongoDownloader()
+        downloader = utilix.mongo_storage.MongoDownloader()
         return downloader.download_single(name)
     return straxen.get_resource(name, fmt=fmt)
 
