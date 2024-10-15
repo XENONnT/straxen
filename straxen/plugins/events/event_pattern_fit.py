@@ -13,6 +13,7 @@ class EventPatternFit(strax.Plugin):
     """Plugin that provides patter information for events."""
 
     depends_on = ("event_area_per_channel", "event_basics", "event_positions")
+    save_when = strax.SaveWhen.ALWAYS
     provides = "event_pattern_fit"
     __version__ = "0.1.3"
 
