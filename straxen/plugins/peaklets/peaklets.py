@@ -375,11 +375,7 @@ class Peaklets(strax.Plugin):
         # Drop the data_top field and waveform start field if needed
         peaklets = drop_data_top_field(
             peaklets,
-            strax.peak_dtype(
-                n_channels=self.n_tpc_pmts,
-                digitize_top=self.sum_waveform_top_array,
-                save_waveform_start=self.save_waveform_start,
-            ),
+            self.dtype_for("peaklets"),
         )
 
         # Check channel of peaklets
