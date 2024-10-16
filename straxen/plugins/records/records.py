@@ -42,7 +42,7 @@ class PulseProcessing(strax.Plugin):
     data_kind = {k: k for k in provides}
     save_when = immutabledict(
         records=strax.SaveWhen.TARGET,
-        veto_regions=strax.SaveWhen.TARGET,
+        veto_regions=strax.SaveWhen.ALWAYS,
         pulse_counts=strax.SaveWhen.ALWAYS,
     )
 

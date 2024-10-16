@@ -16,12 +16,6 @@ class EventAreaPerChannel(strax.Plugin):
     __version__ = "0.1.1"
 
     compressor = "zstd"
-    save_when = immutabledict(
-        {
-            "event_area_per_channel": strax.SaveWhen.EXPLICIT,
-            "event_n_channel": strax.SaveWhen.ALWAYS,
-        }
-    )
 
     n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int, help="Number of top PMTs")
 
