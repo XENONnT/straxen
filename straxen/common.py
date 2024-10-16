@@ -17,6 +17,7 @@ import pandas as pd
 import numba
 import strax
 import straxen
+import utilix
 
 export, __all__ = strax.exporter()
 __all__.extend(
@@ -222,7 +223,7 @@ def get_resource(x: str, fmt="text"):
         return open_resource(x, fmt=fmt)
     # 3. load from database
     elif straxen.uconfig is not None:
-        downloader = straxen.MongoDownloader()
+        downloader = utilix.mongo_storage.MongoDownloader()
         if x in downloader.list_files():
             path = downloader.download_single(x)
             return open_resource(path, fmt=fmt)

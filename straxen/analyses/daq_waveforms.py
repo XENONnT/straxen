@@ -82,7 +82,7 @@ def _board_to_host_link(daq_config: dict, board: int, add_crate=True) -> str:
 
 def _get_cable_map(name: str = "xenonnt_cable_map.csv") -> pandas.DataFrame:
     """Download the cable map and return as a pandas dataframe."""
-    down = straxen.MongoDownloader()
+    down = utilix.mongo_storage.MongoDownloader()
     cable_map = down.download_single(name)
     cable_map = pandas.read_csv(cable_map)
     return cable_map
