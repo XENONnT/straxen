@@ -65,7 +65,7 @@ class PeakletsHighEnergy(Peaklets):
     )
 
     # We cannot, we only have the top array, so should not.
-    sum_waveform_top_array = False
+    store_data_top = False
 
     @property
     def n_tpc_pmts(self):
@@ -73,9 +73,7 @@ class PeakletsHighEnergy(Peaklets):
         return self.n_he_pmts
 
     def infer_dtype(self):
-        return strax.peak_dtype(
-            n_channels=self.n_he_pmts, store_data_top=self.sum_waveform_top_array
-        )
+        return strax.peak_dtype(n_channels=self.n_he_pmts, store_data_top=self.store_data_top)
 
     def setup(self):
         self.to_pe = self.gain_model
