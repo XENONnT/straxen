@@ -19,6 +19,8 @@ corrections_w_file = [
     "cnn_model",
     "gcn_model",
     "s2_xy_map_mlp",
+    "s2_xy_map_cnn",
+    "s2_xy_map_gcn",
     "s2_xy_map",
     "s1_xyz_map_mlp",
     "s1_xyz_map_cnn",
