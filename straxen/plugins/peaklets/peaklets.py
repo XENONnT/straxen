@@ -164,7 +164,7 @@ class Peaklets(strax.Plugin):
         return dict(
             peaklets=strax.peak_dtype(
                 n_channels=self.n_tpc_pmts,
-                digitize_top=self.sum_waveform_top_array,
+                store_data_top=self.sum_waveform_top_array,
             ),
             lone_hits=strax.hit_dtype,
         )
@@ -205,7 +205,7 @@ class Peaklets(strax.Plugin):
             right_extension=self.peak_right_extension,
             min_channels=self.peak_min_pmts,
             # NB, need to have the data_top field here, will discard if not digitized later
-            result_dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True),
+            result_dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, store_data_top=True),
             max_duration=self.peaklet_max_duration,
         )
 
@@ -543,7 +543,9 @@ def peak_saturation_correction(
         peaks[peak_i]["length"] = p["length"] * p["dt"] / dt
         peaks[peak_i]["dt"] = dt
 
-    strax.sum_waveform(peaks, hitlets, records, rlinks, to_pe, n_top_channels, peak_list)
+    strax.sum_waveform(
+        peaks, hitlets, records, rlinks, to_pe, n_top_channels, select_peaks_indices=peak_list
+    )
     return peak_list
 
 
