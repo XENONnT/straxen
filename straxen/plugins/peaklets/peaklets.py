@@ -120,7 +120,7 @@ class Peaklets(strax.Plugin):
         default=True, type=bool, help="Digitize the sum waveform of the top array separately"
     )
 
-    save_data_start = straxen.URLConfig(
+    store_data_start = straxen.URLConfig(
         default=True, type=bool, help="Save the start time of the waveform with 10 ns dt"
     )
 
@@ -169,7 +169,7 @@ class Peaklets(strax.Plugin):
             peaklets=strax.peak_dtype(
                 n_channels=self.n_tpc_pmts,
                 store_data_top=self.sum_waveform_top_array,
-                save_data_start=self.save_data_start,
+                store_data_start=self.store_data_start,
             ),
             lone_hits=strax.hit_dtype,
         )
@@ -211,7 +211,7 @@ class Peaklets(strax.Plugin):
             min_channels=self.peak_min_pmts,
             # NB, need to have the data_top field here, will discard if not digitized later
             result_dtype=strax.peak_dtype(
-                n_channels=self.n_tpc_pmts, store_data_top=True, save_data_start=True
+                n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
             ),
             max_duration=self.peaklet_max_duration,
         )
@@ -275,7 +275,7 @@ class Peaklets(strax.Plugin):
             rlinks,
             self.to_pe,
             n_top_channels=_n_top_pmts,
-            save_data_start=self.save_data_start,
+            store_data_start=self.store_data_start,
         )
 
         strax.compute_widths(peaklets)
@@ -296,7 +296,7 @@ class Peaklets(strax.Plugin):
             min_area=self.peak_split_min_area,
             do_iterations=self.peak_split_iterations,
             n_top_channels=_n_top_pmts,
-            save_data_start=self.save_data_start,
+            store_data_start=self.store_data_start,
         )
 
         # Saturation correction using non-saturated channels
@@ -318,7 +318,7 @@ class Peaklets(strax.Plugin):
                 reference_length=self.saturation_reference_length,
                 min_reference_length=self.saturation_min_reference_length,
                 n_top_channels=_n_top_pmts,
-                save_data_start=self.save_data_start,
+                store_data_start=self.store_data_start,
             )
 
             # Compute the width again for corrected peaks
@@ -364,7 +364,7 @@ class Peaklets(strax.Plugin):
         peaklets["n_hits"] = counts
 
         # Drop the data_top or data_start field
-        if (_n_top_pmts <= 0) or (not self.save_data_start):
+        if (_n_top_pmts <= 0) or (not self.store_data_start):
             peaklets = drop_data_field(peaklets, self.dtype_for("peaklets"))
 
         # Check channel of peaklets
@@ -471,7 +471,7 @@ def peak_saturation_correction(
     min_reference_length=20,
     use_classification=False,
     n_top_channels=0,
-    save_data_start=False,
+    store_data_start=False,
 ):
     """Correct the area and per pmt area of peaks from saturation.
 
@@ -486,7 +486,7 @@ def peak_saturation_correction(
         samples
     :param use_classification: Option of using classification to pick only S2
     :param n_top_channels: Number of top array channels.
-    :param save_data_start: Boolean which indicates whether to store the first samples of the
+    :param store_data_start: Boolean which indicates whether to store the first samples of the
         waveform in the peak.
 
     """
@@ -568,7 +568,7 @@ def peak_saturation_correction(
         rlinks,
         to_pe,
         n_top_channels,
-        save_data_start,
+        store_data_start,
         select_peaks_indices=peak_list,
     )
     return peak_list

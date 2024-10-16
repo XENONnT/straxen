@@ -104,7 +104,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             peaklets_w_field = np.zeros(
                 len(peaklets),
                 dtype=strax.peak_dtype(
-                    n_channels=self.n_tpc_pmts, store_data_top=True, save_data_start=True
+                    n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
                 ),
             )
             strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_or_start_field")
@@ -144,18 +144,18 @@ class MergedS2s(strax.OverlapWindowPlugin):
         lh = strax.sort_by_time(lh)
 
         _n_top_pmts = self.n_top_pmts if "data_top" in self.dtype.names else -1
-        _save_data_start = "data_start" in self.dtype.names
+        _store_data_start = "data_start" in self.dtype.names
         strax.add_lone_hits(
             merged_s2s,
             lh,
             self.to_pe,
             n_top_channels=_n_top_pmts,
-            store_data_start=_save_data_start,
+            store_data_start=_store_data_start,
         )
 
         strax.compute_widths(merged_s2s)
 
-        if (_n_top_pmts <= 0) or (not self.save_data_start):
+        if (_n_top_pmts <= 0) or (not self.store_data_start):
             merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
 
         return merged_s2s
