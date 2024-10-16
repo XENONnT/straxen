@@ -63,9 +63,6 @@ docs/_build
 # Pycharm
 .idea
 
-# coverage
-.coverage
-
 # graphviz
 *.gv
 *.dot

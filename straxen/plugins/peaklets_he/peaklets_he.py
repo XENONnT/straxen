@@ -73,7 +73,9 @@ class PeakletsHighEnergy(Peaklets):
         return self.n_he_pmts
 
     def infer_dtype(self):
-        return strax.peak_dtype(n_channels=self.n_he_pmts, digitize_top=self.sum_waveform_top_array)
+        return strax.peak_dtype(
+            n_channels=self.n_he_pmts, store_data_top=self.sum_waveform_top_array
+        )
 
     def setup(self):
         self.to_pe = self.gain_model
