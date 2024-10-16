@@ -16,8 +16,14 @@ from .peak_s1_positions_cnn import *
 from . import peak_positions
 from .peak_positions import *
 
+from . import peak_positions_cnn
+from .peak_positions_cnn import *
+
 from . import peak_positions_cnf
 from .peak_positions_cnf import *
+
+from . import peak_positions_gcn
+from .peak_positions_gcn import *
 
 from . import peak_positions_mlp
 from .peak_positions_mlp import *
