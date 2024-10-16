@@ -92,7 +92,7 @@ class EventTopBottomParams(strax.Plugin):
     def compute(self, events):
         result = np.zeros(events.shape, dtype=self.dtype)
         result["time"], result["endtime"] = events["time"], strax.endtime(events)
-        peak_dtype = strax.peak_dtype(n_channels=straxen.n_tpc_pmts, digitize_top=False)
+        peak_dtype = strax.peak_dtype(n_channels=straxen.n_tpc_pmts, store_data_top=False)
         for type_ in self.ptypes:
             for arr_ in self.arrs:
                 # in order to reuse the same definitions as in other parts, we create "fake peaks"
