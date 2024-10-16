@@ -110,7 +110,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         if "data_top" not in peaklets.dtype.names:
             peaklets_w_field = np.zeros(
-                len(peaklets), dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True)
+                len(peaklets),
+                dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, store_data_top=True),
             )
             strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
             del peaklets
