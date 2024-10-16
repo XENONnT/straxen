@@ -116,8 +116,12 @@ class Peaklets(strax.Plugin):
 
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
 
-    sum_waveform_top_array = straxen.URLConfig(
-        default=True, type=bool, help="Digitize the sum waveform of the top array separately"
+    store_data_top = straxen.URLConfig(
+        default=True, type=bool, help="Save the sum waveform of the top array separately"
+    )
+
+    store_data_start = straxen.URLConfig(
+        default=True, type=bool, help="Save the start time of the waveform with 10 ns dt"
     )
 
     saturation_correction_on = straxen.URLConfig(
@@ -164,7 +168,8 @@ class Peaklets(strax.Plugin):
         return dict(
             peaklets=strax.peak_dtype(
                 n_channels=self.n_tpc_pmts,
-                store_data_top=self.sum_waveform_top_array,
+                store_data_top=self.store_data_top,
+                store_data_start=self.store_data_start,
             ),
             lone_hits=strax.hit_dtype,
         )
@@ -205,7 +210,9 @@ class Peaklets(strax.Plugin):
             right_extension=self.peak_right_extension,
             min_channels=self.peak_min_pmts,
             # NB, need to have the data_top field here, will discard if not digitized later
-            result_dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, store_data_top=True),
+            result_dtype=strax.peak_dtype(
+                n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
+            ),
             max_duration=self.peaklet_max_duration,
         )
 
@@ -259,10 +266,16 @@ class Peaklets(strax.Plugin):
         self.clip_peaklet_times(hitlets, start, end)
         rlinks = strax.record_links(records)
 
-        # If sum_waveform_top_array is false, don't digitize the top array
-        n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
+        # If store_data_top is false, don't digitize the top array
+        _n_top_pmts = self.n_top_pmts if self.store_data_top else -1
         strax.sum_waveform(
-            peaklets, hitlets, r, rlinks, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top
+            peaklets,
+            hitlets,
+            r,
+            rlinks,
+            self.to_pe,
+            n_top_channels=_n_top_pmts,
+            store_data_start=self.store_data_start,
         )
 
         strax.compute_widths(peaklets)
@@ -282,7 +295,8 @@ class Peaklets(strax.Plugin):
             filter_wing_width=self.peak_split_filter_wing_width,
             min_area=self.peak_split_min_area,
             do_iterations=self.peak_split_iterations,
-            n_top_channels=n_top_pmts_if_digitize_top,
+            n_top_channels=_n_top_pmts,
+            store_data_start=self.store_data_start,
         )
 
         # Saturation correction using non-saturated channels
@@ -303,7 +317,8 @@ class Peaklets(strax.Plugin):
                 self.to_pe,
                 reference_length=self.saturation_reference_length,
                 min_reference_length=self.saturation_min_reference_length,
-                n_top_channels=n_top_pmts_if_digitize_top,
+                n_top_channels=_n_top_pmts,
+                store_data_start=self.store_data_start,
             )
 
             # Compute the width again for corrected peaks
@@ -348,9 +363,9 @@ class Peaklets(strax.Plugin):
         counts = np.diff(counts, axis=1).flatten()
         peaklets["n_hits"] = counts
 
-        # Drop the data_top field
-        if n_top_pmts_if_digitize_top <= 0:
-            peaklets = drop_data_top_field(peaklets, self.dtype_for("peaklets"))
+        # Drop the data_top or data_start field
+        if (_n_top_pmts <= 0) or (not self.store_data_start):
+            peaklets = drop_data_field(peaklets, self.dtype_for("peaklets"))
 
         # Check channel of peaklets
         peaklets_unique_channel = np.unique(peaklets["channel"])
@@ -437,12 +452,12 @@ class Peaklets(strax.Plugin):
                 peaklet["min_diff"] = -1
 
 
-def drop_data_top_field(peaklets, goal_dtype, _name_function="_drop_data_top_field"):
-    """Return peaklets without the data_top field."""
-    peaklets_without_top_field = np.zeros(len(peaklets), dtype=goal_dtype)
-    strax.copy_to_buffer(peaklets, peaklets_without_top_field, _name_function)
+def drop_data_field(peaklets, goal_dtype, _name_function="_drop_data_field"):
+    """Return peaklets without the data_* field."""
+    peaklets_without_field = np.zeros(len(peaklets), dtype=goal_dtype)
+    strax.copy_to_buffer(peaklets, peaklets_without_field, _name_function)
     del peaklets
-    return peaklets_without_top_field
+    return peaklets_without_field
 
 
 @numba.jit(nopython=True, nogil=True, cache=False)
@@ -456,6 +471,7 @@ def peak_saturation_correction(
     min_reference_length=20,
     use_classification=False,
     n_top_channels=0,
+    store_data_start=False,
 ):
     """Correct the area and per pmt area of peaks from saturation.
 
@@ -470,6 +486,8 @@ def peak_saturation_correction(
         samples
     :param use_classification: Option of using classification to pick only S2
     :param n_top_channels: Number of top array channels.
+    :param store_data_start: Boolean which indicates whether to store the first samples of the
+        waveform in the peak.
 
     """
 
@@ -544,7 +562,14 @@ def peak_saturation_correction(
         peaks[peak_i]["dt"] = dt
 
     strax.sum_waveform(
-        peaks, hitlets, records, rlinks, to_pe, n_top_channels, select_peaks_indices=peak_list
+        peaks,
+        hitlets,
+        records,
+        rlinks,
+        to_pe,
+        n_top_channels,
+        store_data_start,
+        select_peaks_indices=peak_list,
     )
     return peak_list
 
