@@ -30,9 +30,15 @@ def _run_plugins(st, make_all=False, run_id=test_run_id_1T, **process_kwargs):
         if not make_all:
             return
 
-        end_targets = set(st._get_end_targets(st._plugin_class_registry))
+        end_targets = tuple(set(st._get_end_targets(st._plugin_class_registry)))
         if st.context_config["allow_multiprocess"]:
-            st.make(run_id, list(end_targets), allow_multiple=True, **process_kwargs)
+            st.make(
+                run_id,
+                end_targets,
+                allow_multiple=True,
+                processor="threaded_mailbox",
+                **process_kwargs,
+            )
         else:
             for data_type in end_targets:
                 st.make(run_id, data_type)
