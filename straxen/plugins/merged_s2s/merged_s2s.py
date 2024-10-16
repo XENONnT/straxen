@@ -65,6 +65,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
     def setup(self):
         self.to_pe = self.gain_model
 
+    def _have_data(self, field):
+        return field in self.deps["peaklets"].dtype_for("peaklets").names
+
     def infer_dtype(self):
         peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
             "peaklet_classification"
@@ -97,14 +100,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # Do not merge at all
             return self.empty_result()
 
-        if ("data_top" not in peaklets.dtype.names) or ("data_start" not in peaklets.dtype.names):
+        if self._have_data("data_top") or self._have_data("data_start"):
             peaklets_w_field = np.zeros(
                 len(peaklets),
                 dtype=strax.peak_dtype(
                     n_channels=self.n_tpc_pmts, store_data_top=True, save_data_start=True
                 ),
             )
-            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_start_field")
+            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_or_start_field")
             del peaklets
             peaklets = peaklets_w_field
 

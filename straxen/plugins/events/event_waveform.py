@@ -19,7 +19,7 @@ class EventWaveform(strax.Plugin):
     n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int, help="Number of top PMTs")
 
     def _have_data(self, field):
-        return field in self.deps["peaks"].dtype_for("peaks")
+        return field in self.deps["peaks"].dtype_for("peaks").names
 
     def infer_dtype(self):
         # setting data type from peak dtype
