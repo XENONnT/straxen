@@ -116,8 +116,8 @@ class Peaklets(strax.Plugin):
 
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
 
-    sum_waveform_top_array = straxen.URLConfig(
-        default=True, type=bool, help="Digitize the sum waveform of the top array separately"
+    store_data_top = straxen.URLConfig(
+        default=True, type=bool, help="Save the sum waveform of the top array separately"
     )
 
     store_data_start = straxen.URLConfig(
@@ -168,7 +168,7 @@ class Peaklets(strax.Plugin):
         return dict(
             peaklets=strax.peak_dtype(
                 n_channels=self.n_tpc_pmts,
-                store_data_top=self.sum_waveform_top_array,
+                store_data_top=self.store_data_top,
                 store_data_start=self.store_data_start,
             ),
             lone_hits=strax.hit_dtype,
@@ -266,8 +266,8 @@ class Peaklets(strax.Plugin):
         self.clip_peaklet_times(hitlets, start, end)
         rlinks = strax.record_links(records)
 
-        # If sum_waveform_top_array is false, don't digitize the top array
-        _n_top_pmts = self.n_top_pmts if self.sum_waveform_top_array else -1
+        # If store_data_top is false, don't digitize the top array
+        _n_top_pmts = self.n_top_pmts if self.store_data_top else -1
         strax.sum_waveform(
             peaklets,
             hitlets,
