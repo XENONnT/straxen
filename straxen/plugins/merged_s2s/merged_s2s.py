@@ -155,7 +155,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         strax.compute_widths(merged_s2s)
 
-        if (_n_top_pmts <= 0) or (not self.store_data_start):
+        if (_n_top_pmts <= 0) or (not _store_data_start):
             merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
 
         return merged_s2s
