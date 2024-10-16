@@ -100,7 +100,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # Do not merge at all
             return self.empty_result()
 
-        if self._have_data("data_top") or self._have_data("data_start"):
+        if not (self._have_data("data_top") and self._have_data("data_start")):
             peaklets_w_field = np.zeros(
                 len(peaklets),
                 dtype=strax.peak_dtype(
