@@ -61,6 +61,9 @@ from .event_s2_positions_cnn import *
 from . import event_s2_positions_gcn
 from .event_s2_positions_gcn import *
 
+from . import event_s1_positions_cnn
+from .event_s1_positions_cnn import *
+
 from . import local_minimum_info
 from .local_minimum_info import *
 
