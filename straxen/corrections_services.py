@@ -26,6 +26,8 @@ corrections_w_file = [
     "s1_xyz_map_cnn",
     "s1_xyz_map_gcn",
     "fdc_map_mlp",
+    "fdc_map_cnn",
+    "fdc_map_gcn",
     "s1_aft_xyz_map",
     "bayes_model",
 ]
