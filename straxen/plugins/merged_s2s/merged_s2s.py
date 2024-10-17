@@ -2,7 +2,7 @@ from typing import Tuple
 
 import strax
 import straxen
-from straxen.plugins.peaklets.peaklets import drop_data_top_field
+from straxen.plugins.peaklets.peaklets import drop_data_field
 
 import numpy as np
 import numba
@@ -65,6 +65,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
     def setup(self):
         self.to_pe = self.gain_model
 
+    def _have_data(self, field):
+        return field in self.deps["peaklets"].dtype_for("peaklets").names
+
     def infer_dtype(self):
         peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
             "peaklet_classification"
@@ -97,11 +100,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # Do not merge at all
             return self.empty_result()
 
-        if "data_top" not in peaklets.dtype.names:
+        if not (self._have_data("data_top") and self._have_data("data_start")):
             peaklets_w_field = np.zeros(
-                len(peaklets), dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True)
+                len(peaklets),
+                dtype=strax.peak_dtype(
+                    n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
+                ),
             )
-            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
+            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_or_start_field")
             del peaklets
             peaklets = peaklets_w_field
 
@@ -119,6 +125,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         )
 
         assert "data_top" in peaklets.dtype.names
+        assert "data_start" in peaklets.dtype.names
 
         merged_s2s = strax.merge_peaks(
             peaklets,
@@ -136,13 +143,21 @@ class MergedS2s(strax.OverlapWindowPlugin):
         lh["length"] = lh["right_integration"] - lh["left_integration"]
         lh = strax.sort_by_time(lh)
 
-        n_top_pmts_if_digitize_top = self.n_top_pmts if "data_top" in self.dtype.names else -1
-        strax.add_lone_hits(merged_s2s, lh, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
+        _n_top_pmts = self.n_top_pmts if "data_top" in self.dtype.names else -1
+        _store_data_start = "data_start" in self.dtype.names
+        strax.add_lone_hits(
+            merged_s2s,
+            lh,
+            self.to_pe,
+            n_top_channels=_n_top_pmts,
+            store_data_start=_store_data_start,
+        )
 
         strax.compute_widths(merged_s2s)
 
-        if n_top_pmts_if_digitize_top <= 0:
-            merged_s2s = drop_data_top_field(merged_s2s, self.dtype, "_drop_top_merged_s2s")
+        if (_n_top_pmts <= 0) or (not _store_data_start):
+            merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
+
         return merged_s2s
 
     @staticmethod

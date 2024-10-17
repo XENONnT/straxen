@@ -409,7 +409,7 @@ def _scatter_rec(
 ):
     """Convenient wrapper to show posrec of three algorithms for xenonnt."""
     if recs is None:
-        recs = ("mlp", "cnn", "gcn")
+        recs = ("mlp", "cnf")
     elif len(recs) > 5:
         raise ValueError("I only got five markers/colors")
     if scatter_kwargs is None:

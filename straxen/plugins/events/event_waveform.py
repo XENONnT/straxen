@@ -7,8 +7,7 @@ export, __all__ = strax.exporter()
 
 @export
 class EventWaveform(strax.Plugin):
-    """Simple plugin that provides total (data) and top (data_top) waveforms for main and
-    alternative S1/S2 in the event."""
+    """Simple plugin that provides (data) waveforms for main and alternative S1/S2 in the event."""
 
     depends_on = ("event_basics", "peaks")
     provides = "event_waveform"
@@ -18,6 +17,9 @@ class EventWaveform(strax.Plugin):
     save_when = strax.SaveWhen.EXPLICIT
 
     n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int, help="Number of top PMTs")
+
+    def _have_data(self, field):
+        return field in self.deps["peaks"].dtype_for("peaks").names
 
     def infer_dtype(self):
         # setting data type from peak dtype
@@ -39,12 +41,26 @@ class EventWaveform(strax.Plugin):
                     pfields_["data"][0],
                 )
             ]
-            dtype += [
-                (
-                    (f"Top waveform for {infoline[type_]} [ PE / sample ]", f"{type_}_data_top"),
-                    pfields_["data_top"][0],
-                )
-            ]
+            if self._have_data("data_top"):
+                dtype += [
+                    (
+                        (
+                            f"Top waveform for {infoline[type_]} [ PE / sample ]",
+                            f"{type_}_data_top",
+                        ),
+                        pfields_["data_top"][0],
+                    )
+                ]
+            if self._have_data("data_start"):
+                dtype += [
+                    (
+                        (
+                            f"Waveform Start for {infoline[type_]} [ PE / sample ]",
+                            f"{type_}_data_start",
+                        ),
+                        pfields_["data_start"][0],
+                    )
+                ]
             dtype += [
                 (
                     (f"Length of the interval in samples for {infoline[type_]}", f"{type_}_length"),
@@ -57,11 +73,13 @@ class EventWaveform(strax.Plugin):
                     pfields_["dt"][0],
                 )
             ]
+
         # populating S1 n channel properties
         dtype += [
             (("Main S1 count of contributing PMTs", "s1_n_channels"), np.int16),
             (("Main S1 top count of contributing PMTs", "s1_top_n_channels"), np.int16),
         ]
+
         dtype += strax.time_fields
         return dtype
 
@@ -78,8 +96,12 @@ class EventWaveform(strax.Plugin):
                     type_area_per_channel = sp["area_per_channel"][type_index]
                     result[f"{type_}_length"][event_i] = sp["length"][type_index]
                     result[f"{type_}_data"][event_i] = sp["data"][type_index]
-                    result[f"{type_}_data_top"][event_i] = sp["data_top"][type_index]
+                    if self._have_data("data_top"):
+                        result[f"{type_}_data_top"][event_i] = sp["data_top"][type_index]
+                    if self._have_data("data_start"):
+                        result[f"{type_}_data_start"][event_i] = sp["data_start"][type_index]
                     result[f"{type_}_dt"][event_i] = sp["dt"][type_index]
+
                     if type_ == "s1":
                         result["s1_n_channels"][event_i] = (type_area_per_channel > 0).sum()
                         result["s1_top_n_channels"][event_i] = (

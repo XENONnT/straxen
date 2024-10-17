@@ -60,7 +60,7 @@ class EventS2PositionBase(strax.Plugin):
         return dtype
 
     def get_tf_model(self):
-        """Simple wrapper to have several tf_event_model_mlp, tf_event_model_cnn, ..
+        """Simple wrapper to have several tf_event_model_mlp, tf_event_model_cnf, ..
 
         point to this same function in the compute method
 
