@@ -189,7 +189,6 @@ def xenonnt_online(
         "/project/lgrandi/xenonnt/processed",
     ],
     # Testing options
-    _context_config_overwrite: Optional[dict] = None,
     _database_init: bool = True,
     _forbid_creation_of: Optional[dict] = None,
     **kwargs,
@@ -213,7 +212,6 @@ def xenonnt_online(
     :param _rucio_local_path: str, path of local RSE of rucio. Only use for testing!
     :param _raw_paths: list[str], common path of the raw-data
     :param _processed_paths: list[str]. common paths of output data
-    :param _context_config_overwrite: dict, overwrite config
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form being written (raw_records*
         is always forbidden).
@@ -312,12 +310,6 @@ def xenonnt_online(
             )
         }
     )
-    if _context_config_overwrite is not None:
-        warnings.warn(
-            f"_context_config_overwrite is deprecated, please pass to context as kwargs",
-            DeprecationWarning,
-        )
-        st.set_context_config(_context_config_overwrite)
 
     return st
 

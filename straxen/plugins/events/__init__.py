@@ -49,14 +49,14 @@ from .s2_recon_pos_diff import *
 from . import veto_proximity
 from .veto_proximity import *
 
+from . import event_position_uncertainty
+from .event_position_uncertainty import *
+
 from . import event_s2_positions_mlp
 from .event_s2_positions_mlp import *
 
 from . import event_s2_positions_cnn
 from .event_s2_positions_cnn import *
-
-from . import event_s2_positions_cnf
-from .event_s2_positions_cnf import *
 
 from . import event_s2_positions_gcn
 from .event_s2_positions_gcn import *

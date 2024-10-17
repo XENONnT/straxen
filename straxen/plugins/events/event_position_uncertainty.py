@@ -34,16 +34,15 @@ class EventPositionContour(strax.Plugin):
 
     """
 
-    __version__ = "0.0.9"
+    __version__ = "0.1.0"
 
-    depends_on = ("events", "event_basics", "event_info", "peak_positions_cnf", "peaks")
+    depends_on = ("event_basics", "event_positions", "peak_positions_cnf", "peak_basics")
 
     provides = "event_position_contour"
     compressor = "zstd"
     data_kind = "events"
     loop_over = "events"
 
-    # Configuration options
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
@@ -227,7 +226,7 @@ class EventPositionUncertainty(strax.Plugin):
 
     __version__ = "0.0.1"
 
-    depends_on = ("events", "event_info", "event_position_contour")
+    depends_on = ("event_info", "event_position_contour")
     provides = "event_position_uncertainty"
 
     def infer_dtype(self):
