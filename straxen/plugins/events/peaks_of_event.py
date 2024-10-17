@@ -61,7 +61,7 @@ class MultiPeakData(strax.Plugin):
 
     def compute(self, peaks, events):
 
-        # Just interested in S1 or S2 peaks. 
+        # Just interested in S1 or S2 peaks.
         # Here would be the place to apply further peak quality cuts.
         peaks = peaks[peaks["type"] != 0]
 
