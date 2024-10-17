@@ -1,5 +1,4 @@
 import strax
-import straxen
 import numpy as np
 
 MAX_NUMBER_OF_S1_PEAKS_PER_EVENT = 5
@@ -62,7 +61,8 @@ class MultiPeakData(strax.Plugin):
 
     def compute(self, peaks, events):
 
-        # Just interested in S1 or S2 peaks. Here would be the place to apply further peak quality cuts.
+        # Just interested in S1 or S2 peaks. 
+        # Here would be the place to apply further peak quality cuts.
         peaks = peaks[peaks["type"] != 0]
 
         peaks_per_event = strax.split_by_containment(peaks, events)
