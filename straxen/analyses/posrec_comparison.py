@@ -13,7 +13,7 @@ def load_corrected_positions(
     alt_s1=False,
     alt_s2=False,
     cmt_version=None,
-    posrec_algos=("mlp", "gcn", "cnn"),
+    posrec_algos=("mlp"),  # TODO: https://github.com/XENONnT/straxen/issues/1454
 ):
     """Returns the corrected position for each position algorithm available, without the need to
     reprocess event_basics, as the needed information is already stored in event_basics.
@@ -22,8 +22,7 @@ def load_corrected_positions(
     :param alt_s2: False by default, if True it uses alternative S2 as main one
     :param cmt_version: CMT version to use (it can be a list of same length as posrec_algos, if
         different versions are required for different posrec algorithms, default 'local_ONLINE')
-    :param posrec_algos: list of position reconstruction algorithms to use (default ['mlp', 'gcn',
-        'cnn'])
+    :param posrec_algos: list of position reconstruction algorithms to use (default ['mlp'])
 
     """
 
