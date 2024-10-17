@@ -59,7 +59,7 @@ class PeakPositionsBaseNT(strax.Plugin):
         return dtype
 
     def get_tf_model(self):
-        """Simple wrapper to have several tf_model_mlp, tf_model_cnn, ..
+        """Simple wrapper to have several tf_model_mlp, tf_model_cnf, ..
 
         point to this same function in the compute method
 

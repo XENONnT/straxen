@@ -1,4 +1,6 @@
 import unittest
+
+import utilix
 import straxen
 import os
 import pymongo
@@ -32,13 +34,13 @@ class TestMongoDownloader(unittest.TestCase):
         client = pymongo.MongoClient(uri)
         database = client[db_name]
         collection = database[collection_name]
-        self.downloader = straxen.MongoDownloader(
+        self.downloader = utilix.mongo_storage.MongoDownloader(
             collection=collection,
             readonly=True,
             file_database=None,
             _test_on_init=False,
         )
-        self.uploader = straxen.MongoUploader(
+        self.uploader = utilix.mongo_storage.MongoUploader(
             collection=collection,
             readonly=False,
             file_database=None,
@@ -76,7 +78,7 @@ class TestMongoDownloader(unittest.TestCase):
         self.downloader.test_find()
         self.downloader.download_all()
         # Now the test on init should work, let's double try
-        straxen.MongoDownloader(
+        utilix.mongo_storage.MongoDownloader(
             collection=self.collection,
             file_database=None,
             _test_on_init=True,
@@ -85,28 +87,28 @@ class TestMongoDownloader(unittest.TestCase):
     def test_invalid_methods(self):
         """The following examples should NOT work, let's make sure the right errors are raised."""
         with self.assertRaises(ValueError):
-            straxen.MongoDownloader(
+            utilix.mongo_storage.MongoDownloader(
                 collection=self.collection,
                 file_database="NOT NONE",
             )
         with self.assertRaises(ValueError):
-            straxen.MongoDownloader(
+            utilix.mongo_storage.MongoDownloader(
                 collection="invalid type",
             )
         with self.assertRaises(PermissionError):
-            straxen.MongoUploader(readonly=True)
+            utilix.mongo_storage.MongoUploader(readonly=True)
 
         with self.assertRaises(ValueError):
             self.uploader.upload_from_dict("A string is not a dict")
 
-        with self.assertRaises(straxen.mongo_storage.CouldNotLoadError):
+        with self.assertRaises(utilix.mongo_storage.CouldNotLoadError):
             self.uploader.upload_single("no_such_file", "no_such_file")
 
         with self.assertWarns(UserWarning):
             self.uploader.upload_from_dict({"something": "no_such_file"})
 
         with self.assertRaises(ValueError):
-            straxen.MongoDownloader(
+            utilix.mongo_storage.MongoDownloader(
                 collection=self.collection,
                 file_database=None,
                 _test_on_init=False,
