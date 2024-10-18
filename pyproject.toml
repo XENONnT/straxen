@@ -28,6 +28,7 @@ refresh_raw_records = "straxen.scripts.refresh_raw_records:main"
 restrax = "straxen.scripts.restrax:main"
 straxen_print_versions = "straxen.scripts.straxen_print_versions:main"
 straxer = "straxen.scripts.straxer:main"
+xefind = "straxen.scripts.xefind:main"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
