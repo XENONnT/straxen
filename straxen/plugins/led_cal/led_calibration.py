@@ -38,7 +38,7 @@ class LEDCalibration(strax.Plugin):
           from the signal one.
     """
 
-    __version__ = "0.3.0"
+    __version__ = "0.3.1"
 
     depends_on = "raw_records"
     data_kind = "led_cal"
@@ -62,6 +62,25 @@ class LEDCalibration(strax.Plugin):
         help=(
             "The minimum sample index to consider for LED hits. Hits before this sample are "
             "ignored."
+        ),
+    )
+
+    expected_led_position = straxen.URLConfig(
+        default=86,
+        infer_type=False,
+        help=(
+            "Expected LED position given the delayed set on the LED pulse. "
+            "This is used as default when no hits or less than a certain amount "
+            "are identified."
+        ),
+    )
+
+    minimum_hits_requirement = straxen.URLConfig(
+        default=500,
+        infer_type=False,
+        help=(
+            "Minimum hits required for defining the integration window. "
+            "If less, the expected_led_position is used."
         ),
     )
 
@@ -146,6 +165,8 @@ class LEDCalibration(strax.Plugin):
         led_windows, triggered = get_led_windows(
             records,
             self.minimum_led_position,
+            self.expected_led_position,
+            self.minimum_hits_requirement,
             self.led_hit_extension,
             self.led_cal_hit_min_height_over_noise,
             self.led_cal_record_length,
@@ -217,6 +238,8 @@ def get_records(raw_records, baseline_window, led_cal_record_length):
 def get_led_windows(
     records,
     minimum_led_position,
+    expected_led_position,
+    minimum_hits_requirement,
     led_hit_extension,
     hit_min_height_over_noise,
     record_length,
@@ -228,6 +251,9 @@ def get_led_windows(
     :param records: Array of the records to search for LED hits.
     :param minimum_led_position: The minimum simple index of the LED hits. Hits before this sample
         are ignored.
+    :param expected_led_position: Expected LED position given the delayed set on the LED pulse. Used
+        if no hits are identified :minimum_hits_requirement: Minimum hits requirement for the
+        dynamic window. Used to discriminate between led on and led off runs
     :param led_hit_extension: The integration window around the first hit found to use. A tuple of
         form (samples_before, samples_after) the first LED hit.
     :param hit_min_amplitude: Minimum amplitude of the signal to be considered a hit.
@@ -261,9 +287,11 @@ def get_led_windows(
         hits.sort(order=["record_i", "time"])
 
     if len(hits) == 0:  # This really should not be the case. But in case it is:
-        default_hit_position = minimum_led_position
+        default_hit_position = expected_led_position
     else:
-        default_hit_position, _ = sps.mode(hits["left"])
+        default_hit_position, mode_count = sps.mode(hits["left"])
+        if mode_count < minimum_hits_requirement:
+            default_hit_position = expected_led_position
 
         if isinstance(default_hit_position, np.ndarray):
             default_hit_position = default_hit_position[0]
