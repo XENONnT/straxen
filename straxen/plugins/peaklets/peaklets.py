@@ -190,9 +190,7 @@ class Peaklets(strax.Plugin):
         self.channel_range = self.channel_map["tpc"]
 
     def compute(self, records, start, end):
-        r = records
-
-        hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
+        hits = strax.find_hits(records, min_amplitude=self.hit_thresholds)
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -270,7 +268,7 @@ class Peaklets(strax.Plugin):
         strax.sum_waveform(
             peaklets,
             hitlets,
-            r,
+            records,
             rlinks,
             self.to_pe,
             n_top_channels=_n_top_pmts,
@@ -285,7 +283,7 @@ class Peaklets(strax.Plugin):
         peaklets = strax.split_peaks(
             peaklets,
             hitlets,
-            r,
+            records,
             rlinks,
             self.to_pe,
             algorithm="natural_breaks",
@@ -301,15 +299,10 @@ class Peaklets(strax.Plugin):
         # Saturation correction using non-saturated channels
         # similar method used in pax
         # see https://github.com/XENON1T/pax/pull/712
-        # Cases when records is not writeable for unclear reason
-        # only see this when loading 1T test data
-        # more details on https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html
-        if not r["data"].flags.writeable:
-            r = r.copy()
 
         if self.saturation_correction_on:
             peak_list = peak_saturation_correction(
-                r,
+                records,
                 rlinks,
                 peaklets,
                 hitlets,
@@ -344,8 +337,8 @@ class Peaklets(strax.Plugin):
         # Add max and min time difference between apexes of hits
         self.add_hit_features(hitlets, peaklets)
 
-        if self.diagnose_sorting and len(r):
-            assert np.diff(r["time"]).min(initial=1) >= 0, "Records not sorted"
+        if self.diagnose_sorting and len(records):
+            assert np.diff(records["time"]).min(initial=1) >= 0, "Records not sorted"
             assert np.diff(hitlets["time"]).min(initial=1) >= 0, "Hits/Hitlets not sorted"
             assert np.all(
                 peaklets["time"][1:] >= strax.endtime(peaklets)[:-1]
