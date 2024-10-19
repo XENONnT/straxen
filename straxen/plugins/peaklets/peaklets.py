@@ -262,7 +262,6 @@ class Peaklets(strax.Plugin):
         hitlets["length"] = hitlets["right_integration"] - hitlets["left_integration"]
 
         hitlets = strax.sort_by_time(hitlets)
-        hitlets_time = np.copy(hitlets["time"])
         self.clip_peaklet_times(hitlets, start, end)
         rlinks = strax.record_links(records)
 
@@ -329,14 +328,8 @@ class Peaklets(strax.Plugin):
         # (a) doing hitfinding yet again (or storing hits)
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
-        hitlet_time_shift = (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
-        hit_max_times = (
-            hitlets_time + hitlet_time_shift
-        )  # add time shift again to get correct maximum
-        hit_max_times += hitlets["dt"] * hit_max_sample(records, hitlets)
-
-        hit_max_times_argsort = np.argsort(hit_max_times)
-        sorted_hit_max_times = hit_max_times[hit_max_times_argsort]
+        hit_max_times_argsort = np.argsort(hitlets["max_time"])
+        sorted_hit_max_times = hitlets["max_time"][hit_max_times_argsort]
         sorted_hit_channels = hitlets["channel"][hit_max_times_argsort]
         peaklet_max_times = peaklets["time"] + np.argmax(peaklets["data"], axis=1) * peaklets["dt"]
         peaklets["tight_coincidence"] = get_tight_coin(
@@ -349,7 +342,7 @@ class Peaklets(strax.Plugin):
         )
 
         # Add max and min time difference between apexes of hits
-        self.add_hit_features(hitlets, hit_max_times, peaklets)
+        self.add_hit_features(hitlets, peaklets)
 
         if self.diagnose_sorting and len(r):
             assert np.diff(r["time"]).min(initial=1) >= 0, "Records not sorted"
@@ -426,22 +419,9 @@ class Peaklets(strax.Plugin):
         return outside_peaks
 
     @staticmethod
-    def add_hit_features(hitlets, hit_max_times, peaklets):
-        """Create hits timing features.
-
-        :param hitlets_max: hitlets with only max height time.
-        :param peaklets: Peaklets for which intervals should be computed.
-        :return: array of peaklet_timing dtype.
-
-        """
-        hits_w_max = np.zeros(
-            len(hitlets),
-            strax.merged_dtype([np.dtype([("max_time", np.int64)]), np.dtype(strax.time_fields)]),
-        )
-        hits_w_max["time"] = hitlets["time"]
-        hits_w_max["endtime"] = strax.endtime(hitlets)
-        hits_w_max["max_time"] = hit_max_times
-        split_hits = strax.split_by_containment(hits_w_max, peaklets)
+    def add_hit_features(hitlets, peaklets):
+        """Create hits timing features."""
+        split_hits = strax.split_by_containment(hitlets, peaklets)
         for peaklet, h_max in zip(peaklets, split_hits):
             max_time_diff = np.diff(np.sort(h_max["max_time"]))
             if len(max_time_diff) > 0:
@@ -707,14 +687,3 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right, chan
         n_coin_channel[p_i] = np.sum(channels_seen)
 
     return n_coin_channel
-
-
-@numba.njit(cache=True, nogil=True)
-def hit_max_sample(records, hits):
-    """Return the index of the maximum sample for hits."""
-    result = np.zeros(len(hits), dtype=np.int16)
-    for i, h in enumerate(hits):
-        r = records[h["record_i"]]
-        w = r["data"][h["left"] : h["right"]]
-        result[i] = np.argmax(w)
-    return result
