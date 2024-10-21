@@ -66,7 +66,7 @@ class LEDCalibration(strax.Plugin):
     )
 
     expected_led_position = straxen.URLConfig(
-        default=98,
+        default=88,
         infer_type=False,
         help=(
             "Expected LED position given the delayed set on the LED pulse. "
