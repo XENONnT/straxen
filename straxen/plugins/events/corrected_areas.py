@@ -5,7 +5,8 @@ import strax
 import straxen
 from straxen.common import rotate_perp_wires
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
-
+from straxen.peak_correction_functions import infer_correction_dtype
+from straxen.peak_correction_functions import apply_all_corrections
 export, __all__ = strax.exporter()
 
 
@@ -28,11 +29,8 @@ class CorrectedAreas(strax.Plugin):
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
-    # Dynamically add the config options by loading from correction_utils
-    # for name, config in straxen.peak_corrections.get_correction_configs().items():
-    #     locals()[name] = config
     
-        # Descriptor configs
+    # Descriptor configs
     elife = straxen.URLConfig(
         default="cmt://elife?version=ONLINE&run_id=plugin.run_id", help="electron lifetime in [ns]"
     )
@@ -107,7 +105,7 @@ class CorrectedAreas(strax.Plugin):
     )
 
     def infer_dtype(self):
-        return straxen.peak_corrections.infer_correction_dtype()
+        return infer_correction_dtype()
 
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
@@ -115,7 +113,7 @@ class CorrectedAreas(strax.Plugin):
         result["endtime"] = events["endtime"]
 
         # Apply all corrections from peak_corrections.py
-        correction_result = straxen.peak_corrections.apply_all_corrections(self, events)
+        correction_result = apply_all_corrections(self, events)
         for key, value in correction_result.items():
             result[key] = value
 

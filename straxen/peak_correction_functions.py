@@ -1,4 +1,5 @@
 import numpy as np
+import strax
 import straxen
 
 # correction_utils.py
@@ -6,6 +7,11 @@ import numpy as np
 import straxen
 from straxen.common import rotate_perp_wires
 
+export, __all__ = strax.exporter()
+
+# If you add a new correction function in the future, you will have to also add
+# the corresponding correction map/value configuration in the 
+# corrected_areas.py and peak_corrections.py plugins descriptor config
 def ab_region(x, y, single_electron_gain_partition):
     """Return True if (x, y) is in the AB region based on the partition."""
     new_x, new_y = rotate_perp_wires(x, y)
@@ -53,6 +59,7 @@ def seg_ee_correction_preparation(self):
 
     return seg, avg_seg, ee
 
+@export
 def apply_s1_corrections(self, events):
     """Apply corrections to S1 signals."""
     event_positions = np.vstack([events["x"], events["y"], events["z"]]).T
@@ -66,6 +73,7 @@ def apply_s1_corrections(self, events):
 
     return result
 
+@export
 def apply_s2_corrections(self, events, seg, avg_seg, ee):
     """Apply corrections to S2 signals."""
     result = {}
@@ -107,6 +115,7 @@ def apply_s2_corrections(self, events, seg, avg_seg, ee):
 
     return result
 
+@export
 def apply_all_corrections(self, events):
     """Apply all corrections (S1, S2, etc.) in one function."""
     result = {}
@@ -124,6 +133,7 @@ def apply_all_corrections(self, events):
 
     return result
 
+@export
 def infer_correction_dtype():
     """Return the dtype for the plugin output."""
     dtype = []
