@@ -161,7 +161,6 @@ class LEDCalibration(strax.Plugin):
         """
 
         self.is_led_on = is_the_led_on(self.run_doc, self.noise_run_comments)
-        print("is_led_on: ", self.is_led_on)
 
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
         raw_records_active_channels = raw_records[mask]
@@ -332,8 +331,6 @@ def get_led_windows(
     # hard-coded ADC sample
     if (not is_led_on) or (len(hits) == 0):
         default_hit_position = fixed_position
-        print("is_led_on: ", is_led_on)
-        print("len(hits): ", len(hits))
     else:
         default_hit_position = sps.mode(hits["left"])[0]
 
@@ -342,7 +339,7 @@ def get_led_windows(
 
         if default_hit_position > maximum_led_position:
             default_hit_position = maximum_led_position
-    print("default_hit_position: ", default_hit_position)
+
     triggered = np.zeros(len(records), dtype=bool)
 
     default_windows = np.tile(default_hit_position + np.array(led_hit_extension), (len(records), 1))
