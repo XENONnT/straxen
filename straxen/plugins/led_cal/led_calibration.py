@@ -38,13 +38,29 @@ class LEDCalibration(strax.Plugin):
           from the signal one.
     """
 
-    __version__ = "0.3.0"
+    __version__ = "0.3.1"
 
     depends_on = "raw_records"
     data_kind = "led_cal"
     compressor = "zstd"
     parallel = "process"
     rechunk_on_save = False
+
+    run_doc = straxen.URLConfig(
+        default="run_doc://comments?run_id=plugin.run_id",
+        infer_type=False,
+        help=(
+            "Comments dictionary from the run metadata. "
+            "It is used for discriminate between LED on and LED "
+            "off runs."
+        ),
+    )
+
+    noise_run_comments = straxen.URLConfig(
+        default=["SPE_calibration_step0", "Gain_calibration_step3"],
+        infer_type=False,
+        help=("List of comments for noise runs in PMT calibration. "),
+    )
 
     led_cal_record_length = straxen.URLConfig(
         default=160, infer_type=False, help="Length (samples) of one record without 0 padding."
@@ -62,6 +78,16 @@ class LEDCalibration(strax.Plugin):
         help=(
             "The minimum sample index to consider for LED hits. Hits before this sample are "
             "ignored."
+        ),
+    )
+
+    fixed_position = straxen.URLConfig(
+        default=88,
+        infer_type=False,
+        help=(
+            "Fixed ADC sample upon which the integration window is defined. "
+            "This is used as default when no hits or less than a certain amount "
+            "are identified."
         ),
     )
 
@@ -133,6 +159,9 @@ class LEDCalibration(strax.Plugin):
         This is used for the different ligh levels. As default value all the PMTs are considered.
 
         """
+
+        self.is_led_on = is_the_led_on(self.run_doc, self.noise_run_comments)
+
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
         raw_records_active_channels = raw_records[mask]
         records = get_records(
@@ -146,6 +175,8 @@ class LEDCalibration(strax.Plugin):
         led_windows, triggered = get_led_windows(
             records,
             self.minimum_led_position,
+            self.fixed_position,
+            self.is_led_on,
             self.led_hit_extension,
             self.led_cal_hit_min_height_over_noise,
             self.led_cal_record_length,
@@ -164,6 +195,34 @@ class LEDCalibration(strax.Plugin):
         temp["integration_window"] = led_windows
         temp["baseline"] = records["baseline"]
         return temp
+
+
+def is_the_led_on(run_doc, noise_run_comments):
+    """Utilizing the run database metadata to determine whether the run ID corresponds to LED on or
+    LED off runs.
+
+    The LED off, or noise runs, are identified by having 'Gain_calibration_step3' or
+    'SPE_calibration_step0' in the comment.
+
+    """
+    # Check if run_doc is a list with a dictionary
+    if isinstance(run_doc, list) and len(run_doc) == 1 and isinstance(run_doc[0], dict):
+        # Extract the dictionary
+        doc = run_doc[0]
+
+        # Check if the required keys are present
+        required_keys = {"user", "date", "comment"}
+        if all(key in doc for key in required_keys):
+            # Check if 'comment' contains any of the noise run comments
+            comment = doc["comment"]
+            if any(noise_comment in comment for noise_comment in noise_run_comments):
+                return False
+            else:
+                return True
+        else:
+            raise ValueError("The dictionary does not contain the required keys.")
+    else:
+        raise ValueError("The input is not a list with a single dictionary.")
 
 
 def get_records(raw_records, baseline_window, led_cal_record_length):
@@ -217,6 +276,8 @@ def get_records(raw_records, baseline_window, led_cal_record_length):
 def get_led_windows(
     records,
     minimum_led_position,
+    fixed_position,
+    is_led_on,
     led_hit_extension,
     hit_min_height_over_noise,
     record_length,
@@ -228,6 +289,10 @@ def get_led_windows(
     :param records: Array of the records to search for LED hits.
     :param minimum_led_position: The minimum simple index of the LED hits. Hits before this sample
         are ignored.
+    :param is_led_on: Fetch from the run database. It is used for discriminate between LED on and
+        LED off runs.
+    :param fixed_position: Fixed ADC sample upon which the integration window is defined. Used if no
+        hits are identified
     :param led_hit_extension: The integration window around the first hit found to use. A tuple of
         form (samples_before, samples_after) the first LED hit.
     :param hit_min_amplitude: Minimum amplitude of the signal to be considered a hit.
@@ -260,10 +325,14 @@ def get_led_windows(
     ):
         hits.sort(order=["record_i", "time"])
 
-    if len(hits) == 0:  # This really should not be the case. But in case it is:
-        default_hit_position = minimum_led_position
+    # If there are not hits in the chunk or if
+    # the run is a nosie run, with LED off,
+    # the integration window is defined beased on a
+    # hard-coded ADC sample
+    if (not is_led_on) or (len(hits) == 0):
+        default_hit_position = fixed_position
     else:
-        default_hit_position, _ = sps.mode(hits["left"])
+        default_hit_position = sps.mode(hits["left"])[0]
 
         if isinstance(default_hit_position, np.ndarray):
             default_hit_position = default_hit_position[0]

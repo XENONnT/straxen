@@ -222,7 +222,12 @@ def objects_to_array(objects: list):
 
 @URLConfig.register("run_doc")
 def read_rundoc(path, run_id=None, default=None):
-    """Read a path from the rundoc."""
+    """Read a path from the json rundoc metadata.
+
+    :param path: keys of json rundoc metada.
+        e.g. `comments` for reading comments for a specific run
+
+    """
     if run_id is None:
         raise ValueError("rundoc protocol: missing run_id.")
     runs = xent_collection()
