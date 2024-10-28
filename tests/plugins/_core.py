@@ -1,7 +1,7 @@
 import strax
 from unittest import TestCase
 import tempfile
-from straxen.test_utils import nt_test_run_id, nt_test_led_run_id
+from straxen.test_utils import nt_test_run_id
 import straxen
 
 
@@ -71,7 +71,6 @@ class SetupContextNt(PluginTestCase):
         """
         cls.st = straxen.test_utils.nt_test_context()
         cls.run_id = nt_test_run_id
-        cls.run_id_led = nt_test_led_run_id
 
         # Make sure that we only write to the temp-dir we cleanup after each test
         cls.st.storage[0].readonly = True

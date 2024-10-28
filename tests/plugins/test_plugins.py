@@ -36,10 +36,7 @@ for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.v
     # pylint: disable=cell-var-from-loop
     @PluginTestAccumulator.register(test_name)
     def _make(self, target=_target):
-        if target == "led_calibration":
-            self.st.make(self.run_id_led, target)
-        else:
-            self.st.make(self.run_id, target)
+        self.st.make(self.run_id, target)
 
 
 class TestEmptyRecords(PluginTest):
