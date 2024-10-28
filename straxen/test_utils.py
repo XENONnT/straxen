@@ -124,7 +124,7 @@ def nt_test_context(
 
     # Change the led_plugin defualt_run_comments to be compatible
     # with the test run_id in straxen.
-    st.set_config({"defualt_run_comments": "S1-only"})
+    st.set_config({"defualt_run_comments": ["S1-only"]})
 
     return st
 
