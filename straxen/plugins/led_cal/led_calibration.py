@@ -206,7 +206,7 @@ def is_the_led_on(run_doc, noise_run_comments):
 
     """
     # Check if run_doc is a list with a dictionary
-    if isinstance(run_doc, list) and len(run_doc) == 1 and isinstance(run_doc[0], dict):
+    if isinstance(run_doc, list) and isinstance(run_doc[0], dict):
         # Extract the dictionary
         doc = run_doc[0]
 
