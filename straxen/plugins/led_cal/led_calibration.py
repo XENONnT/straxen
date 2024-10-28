@@ -57,11 +57,11 @@ class LEDCalibration(strax.Plugin):
     )
 
     defualt_run_comments = straxen.URLConfig(
-        default=['auto, SC user: ', 'pulserScript: ', 'userComment: Weekly LED calibration'],
+        default=["auto, SC user: ", "pulserScript: ", "userComment: Weekly LED calibration"],
         infer_type=False,
         help=("List of default comments the automatic script for runs in PMT calibration. "),
     )
-    
+
     noise_run_comments = straxen.URLConfig(
         default=["SPE_calibration_step0", "Gain_calibration_step3"],
         infer_type=False,
@@ -166,7 +166,9 @@ class LEDCalibration(strax.Plugin):
 
         """
 
-        self.is_led_on = is_the_led_on(self.run_doc, self.defualt_run_comments, self.noise_run_comments)
+        self.is_led_on = is_the_led_on(
+            self.run_doc, self.defualt_run_comments, self.noise_run_comments
+        )
 
         mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
         raw_records_active_channels = raw_records[mask]
@@ -225,7 +227,7 @@ def is_the_led_on(run_doc, defualt_run_comments, noise_run_comments):
             # Check if the comment matches the expected pattern
             if not all(x in comment for x in defualt_run_comments):
                 raise ValueError("The comment does not match the expected pattern.")
-                
+
             if any(noise_comment in comment for noise_comment in noise_run_comments):
                 return False
             else:
