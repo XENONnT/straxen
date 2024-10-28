@@ -58,13 +58,13 @@ class LEDCalibration(strax.Plugin):
 
     defualt_run_comments = straxen.URLConfig(
         default=["auto, SC user: ", "pulserScript: ", "userComment: Weekly LED calibration"],
-        infer_type=False,
+        type=list,
         help=("List of default comments the automatic script for runs in PMT calibration. "),
     )
 
     noise_run_comments = straxen.URLConfig(
         default=["SPE_calibration_step0", "Gain_calibration_step3"],
-        infer_type=False,
+        type=list,
         help=("List of comments for noise runs in PMT calibration. "),
     )
 
