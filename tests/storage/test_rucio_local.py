@@ -108,8 +108,8 @@ class TestRucioLocal(unittest.TestCase):
 class TestBasics(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        """For testing purposes, slightly alter the RucioFrontend such that we can run tests outside
-        of dali too."""
+        """For testing purposes, slightly alter the RucioRemoteFrontend such that we can run tests
+        outside of dali too."""
         # Some non-existing keys that we will try finding in the test cases.
         cls.test_keys = [
             strax.DataKey(
