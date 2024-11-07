@@ -71,9 +71,10 @@ class RucioRemoteFrontend(strax.StorageFrontend):
                 "continuous"
             )
         try:
-            rses = [b._get_rse(did, state="OK") for b in self.backends]
-            if rses:
-                return "RucioRemoteBackend", did
+            for b in self.backends:
+                rse = b._get_rse(did, state="OK")
+                if rse:
+                    return "RucioRemoteBackend", did
         except DataIdentifierNotFound:
             pass
 
