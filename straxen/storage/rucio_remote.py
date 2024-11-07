@@ -54,7 +54,7 @@ class RucioRemoteFrontend(strax.StorageFrontend):
         else:
             self.log.warning(
                 "You passed use_remote=True to rucio fronted, "
-                "but you don't have access to admix/rucio! Using local backed only."
+                "but you don't have access to admix/rucio! Using local backend only."
             )
 
     def find_several(self, keys, **kwargs):
@@ -71,9 +71,10 @@ class RucioRemoteFrontend(strax.StorageFrontend):
                 "continuous"
             )
         try:
-            rules = admix.rucio.list_rules(did, state="OK")
-            if len(rules):
-                return "RucioRemoteBackend", did
+            for b in self.backends:
+                rse = b._get_rse(did, state="OK")
+                if rse:
+                    return "RucioRemoteBackend", did
         except DataIdentifierNotFound:
             pass
 
@@ -120,7 +121,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         self.download_heavy = download_heavy
         self.rses_only = strax.to_str_tuple(rses_only)
 
-    def _get_rse(self, dset_did):
+    def _get_rse(self, dset_did, **filters):
         """Determine the appropriate Rucio Storage Element (RSE) for a dataset.
 
         :param dset_did (str) :The dataset identifier.
@@ -129,7 +130,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         Uses self.rses_only to filter available RSEs if set.
 
         """
-        rses = admix.rucio.get_rses(dset_did)
+        rses = admix.rucio.get_rses(dset_did, **filters)
         rses = list(set(rses) & set(self.rses_only)) if self.rses_only else rses
         rse = admix.downloader.determine_rse(rses)
         return rse
