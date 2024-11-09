@@ -300,11 +300,11 @@ class EventPositionUncertainty(strax.Plugin):
             )
             theta_min = np.min(theta_array, axis=1)
             theta_max = np.max(theta_array, axis=1)
-   
+
             # Correction for circular nature of angle (going over pi and -pi boundary)
-            theta_min = (theta_min + np.pi)%(2*np.pi)
-            theta_max = (theta_max + np.pi)%(2*np.pi)
-           
+            theta_min = (theta_min + np.pi) % (2 * np.pi)
+            theta_max = (theta_max + np.pi) % (2 * np.pi)
+
             theta_diff = theta_max - theta_min
 
             # Store uncertainties
