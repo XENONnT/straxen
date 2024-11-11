@@ -306,8 +306,8 @@ class EventPositionUncertainty(strax.Plugin):
             )
 
             # Correction for circular nature of angle (going over pi and -pi boundary)
-            avg_theta = np.reshape(avg_theta, (avg_theta.shape[0],1))
-            theta_array_shift = (np.subtract(theta_array, avg_theta) + np.pi)%(2*np.pi)
+            avg_theta = np.reshape(avg_theta, (avg_theta.shape[0], 1))
+            theta_array_shift = (np.subtract(theta_array, avg_theta) + np.pi) % (2 * np.pi)
             theta_min = np.min(theta_array, axis=1)
             theta_max = np.max(theta_array, axis=1)
 
