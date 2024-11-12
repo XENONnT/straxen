@@ -210,10 +210,19 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
         r_max = np.max(r_array, axis=1)
 
         theta_array = np.arctan2(contours[..., 1], contours[..., 0])
-        theta_min = np.min(theta_array, axis=1)
-        theta_max = np.max(theta_array, axis=1)
+
+        # Correction for circular nature of angle
+        avg_theta = np.arctan2(
+            np.mean(contours[..., 1], axis=1),
+            np.mean(contours[..., 0], axis=1),
+        )
+
+        avg_theta = np.reshape(avg_theta, (avg_theta.shape[0],1))
+        theta_array_shift = (np.subtract(theta_array, avg_theta) + np.pi) % (2 * np.pi)
+        theta_min = np.min(theta_array_shift, axis=1)
+        theta_max = np.max(theta_array_shift, axis=1)
+
         theta_diff = theta_max - theta_min
-        theta_diff[theta_diff > np.pi] -= 2 * np.pi
 
         result[f"r_uncertainty_{self.algorithm}"][peak_mask] = (r_max - r_min) / 2
         result[f"theta_uncertainty_{self.algorithm}"][peak_mask] = np.abs(theta_diff) / 2

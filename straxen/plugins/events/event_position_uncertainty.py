@@ -224,7 +224,7 @@ class EventPositionUncertainty(strax.Plugin):
 
     """
 
-    __version__ = "0.0.1"
+    __version__ = "0.0.2"
 
     depends_on = ("event_info", "event_position_contour")
     provides = "event_position_uncertainty"
@@ -298,12 +298,19 @@ class EventPositionUncertainty(strax.Plugin):
                 events[f"{type_}_position_contour_cnf_naive"][..., 1],
                 events[f"{type_}_position_contour_cnf_naive"][..., 0],
             )
-            theta_min = np.min(theta_array, axis=1)
-            theta_max = np.max(theta_array, axis=1)
-            theta_diff = theta_max - theta_min
 
-            # Correct for circular nature of angles
-            theta_diff[theta_diff > np.pi] -= 2 * np.pi
+            # Correction for circular nature of angle 
+            avg_theta = np.arctan2(
+                np.mean(events[f"{type_}_position_contour_cnf_naive"][..., 1], axis=1),
+                np.mean(events[f"{type_}_position_contour_cnf_naive"][..., 0], axis=1),
+            )
+
+            avg_theta = np.reshape(avg_theta, (avg_theta.shape[0],1))
+            theta_array_shift = (np.subtract(theta_array, avg_theta) + np.pi) % (2 * np.pi)
+            theta_min = np.min(theta_array_shift, axis=1)
+            theta_max = np.max(theta_array_shift, axis=1)
+
+            theta_diff = theta_max - theta_min
 
             # Store uncertainties
             result[f"{type_}_r_position_uncertainty"] = (r_max - r_min) / 2
