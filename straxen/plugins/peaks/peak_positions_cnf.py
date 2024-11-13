@@ -29,7 +29,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
     """
 
-    __version__ = "0.0.3"
+    __version__ = "0.0.4"
     depends_on = "peaks"
     provides = "peak_positions_cnf"
     algorithm = "cnf"
