@@ -299,13 +299,13 @@ class EventPositionUncertainty(strax.Plugin):
                 events[f"{type_}_position_contour_cnf_naive"][..., 0],
             )
 
-            # Correction for circular nature of angle 
+            # Correction for circular nature of angle
             avg_theta = np.arctan2(
                 np.mean(events[f"{type_}_position_contour_cnf_naive"][..., 1], axis=1),
                 np.mean(events[f"{type_}_position_contour_cnf_naive"][..., 0], axis=1),
             )
 
-            avg_theta = np.reshape(avg_theta, (avg_theta.shape[0],1))
+            avg_theta = np.reshape(avg_theta, (avg_theta.shape[0], 1))
             theta_array_shift = (np.subtract(theta_array, avg_theta) + np.pi) % (2 * np.pi)
             theta_min = np.min(theta_array_shift, axis=1)
             theta_max = np.max(theta_array_shift, axis=1)

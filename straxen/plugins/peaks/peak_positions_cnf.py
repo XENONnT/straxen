@@ -217,7 +217,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
             np.mean(contours[..., 0], axis=1),
         )
 
-        avg_theta = np.reshape(avg_theta, (avg_theta.shape[0],1))
+        avg_theta = np.reshape(avg_theta, (avg_theta.shape[0], 1))
         theta_array_shift = (np.subtract(theta_array, avg_theta) + np.pi) % (2 * np.pi)
         theta_min = np.min(theta_array_shift, axis=1)
         theta_max = np.max(theta_array_shift, axis=1)
