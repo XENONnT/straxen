@@ -1,11 +1,9 @@
 from typing import Tuple
-
+import numpy as np
+import numba
 import strax
 import straxen
 from straxen.plugins.peaklets.peaklets import drop_data_top_field
-
-import numpy as np
-import numba
 
 
 export, __all__ = strax.exporter()
@@ -161,7 +159,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         max_duration,
         max_gap,
         max_area,
-        sort_kind="mergesort",
     ):
         """
         Finding the group of peaklets to merge. To do this start with the
@@ -179,7 +176,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         peaklet_start_index = np.arange(len(peaklet_starts))
         peaklet_end_index = np.arange(len(peaklet_starts))
 
-        for gap_i in np.argsort(peaklet_gaps, kind=sort_kind):
+        for gap_i in strax.stable_argsort(peaklet_gaps):
             start_idx = peaklet_start_index[gap_i]
             inclusive_end_idx = peaklet_end_index[gap_i + 1]
             sum_area = np.sum(areas[start_idx : inclusive_end_idx + 1])

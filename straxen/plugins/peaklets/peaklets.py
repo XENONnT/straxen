@@ -1,9 +1,8 @@
 from typing import Dict, Tuple, Union
-
 import numba
 import numpy as np
-import strax
 from immutabledict import immutabledict
+import strax
 from strax.processing.general import _touching_windows
 from strax.dtypes import DIGITAL_SUM_WAVEFORM_CHANNEL
 import straxen
@@ -320,7 +319,7 @@ class Peaklets(strax.Plugin):
         )  # add time shift again to get correct maximum
         hit_max_times += hitlets["dt"] * hit_max_sample(records, hitlets)
 
-        hit_max_times_argsort = np.argsort(hit_max_times)
+        hit_max_times_argsort = strax.stable_argsort(hit_max_times)
         sorted_hit_max_times = hit_max_times[hit_max_times_argsort]
         sorted_hit_channels = hitlets["channel"][hit_max_times_argsort]
         peaklet_max_times = peaklets["time"] + np.argmax(peaklets["data"], axis=1) * peaklets["dt"]
@@ -428,7 +427,7 @@ class Peaklets(strax.Plugin):
         hits_w_max["max_time"] = hit_max_times
         split_hits = strax.split_by_containment(hits_w_max, peaklets)
         for peaklet, h_max in zip(peaklets, split_hits):
-            max_time_diff = np.diff(np.sort(h_max["max_time"]))
+            max_time_diff = np.diff(strax.stable_sort(h_max["max_time"]))
             if len(max_time_diff) > 0:
                 peaklet["max_diff"] = max_time_diff.max()
                 peaklet["min_diff"] = max_time_diff.min()

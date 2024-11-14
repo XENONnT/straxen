@@ -1,7 +1,6 @@
 import io
 import os
 from warnings import warn
-from os import environ as os_environ
 from typing import Tuple
 import tarfile
 from immutabledict import immutabledict
@@ -65,7 +64,7 @@ def is_installed(module):
 @export
 def _is_on_pytest():
     """Check if we are on a pytest."""
-    return "PYTEST_CURRENT_TEST" in os_environ
+    return "PYTEST_CURRENT_TEST" in os.environ
 
 
 @export
@@ -141,7 +140,7 @@ def create_unique_intervals(size, time_range=(0, 40), allow_zero_length=True):
 
 
 def _convert_to_interval(time_stamps, allow_zero_length):
-    time_stamps = np.sort(time_stamps)
+    time_stamps = strax.stable_sort(time_stamps)
     intervals = np.zeros(len(time_stamps) // 2, strax.time_dt_fields)
     intervals["dt"] = 1
     intervals["time"] = time_stamps[::2]

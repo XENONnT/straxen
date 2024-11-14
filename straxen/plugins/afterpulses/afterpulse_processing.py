@@ -125,7 +125,7 @@ def find_ap(
         return buffer
 
     # sort hits first by record_i, then by time
-    hits_sorted = np.sort(hits, order=("record_i", "time"))
+    hits_sorted = strax.stable_sort(hits, order=("record_i", "time"))
     res = _find_ap(
         hits_sorted,
         records,
