@@ -12,6 +12,7 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 
     provides = "peak_positions_mlp"
     algorithm = "mlp"
+    gc_collect_after_compute = True
 
     tf_model_mlp = straxen.URLConfig(
         default=(
