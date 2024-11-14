@@ -1,5 +1,5 @@
-import strax
 import numpy as np
+import strax
 import straxen
 
 export, __all__ = strax.exporter()
@@ -47,7 +47,7 @@ class IndividualPeakMonitor(strax.Plugin):
             # to reduce datasize
             new_len = int(len(peaks) / peaks_size * self.online_max_bytes)
             idx = np.random.choice(np.arange(len(peaks)), replace=False, size=new_len)
-            data = peaks[np.sort(idx)]
+            data = peaks[strax.stable_sort(idx)]
 
         else:  # peaks_size <= self.max_bytes:
             data = peaks

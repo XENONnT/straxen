@@ -1,9 +1,9 @@
 import typing
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 import pymongo
+import strax
 import straxen
 import utilix
 
@@ -116,7 +116,7 @@ def group_by_daq(run_id, group_by: str):
         daq_config = _get_daq_config(run_id)
         labels = [_board_to_host_link(daq_config, label) for label in labels]
         labels = np.array(labels)
-        order = np.argsort(labels)
+        order = strax.stable_argsort(labels)
         return labels[order], idx[order]
     else:
         return _group_channels_by_index(cable_map, group_by=group_by)
