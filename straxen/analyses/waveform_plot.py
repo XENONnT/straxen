@@ -80,7 +80,7 @@ def plot_peaks(
         plt.figure(figsize=figsize)
     plt.axhline(0, c="k", alpha=0.2)
 
-    peaks = peaks[np.argsort(-peaks["area"])[:show_largest]]
+    peaks = peaks[strax.stable_argsort(-peaks["area"])[:show_largest]]
     peaks = strax.sort_by_time(peaks)
 
     for p in peaks:

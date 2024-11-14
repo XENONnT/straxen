@@ -1,6 +1,5 @@
-import strax
 import numpy as np
-
+import strax
 import straxen
 
 export, __all__ = strax.exporter()
@@ -39,7 +38,7 @@ class EventPeaks(strax.Plugin):
                 sp["center_time"] - event["s1_center_time"]
             )
         # Start of new part
-        sorted_indices_split_peaks_ind = np.argsort(split_peaks_ind)
+        sorted_indices_split_peaks_ind = strax.stable_argsort(split_peaks_ind)
         mapping = {
             val: events["event_number"][i]
             for val, i in zip(

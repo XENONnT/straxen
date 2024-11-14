@@ -88,7 +88,7 @@ class VetoIntervals(strax.ExhaustPlugin):
 
         result = result[:vetos_seen]
         result["veto_interval"] = result["endtime"] - result["time"]
-        sort = np.argsort(result["time"])
+        sort = strax.stable_argsort(result["time"])
         result = result[sort]
         return result
 
