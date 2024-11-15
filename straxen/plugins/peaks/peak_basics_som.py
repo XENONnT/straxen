@@ -16,7 +16,7 @@ class PeakBasicsSOM(PeakBasics):
         dtype = super().infer_dtype()
         additional_fields = [
             ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
-            ("straxen_type", np.int8, "Old straxen type of the peak(let)"),
+            ("old_type", np.int8, "Old type of the peak(let)"),
             ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
             ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
         ]
@@ -25,6 +25,6 @@ class PeakBasicsSOM(PeakBasics):
 
     def compute(self, peaks):
         peak_basics = super().compute(peaks)
-        fields_to_copy = ("som_sub_type", "straxen_type", "loc_x_som", "loc_y_som")
+        fields_to_copy = ("som_sub_type", "old_type", "loc_x_som", "loc_y_som")
         strax.copy_to_buffer(peaks, peak_basics, "_copy_som_information", fields_to_copy)
         return peak_basics
