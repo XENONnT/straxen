@@ -4,7 +4,7 @@ import strax
 import straxen
 import utilix
 import numpy as np
-from straxen.test_utils import nt_test_run_id as test_run_id_nT
+from straxen.test_utils import nt_test_run_id
 import unittest
 
 
@@ -23,7 +23,7 @@ def test_connect_to_db():
 def test_cmt_conf_option(option="mlp_model", version="ONLINE", is_nT=True):
     """Test CMT conf options If wrong conf is passed it would raise an error accordingly."""
     conf = option, version, is_nT
-    correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
+    correction = straxen.get_correction_from_cmt(nt_test_run_id, conf)
     assert isinstance(correction, (float, int, str, np.ndarray))
 
 

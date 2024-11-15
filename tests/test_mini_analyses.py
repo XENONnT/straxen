@@ -5,8 +5,8 @@ import platform
 import numpy as np
 import pandas
 import strax
+from matplotlib.pyplot import clf
 import straxen
-from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
 
 
@@ -64,7 +64,7 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def tearDown(self):
         """After each test, clear a figure (if one was open)"""
-        plt_clf()
+        clf()
 
     def test_target_peaks(self, target="peak_basics", tol=2):
         """Not a real mini analysis but let's see if the number of peaks matches some pre-defined

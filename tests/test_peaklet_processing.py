@@ -52,7 +52,7 @@ def test_create_outside_peaks_region(time):
     time_intervals["length"] = time[1::2] - time[::2]
     time_intervals["dt"] = 1
 
-    st = straxen.contexts.demo()
+    st = straxen.test_utils.nt_test_context()
     p = st.get_single_plugin("0", "peaklets")
     outside = p.create_outside_peaks_region(time_intervals, 0, np.max(time))
 

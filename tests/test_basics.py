@@ -4,8 +4,7 @@ import os
 import unittest
 import shutil
 import uuid
-
-test_run_id_1T = "180423_1021"
+from straxen.test_utils import nt_test_context, nt_test_run_id
 
 
 class TestBasics(unittest.TestCase):
@@ -17,9 +16,8 @@ class TestBasics(unittest.TestCase):
         assert not os.path.exists(cls.tempdir)
 
         print("Downloading test data (if needed)")
-        st = straxen.contexts.demo()
-        cls.run_id = test_run_id_1T
-        cls.st = st
+        cls.run_id = nt_test_run_id
+        cls.st = nt_test_context()
 
     @classmethod
     def tearDownClass(cls):
