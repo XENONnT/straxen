@@ -229,7 +229,7 @@ class EventPositionUncertainty(strax.Plugin):
 
     depends_on = ("event_info", "event_position_contour")
     provides = "event_position_uncertainty"
-    
+
     def infer_dtype(self):
         # Define the data types for the output
         infoline = {

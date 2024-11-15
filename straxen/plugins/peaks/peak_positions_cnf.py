@@ -70,8 +70,8 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
     @staticmethod
     def calculate_theta_diff(theta_array, avg_theta):
-        """Calculate the difference between maximum and minimum angles from an array of angles
-        by normalizing the angular difference into the range [0, 2π).
+        """Calculate the difference between maximum and minimum angles from an array of angles by
+        normalizing the angular difference into the range [0, 2π).
 
         Parameters:
             theta_array : np.ndarray
@@ -83,6 +83,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
             theta_diff : np.ndarray
             A 1D numpy array with the difference between the maximum and minimum angles in radians
             for each row in `theta_array`
+
         """
         # Correction to handle circular nature of angles
         theta_array_shift = (theta_array - avg_theta[..., np.newaxis] + np.pi) % (2 * np.pi)
@@ -235,7 +236,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
         theta_array = np.arctan2(contours[..., 1], contours[..., 0])
 
-        avg_theta = np.arctan2(peaks['y_cnf'], peaks['x_cnf'])
+        avg_theta = np.arctan2(peaks["y_cnf"], peaks["x_cnf"])
 
         theta_diff = calculate_theta_diff(theta_array, avg_theta)
 
