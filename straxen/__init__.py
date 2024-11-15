@@ -27,6 +27,8 @@ from . import analyses
 
 from . import config
 
+from . import units
+
 # Do not make all contexts directly available under straxen.
 # Otherwise, we have straxen.demo() etc.
 from . import contexts
