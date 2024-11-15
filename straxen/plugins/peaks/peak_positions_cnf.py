@@ -68,6 +68,30 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
         help="Compiled JAX function",
     )
 
+    @staticmethod
+    def calculate_theta_diff(theta_array, avg_theta):
+        """Calculate the difference between maximum and minimum angles from an array of angles
+        by normalizing the angular difference into the range [0, 2π).
+
+        Parameters:
+            theta_array : np.ndarray
+            A 2D numpy array where each row represents a set of angles in radians.
+            avg_theta : np.ndarray
+            A 1D numpy array representing the average angle in radians for each row in `theta_array`.
+
+        Returns:
+            theta_diff : np.ndarray
+            A 1D numpy array with the difference between the maximum and minimum angles in radians
+            for each row in `theta_array`
+        """
+        # Correction to handle circular nature of angles
+        theta_array_shift = (theta_array - avg_theta[..., np.newaxis] + np.pi) % (2 * np.pi)
+        theta_min = np.min(theta_array_shift, axis=1)
+        theta_max = np.max(theta_array_shift, axis=1)
+        theta_diff = theta_max - theta_min
+
+        return theta_diff
+
     def infer_dtype(self):
         """Define the data type for the output.
 
@@ -91,7 +115,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
                 np.float32,
             ),
             (
-                ("Position uncertainty contour", f"position_contours_{self.algorithm}"),
+                ("Position uncertainty contour", f"position_contour_{self.algorithm}"),
                 np.float32,
                 (self.n_poly + 1, 2),
             ),
@@ -174,7 +198,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
         # Set default values to NaN
         result[f"x_{self.algorithm}"] *= float("nan")
         result[f"y_{self.algorithm}"] *= float("nan")
-        result[f"position_contours_{self.algorithm}"] *= float("nan")
+        result[f"position_contour_{self.algorithm}"] *= float("nan")
         result[f"r_uncertainty_{self.algorithm}"] *= np.nan
         result[f"theta_uncertainty_{self.algorithm}"] *= np.nan
 
@@ -202,7 +226,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
         # Write output to the result array
         result[f"x_{self.algorithm}"][peak_mask] = xy[:, 0]
         result[f"y_{self.algorithm}"][peak_mask] = xy[:, 1]
-        result[f"position_contours_{self.algorithm}"][peak_mask] = contours
+        result[f"position_contour_{self.algorithm}"][peak_mask] = contours
 
         # Calculate uncertainties in r and theta
         r_array = np.linalg.norm(contours, axis=2)
@@ -211,18 +235,9 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
         theta_array = np.arctan2(contours[..., 1], contours[..., 0])
 
-        # Correction for circular nature of angle
-        avg_theta = np.arctan2(
-            np.mean(contours[..., 1], axis=1),
-            np.mean(contours[..., 0], axis=1),
-        )
+        avg_theta = np.arctan2(peaks['y_cnf'], peaks['x_cnf'])
 
-        avg_theta = np.reshape(avg_theta, (avg_theta.shape[0], 1))
-        theta_array_shift = (np.subtract(theta_array, avg_theta) + np.pi) % (2 * np.pi)
-        theta_min = np.min(theta_array_shift, axis=1)
-        theta_max = np.max(theta_array_shift, axis=1)
-
-        theta_diff = theta_max - theta_min
+        theta_diff = calculate_theta_diff(theta_array, avg_theta)
 
         result[f"r_uncertainty_{self.algorithm}"][peak_mask] = (r_max - r_min) / 2
         result[f"theta_uncertainty_{self.algorithm}"][peak_mask] = np.abs(theta_diff) / 2

@@ -2,6 +2,7 @@ import numpy as np
 import strax
 import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
+from straxen.plugins.peaks.peak_positions_cnf import PeakPositionsCNF
 
 
 export, __all__ = strax.exporter()
@@ -159,7 +160,7 @@ class EventPositionContour(strax.Plugin):
                 if type_index != -1:
                     # Store naive flow position contour
                     result[f"{type_}_position_contour_cnf_naive"][event_i] = sp[
-                        "position_contours_cnf"
+                        "position_contour_cnf"
                     ][type_index]
 
                 if type_ == "s2":
@@ -167,7 +168,7 @@ class EventPositionContour(strax.Plugin):
                         # Apply full field distortion correction to contour
                         contour_plus_xy = np.concatenate(
                             [
-                                sp["position_contours_cnf"][type_index],
+                                sp["position_contour_cnf"][type_index],
                                 np.array([[sp["x_cnf"][type_index], sp["y_cnf"][type_index]]]),
                             ],
                             axis=0,
@@ -191,7 +192,7 @@ class EventPositionContour(strax.Plugin):
                         # Apply simple scaling based on field distortion correction
                         scale = event["r_field_distortion_correction"] / event["r_naive"] + 1
                         result["position_contour_cnf"][event_i] = (
-                            sp["position_contours_cnf"][type_index] * scale
+                            sp["position_contour_cnf"][type_index] * scale
                         )
                         result["x_cnf_fdc"][event_i] = sp["x_cnf"][type_index] * scale
                         result["y_cnf_fdc"][event_i] = sp["y_cnf"][type_index] * scale
@@ -228,7 +229,7 @@ class EventPositionUncertainty(strax.Plugin):
 
     depends_on = ("event_info", "event_position_contour")
     provides = "event_position_uncertainty"
-
+    
     def infer_dtype(self):
         # Define the data types for the output
         infoline = {
@@ -299,18 +300,12 @@ class EventPositionUncertainty(strax.Plugin):
                 events[f"{type_}_position_contour_cnf_naive"][..., 0],
             )
 
-            # Correction for circular nature of angle
             avg_theta = np.arctan2(
                 np.mean(events[f"{type_}_position_contour_cnf_naive"][..., 1], axis=1),
                 np.mean(events[f"{type_}_position_contour_cnf_naive"][..., 0], axis=1),
             )
 
-            avg_theta = np.reshape(avg_theta, (avg_theta.shape[0], 1))
-            theta_array_shift = (np.subtract(theta_array, avg_theta) + np.pi) % (2 * np.pi)
-            theta_min = np.min(theta_array_shift, axis=1)
-            theta_max = np.max(theta_array_shift, axis=1)
-
-            theta_diff = theta_max - theta_min
+            theta_diff = PeakPositionsCNF.calculate_theta_diff(theta_array, avg_theta)
 
             # Store uncertainties
             result[f"{type_}_r_position_uncertainty"] = (r_max - r_min) / 2
