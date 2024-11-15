@@ -17,9 +17,6 @@ from .scada import *
 from .bokeh_utils import *
 from .config.url_config import *
 
-from . import legacy
-from .legacy import *
-
 from . import plugins
 from .plugins import *
 
