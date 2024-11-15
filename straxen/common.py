@@ -21,7 +21,6 @@ export, __all__ = strax.exporter()
 __all__.extend(
     [
         "straxen_dir",
-        "first_sr1_run",
         "tpc_r",
         "tpc_z",
         "aux_repo",
