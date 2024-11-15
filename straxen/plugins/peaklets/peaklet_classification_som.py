@@ -15,6 +15,7 @@ class PeakletClassificationSOM(PeakletClassification):
     """
     Self-Organizing Maps (SOM)
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:lsanchez:unsupervised_neural_network_som_methods
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:lsanchez:som_summary_note
     For peaklet classification. We this pluggin will provide 2 data types, the 'type' we are
     already familiar with, classifying peaklets as s1, s2 (using the new classification) or
     unknown (from the previous classification). As well as a new data type, SOM type, which
