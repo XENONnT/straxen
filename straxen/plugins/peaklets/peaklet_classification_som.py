@@ -37,9 +37,9 @@ class PeakletClassificationSOM(PeakletClassification):
     use_som_as_default = straxen.URLConfig(
         default=True,
         help=(
-            "Boolean to indicate whether to use SOM"
-            " or the straxen classifcation method for"
-            "peaklet classification"
+            "Boolean to indicate whether to use SOM "
+            "or the straxen classifcation method for "
+            "peaklet classification."
         ),
     )
 
@@ -75,7 +75,7 @@ class PeakletClassificationSOM(PeakletClassification):
         # SOM classification
         peaklets_w_type = peaklets.copy()
         peaklets_w_type["type"] = peaklet_with_som["type"]
-        _is_s1_or_s2 = peaklets_w_type["type"] != 0
+        _is_s1_or_s2 = np.isin(peaklets_w_type["type"], [1, 2])
 
         peaklets_w_type = peaklets_w_type[_is_s1_or_s2]
 
@@ -273,7 +273,8 @@ def compute_wf_attributes(data, sample_length, n_samples: int):
 
 @export
 class PeakletSOMClass(PeakletClassificationSOM):
-    """Plugin which allows in addition to the straxen classification the SOM classification."""
+    """Plugin which allows in addition to the straxen classification the SOM classification if
+    straxen.PeakClassification is still used."""
 
     child_plugin = True
     __version__ = "0.0.1"
