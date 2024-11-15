@@ -1,5 +1,4 @@
 import warnings
-
 import urllib
 import time
 from datetime import datetime
@@ -206,7 +205,7 @@ class SCADAInterface:
             # User specified a valid context and run_id, so get the start
             # and end time for our query:
             if isinstance(run_id, (list, tuple)):
-                run_id = np.sort(run_id)  # Do not trust the user's
+                run_id = strax.stable_sort(run_id)  # Do not trust the user's
                 start, _ = self.context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
                 _, end = self.context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
             else:

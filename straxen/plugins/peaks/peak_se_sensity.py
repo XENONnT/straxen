@@ -1,6 +1,5 @@
 import numpy as np
 from numba import njit
-
 import strax
 import straxen
 
@@ -105,8 +104,8 @@ class PeakSEDensity(strax.OverlapWindowPlugin):
 
     def compute(self, peaks):
         # sort peaks by center_time
-        argsort = np.argsort(peaks["center_time"], kind="mergesort")
-        _peaks = np.sort(peaks, order="center_time")
+        argsort = strax.stable_argsort(peaks["center_time"])
+        _peaks = strax.stable_sort(peaks, order="center_time")
 
         # prepare output
         se_density = np.zeros(len(peaks))

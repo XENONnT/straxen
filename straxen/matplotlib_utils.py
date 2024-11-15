@@ -183,7 +183,9 @@ def logticks(tmin, tmax=None, tick_at=None):
     a, b = np.log10([tmin, tmax])
     a = np.floor(a)
     b = np.ceil(b)
-    ticks = np.sort(np.unique(np.outer(np.array(tick_at), 10.0 ** np.arange(a, b)).ravel()))
+    ticks = strax.stable_sort(
+        np.unique(np.outer(np.array(tick_at), 10.0 ** np.arange(a, b)).ravel())
+    )
     ticks = ticks[(tmin <= ticks) & (ticks <= tmax)]
     return ticks
 

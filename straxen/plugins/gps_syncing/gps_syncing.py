@@ -1,9 +1,9 @@
-import strax
-import straxen
-import utilix
 import numpy as np
 import pandas as pd
 import datetime
+import utilix
+import strax
+import straxen
 
 from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 from scipy.interpolate import interp1d
@@ -65,7 +65,7 @@ class GpsSync(strax.OverlapWindowPlugin):
         nanoseconds unix time."""
         gps_info = self.gps_times_from_runid(self.run_id)
         gps_info["pulse_time"] = np.int64(gps_info["gps_sec"] * 1e9) + np.int64(gps_info["gps_ns"])
-        gps_array = np.sort(gps_info["pulse_time"])
+        gps_array = strax.stable_sort(gps_info["pulse_time"])
         return gps_array
 
     def gps_times_from_runid(self, run_id):
