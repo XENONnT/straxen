@@ -80,12 +80,12 @@ because changing any of those options affect this data indirectly.
 """
 
 data_kinds_header = """
-XENON nT data kinds
+XENONnT data kinds
 ====================
 As explained in the
 `demo <https://straxen.readthedocs.io/en/latest/tutorials/strax_demo.html>`_,
 in straxen, we have **data types** and **data kinds**. The **data types** are
-documented in `the datastructure <https://straxen.readthedocs.io/en/latest/reference/datastructure_nT.html>`_
+documented in `the datastructure <https://straxen.readthedocs.io/en/latest/reference/datastructure.html>`_
 page and are the type of data that one can load in straxen using
 ``st.get_array(<RUN_ID>, <DATA_TYPE>)`` or ``st.get_df(<RUN_ID>, <DATA_TYPE>)``.
 
@@ -97,7 +97,6 @@ two data types but they contain information about the same data kind: `peaks`.
 
 When writing a plugin, the ``plugin.compute(self, <DATA KIND>)`` method takes the **data kind**.
 
-nT data kinds
 --------------------------------------------------------
 
 .. raw:: html
@@ -108,10 +107,10 @@ nT data kinds
 """
 
 titles = {
-    "": "Straxen nT datastructure",
-    "_he": "Straxen nT datastructure for high energy channels",
-    "_nv": "Straxen nT datastructure for neutron veto",
-    "_mv": "Straxen nT datastructure for muon veto",
+    "": "Straxen datastructure",
+    "_he": "Straxen datastructure for high energy channels",
+    "_nv": "Straxen datastructure for neutron veto",
+    "_mv": "Straxen datastructure for muon veto",
 }
 tree_suffices = list(titles.keys())
 
@@ -171,8 +170,8 @@ def build_datastructure_doc():
         title = titles[suffix]
         out = page_header.format(title=title, context="xenonnt_online")
 
-        print(f"------------ nT{suffix} ------------")
-        os.makedirs(this_dir + f"/graphs{suffix}_nT", exist_ok=True)
+        print(f"------------ {suffix} ------------")
+        os.makedirs(this_dir + f"/graphs{suffix}", exist_ok=True)
         for n_deps in list(reversed(sorted(list(plugins_by_deps[suffix].keys())))):
             for this_data_type in plugins_by_deps[suffix][n_deps]:
                 this_plugin = st._get_plugins(targets=(this_data_type,), run_id="0")[this_data_type]
@@ -183,7 +182,7 @@ def build_datastructure_doc():
                 add_deps_to_graph_tree(graph_tree, this_plugin, this_data_type)
 
                 # Where to save this node
-                fn = this_dir + f"/graphs{suffix}_nT/" + this_data_type
+                fn = this_dir + f"/graphs{suffix}/" + this_data_type
                 graph_tree.render(fn)
                 with open(f"{fn}.svg", mode="r") as f:
                     svg = add_spaces(f.readlines()[5:])
@@ -216,13 +215,13 @@ def build_datastructure_doc():
                     config_options=add_spaces(config_df.to_html(index=False)),
                 )
 
-        with open(this_dir + f"/reference/datastructure{suffix}_nT.rst", mode="w") as f:
+        with open(this_dir + f"/reference/datastructure{suffix}.rst", mode="w") as f:
             f.write(out)
 
-        shutil.rmtree(this_dir + f"/graphs{suffix}_nT")
+        shutil.rmtree(this_dir + f"/graphs{suffix}")
 
 
-def tree_to_svg(graph_tree, save_as="data_kinds_nT"):
+def tree_to_svg(graph_tree, save_as="data_kinds"):
     # Where to save this node
     graph_tree.render(save_as)
     with open(f"{save_as}.svg", mode="r") as f:
@@ -274,7 +273,7 @@ def write_data_kind_dep_tree():
         for d in tree[data_kind]:
             graph_tree.edge(data_kind, d)
 
-    svg = tree_to_svg(graph_tree, save_as="data_kinds_nT")
+    svg = tree_to_svg(graph_tree, save_as="data_kinds")
     output = data_kinds_header.format(svg=svg)
 
     # Sort by largest first
@@ -323,7 +322,7 @@ The ``{data_kind}``-data kind includes the following data types:
         for d in data_types:
             extra += f"\n - ``{d}``"
         output = output.format(data_types=extra)
-    data_type = this_dir + f"/reference/data_kinds_nT.rst"
+    data_type = this_dir + f"/reference/data_kinds.rst"
     with open(data_type, mode="w") as f:
         f.write(output)
     assert os.path.exists(data_type)

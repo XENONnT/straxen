@@ -10,9 +10,7 @@ import straxen
 from straxen import HAVE_ADMIX
 
 common_opts: Dict[str, Any] = dict(
-    register_all=[],
-    # Register all peak/pulse processing by hand as 1T does not need to have
-    # the high-energy plugins.
+    register_all=[straxen.plugins],
     register=[
         straxen.PulseProcessing,
         straxen.Peaklets,
@@ -31,9 +29,11 @@ common_opts: Dict[str, Any] = dict(
     ],
     check_available=("peak_basics", "event_basics"),
     store_run_fields=("name", "number", "start", "end", "livetime", "mode", "source"),
+    use_per_run_defaults=False,
 )
 
-xnt_common_config = dict(
+
+common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
     gain_model="cmt://to_pe_model?version=ONLINE&run_id=plugin.run_id",
@@ -76,26 +76,6 @@ xnt_common_config = dict(
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
 # s1, s2 and fd corrections are still problematic
-
-# Plugins in these files have nT plugins, E.g. in pulse&peak(let)
-# processing there are plugins for High Energy plugins. Therefore, do not
-# st.register_all in 1T contexts.
-xnt_common_opts = common_opts.copy()
-xnt_common_opts.update(
-    {
-        "register": list(common_opts["register"]),
-        "register_all": list(common_opts["register_all"])
-        + [
-            straxen.plugins,
-        ],
-        "use_per_run_defaults": False,
-    }
-)
-
-
-##
-# XENONnT
-##
 
 
 def xenonnt(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=False, **kwargs):
@@ -209,9 +189,9 @@ def xenonnt_online(
     :return: strax.Context
 
     """
-    context_options = {**straxen.contexts.xnt_common_opts, **kwargs}
+    context_options = {**straxen.contexts.common_opts, **kwargs}
 
-    st = strax.Context(config=straxen.contexts.xnt_common_config, **context_options)
+    st = strax.Context(config=straxen.contexts.common_config, **context_options)
     st.register(
         [
             straxen.DAQReader,
@@ -309,7 +289,7 @@ def xenonnt_led(**kwargs):
     st.set_context_config(
         {
             "check_available": ("raw_records", "led_calibration"),
-            "free_options": list(xnt_common_config.keys()),
+            "free_options": list(common_config.keys()),
         }
     )
     # Return a new context with only raw_records and led_calibration registered

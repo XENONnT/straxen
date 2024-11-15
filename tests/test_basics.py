@@ -58,7 +58,7 @@ class TestBasics(unittest.TestCase):
         runs = st.select_runs(available=test_for_target)
         assert f"{test_for_target}_available" in runs.keys()
 
-    def test_extract_latest_comment_nt(self, **opt):
+    def test_extract_latest_comment(self, **opt):
         """Run the test for nt (but only 2000 runs."""
         self._extract_latest_comment(
             context="xenonnt_online", minimum_run_number=10_000, maximum_run_number=12_000, **opt
@@ -66,7 +66,7 @@ class TestBasics(unittest.TestCase):
 
     def test_extract_latest_comment_lone_hits(self):
         """Run the test for some target that is not in the default availability check."""
-        self.test_extract_latest_comment_nt(test_for_target="lone_hits")
+        self.test_extract_latest_comment(test_for_target="lone_hits")
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_raw_records_lineage(self):
