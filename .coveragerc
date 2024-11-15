@@ -2,7 +2,6 @@
 [report]
 omit =
     straxen/storage/rucio_remote.py
-    straxen/legacy/plugins_1t/pax_interface.py
     straxen/entry_points.py
     straxen/daq_core.py
     straxen/scripts/*.py

@@ -214,9 +214,6 @@ class DummyRawRecords(strax.Plugin):
             rr = np.copy(r)
             # Add detector specific channel offset:
             for key, channel_key in self.channel_map_keys.items():
-                if channel_key not in self.config["channel_map"]:
-                    # Channel map for 1T is different.
-                    continue
                 if p.endswith(key):
                     first_channel, last_channel = self.config["channel_map"][channel_key]
                     rr["channel"] += first_channel
