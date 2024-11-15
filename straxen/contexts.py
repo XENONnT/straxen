@@ -84,12 +84,7 @@ xnt_common_config = dict(
 xnt_common_opts = common_opts.copy()
 xnt_common_opts.update(
     {
-        "register": list(common_opts["register"])
-        + [
-            straxen.PeakletSOMClass,
-            straxen.PeaksSOMClassification,
-            straxen.EventSOMClassification,
-        ],
+        "register": list(common_opts["register"]),
         "register_all": list(common_opts["register_all"])
         + [
             straxen.plugins,

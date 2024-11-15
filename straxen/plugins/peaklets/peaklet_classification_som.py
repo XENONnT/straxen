@@ -269,17 +269,3 @@ def compute_wf_attributes(data, sample_length, n_samples: int):
         quantiles[i] = cumsum_steps[1:] - cumsum_steps[:-1]
 
     return quantiles
-
-
-@export
-class PeakletSOMClass(PeakletClassificationSOM):
-    """Plugin which allows in addition to the straxen classification the SOM classification."""
-
-    child_plugin = True
-    __version__ = "0.0.1"
-
-    provides = "peaklet_classification_som"
-
-    def compute(self, peaklets):
-        peaklet_classifcation_som = super().compute(peaklets)
-        return peaklet_classifcation_som
