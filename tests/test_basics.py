@@ -28,11 +28,10 @@ class TestBasics(unittest.TestCase):
             shutil.rmtree(cls.tempdir)
 
     def test_run_selection(self):
-        st = self.st
         # Ignore strax-internal warnings
-        st.set_context_config({"free_options": tuple(st.config.keys())})
+        self.st.set_context_config({"free_options": tuple(self.st.config.keys())})
 
-        run_df = st.select_runs(available="raw_records")
+        run_df = self.st.select_runs(available="raw_records")
         print(run_df)
         run_id = run_df.iloc[0]["name"]
         assert run_id == self.run_id
@@ -59,8 +58,6 @@ class TestBasics(unittest.TestCase):
         assert st.runs is not None, "No registry build?"
         assert "comments" in st.runs.keys()
         runs = st.select_runs(available=test_for_target)
-        if context == "demo":
-            assert len(st.runs)
         assert f"{test_for_target}_available" in runs.keys()
 
     def test_extract_latest_comment_nt(self, **opt):
@@ -68,9 +65,6 @@ class TestBasics(unittest.TestCase):
         self._extract_latest_comment(
             context="xenonnt_online", minimum_run_number=10_000, maximum_run_number=12_000, **opt
         )
-
-    def test_extract_latest_comment_demo(self):
-        self._extract_latest_comment(context="demo")
 
     def test_extract_latest_comment_lone_hits(self):
         """Run the test for some target that is not in the default availability check."""

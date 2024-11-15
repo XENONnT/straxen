@@ -180,11 +180,6 @@ bootstrax [DAQ-only]
 As the main DAQ processing script. This is discussed separately. It is only used for XENONnT.
 
 
-fake_daq
-------------------
-Script that allows mimiming DAQ-processing by opening raw-records data.
-
-
 microstrax
 ------------------
 Mini strax interface that allows strax-data to be retrieved using HTTP requests
