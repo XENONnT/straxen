@@ -46,7 +46,7 @@ def get_filled_peaks(peak_length, data_length, n_widths):
     strat.lists(strat.integers(min_value=0, max_value=10), min_size=8, max_size=8, unique=True),
 )
 def test_create_outside_peaks_region(time):
-    time = np.sort(time)
+    time = strax.stable_sort(time)
     time_intervals = np.zeros(len(time) // 2, strax.time_dt_fields)
     time_intervals["time"] = time[::2]
     time_intervals["length"] = time[1::2] - time[::2]

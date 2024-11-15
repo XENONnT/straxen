@@ -3,7 +3,7 @@ straxen' free of holoviews."""
 
 import numpy as np
 import pandas as pd
-
+import strax
 import straxen
 
 straxen._BOKEH_X_RANGE = None
@@ -338,7 +338,7 @@ def hvdisp_plot_peak_waveforms(
     import holoviews as hv
 
     if show_largest is not None and len(peaks) > show_largest:
-        show_i = np.argsort(peaks["area"])[-show_largest::]
+        show_i = strax.stable_argsort(peaks["area"])[-show_largest::]
         peaks = peaks[show_i]
 
     curves = []

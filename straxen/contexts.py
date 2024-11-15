@@ -4,7 +4,6 @@ from typing import Dict, Any, List, Optional
 from immutabledict import immutabledict
 import socket
 
-from pandas.util._decorators import deprecate_kwarg
 import strax
 import straxen
 
@@ -84,12 +83,7 @@ xnt_common_config = dict(
 xnt_common_opts = common_opts.copy()
 xnt_common_opts.update(
     {
-        "register": list(common_opts["register"])
-        + [
-            straxen.PeakletSOMClass,
-            straxen.PeaksSOMClassification,
-            straxen.EventSOMClassification,
-        ],
+        "register": list(common_opts["register"]),
         "register_all": list(common_opts["register_all"])
         + [
             straxen.plugins,
@@ -164,10 +158,6 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     return _include_rucio_local, __rucio_local_path
 
 
-@deprecate_kwarg("_minimum_run_number", "minimum_run_number")
-@deprecate_kwarg("_maximum_run_number", "maximum_run_number")
-@deprecate_kwarg("_include_rucio_remote", "include_rucio_remote")
-@deprecate_kwarg("_add_online_monitor_frontend", "include_online_monitor")
 def xenonnt_online(
     output_folder: str = "./strax_data",
     we_are_the_daq: bool = False,
