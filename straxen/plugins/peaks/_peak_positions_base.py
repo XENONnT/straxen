@@ -81,8 +81,8 @@ class PeakPositionsBaseNT(strax.Plugin):
         result = np.ones(len(peaks), dtype=self.dtype)
         result["time"], result["endtime"] = peaks["time"], strax.endtime(peaks)
 
-        result["x_" + self.algorithm] *= float("nan")
-        result["y_" + self.algorithm] *= float("nan")
+        result["x_" + self.algorithm] *= np.nan
+        result["y_" + self.algorithm] *= np.nan
         model = self.get_tf_model()
 
         if model is None:
