@@ -14,13 +14,13 @@ common_opts: Dict[str, Any] = dict(
     register=[
         straxen.PulseProcessing,
         straxen.Peaklets,
-        straxen.PeakletClassification,
+        straxen.PeakletClassificationSOM,
         straxen.MergedS2s,
-        straxen.Peaks,
-        straxen.PeakBasics,
+        straxen.PeaksSOM,
+        straxen.PeakBasicsSOM,
         straxen.PeakProximity,
         straxen.Events,
-        straxen.EventBasics,
+        straxen.EventBasicsSOM,
         straxen.EventPositions,
         straxen.CorrectedAreas,
         straxen.EnergyEstimates,
@@ -87,25 +87,6 @@ def xenonnt(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=False,
 
     if xedocs_version is not None:
         st.apply_xedocs_configs(version=xedocs_version, **kwargs)
-
-    return st
-
-
-def xenonnt_som(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=False, **kwargs):
-    """XENONnT context for the SOM."""
-
-    st = straxen.contexts.xenonnt(
-        cmt_version=cmt_version, xedocs_version=xedocs_version, _from_cutax=_from_cutax, **kwargs
-    )
-    del st._plugin_class_registry["peaklet_classification"]
-    st.register(
-        (
-            straxen.PeakletClassificationSOM,
-            straxen.PeaksSOM,
-            straxen.PeakBasicsSOM,
-            straxen.EventBasicsSOM,
-        )
-    )
 
     return st
 
