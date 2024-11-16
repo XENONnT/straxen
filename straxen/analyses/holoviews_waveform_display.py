@@ -42,7 +42,7 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array="bottom"):
     """
     import holoviews as hv
 
-    pmts = straxen.pmt_positions(xenon1t=config["n_tpc_pmts"] < 300)
+    pmts = straxen.pmt_positions()
     areas = np.bincount(
         records["channel"], weights=records["area"] * to_pe[records["channel"]], minlength=len(pmts)
     )

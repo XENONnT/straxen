@@ -33,7 +33,6 @@ corrections_w_file = [
 ]
 
 single_value_corrections = [
-    "elife_xenon1t",
     "elife",
     "baseline_samples_nv",
     "electron_drift_velocity",
@@ -76,7 +75,7 @@ class CorrectionsManagementServices:
 
     """
 
-    def __init__(self, username=None, password=None, mongo_url=None, is_nt=True):
+    def __init__(self, username=None, password=None, mongo_url=None):
         """
         :param username: corrections DB username
             read the .xenon_config for the users "pymongo_user" has
@@ -84,7 +83,6 @@ class CorrectionsManagementServices:
             the "CMT admin user" has r/w permission to corrections DB
             and read permission to RunDB
         :param password: DB password
-        :param is_nt: bool if True we are looking at nT if False we are looking at 1T
         """
 
         mongo_kwargs = {
@@ -101,17 +99,13 @@ class CorrectionsManagementServices:
         # Setup the interface
         self.interface = strax.CorrectionsInterface(self.client, database_name="corrections")
 
-        self.is_nt = is_nt
-        if self.is_nt:
-            self.collection = self.client["xenonnt"]["runs"]
-        else:
-            self.collection = self.client["run"]["runs_new"]
+        self.collection = self.client["xenonnt"]["runs"]
 
     def __str__(self):
         return self.__repr__()
 
     def __repr__(self):
-        return str(f'{"XENONnT " if self.is_nt else "XENON1T"}-Corrections_Management_Services')
+        return str("XENONnT_Corrections_Management_Services")
 
     def get_corrections_config(self, run_id, config_model=None):
         """Get context configuration for a given correction.
@@ -164,9 +158,7 @@ class CorrectionsManagementServices:
             # because every pmt is its own dataframe...of course
             if correction in {"pmt", "n_veto", "mu_veto"}:
                 # get lists of pmts
-                df_global = self.interface.read(
-                    "global_xenonnt" if self.is_nt else "global_xenon1t"
-                )
+                df_global = self.interface.read("global_xenonnt")
                 gains = df_global["global_ONLINE"][0]  # global is where all pmts are grouped
                 pmts = list(gains.keys())
                 for it_correction in pmts:  # loop over all PMTs
@@ -320,13 +312,9 @@ class CorrectionsManagementServices:
 
         """
 
-        if self.is_nt:
-            # xenonnt use int
-            run_id = int(run_id)
+        run_id = int(run_id)
 
-        rundoc = self.collection.find_one(
-            {"number" if self.is_nt else "name": run_id}, {"start": 1}
-        )
+        rundoc = self.collection.find_one({"number": run_id}, {"start": 1})
         if rundoc is None:
             raise ValueError(f"run_id = {run_id} not found")
         time = rundoc["start"]

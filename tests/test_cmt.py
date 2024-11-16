@@ -4,9 +4,7 @@ import strax
 import straxen
 import utilix
 import numpy as np
-from .test_basics import test_run_id_1T
-from straxen.test_utils import nt_test_run_id as test_run_id_nT
-from straxen.common import aux_repo
+from straxen.test_utils import nt_test_run_id
 import unittest
 
 
@@ -22,23 +20,10 @@ def test_connect_to_db():
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_1T_elife():
-    """Test elife from CMT DB against historical data(aux file)"""
-    elife_conf = ("elife_xenon1t", "ONLINE", False)
-    elife_cmt = straxen.get_correction_from_cmt(test_run_id_1T, elife_conf)
-    elife_file = aux_repo + "3548132b55f81a43654dba5141366041e1daaf01/strax_files/elife.npy"
-    x = straxen.get_resource(elife_file, fmt="npy")
-    run_index = np.where(x["run_id"] == int(test_run_id_1T))[0]
-    elife = x[run_index[0]]["e_life"]
-    mes = "Elife values do not match. Please check"
-    assert elife_cmt == elife, mes
-
-
-@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_cmt_conf_option(option="mlp_model", version="ONLINE", is_nT=True):
     """Test CMT conf options If wrong conf is passed it would raise an error accordingly."""
     conf = option, version, is_nT
-    correction = straxen.get_correction_from_cmt(test_run_id_nT, conf)
+    correction = straxen.get_correction_from_cmt(nt_test_run_id, conf)
     assert isinstance(correction, (float, int, str, np.ndarray))
 
 
