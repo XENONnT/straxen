@@ -35,8 +35,6 @@ class muVETOHitlets(nVETOHitlets):
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
             "Specify as a tuple of length n_mveto_pmts, or a number, "
-            'or a string like "pmt_commissioning_initial" which means calling '
-            "hitfinder_thresholds.py, "
             "or a tuple like (correction=str, version=str, nT=boolean),"
             "which means we are using cmt."
         ),

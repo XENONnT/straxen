@@ -104,7 +104,8 @@ def get_correction_from_cmt(run_id, conf):
 
     elif isinstance(conf, tuple) and len(conf) == 3:
         model_conf, global_version, is_nt = conf[:3]
-        cmt = straxen.CorrectionsManagementServices(is_nt=is_nt)
+        assert is_nt, "Only nT runs are supported"
+        cmt = straxen.CorrectionsManagementServices()
         correction = cmt.get_corrections_config(run_id, conf[:2])
         if correction.size == 0:
             raise ValueError(

@@ -196,8 +196,7 @@ def setup(app):
     sys.path.append(os.path.dirname(os.path.realpath(__file__)))
     import build_datastructure_doc
 
-    build_datastructure_doc.build_datastructure_doc(True)
-    build_datastructure_doc.build_datastructure_doc(False)
+    build_datastructure_doc.build_datastructure_doc()
     build_datastructure_doc.write_data_kind_dep_tree()
     import build_context_doc
 

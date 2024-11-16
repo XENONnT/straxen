@@ -57,7 +57,6 @@ def event_display(
     s2_fuzz=50,
     s1_fuzz=0,
     max_peaks=500,
-    xenon1t=False,
     s1_hp_kwargs=None,
     s2_hp_kwargs=None,
     event_time_limit=None,
@@ -92,7 +91,6 @@ def event_display(
         s2_fuzz=s2_fuzz,
         s1_fuzz=s1_fuzz,
         max_peaks=max_peaks,
-        xenon1t=xenon1t,
         display_peak_info=display_peak_info,
         display_event_info=display_event_info,
         s1_hp_kwargs=s1_hp_kwargs,
@@ -112,7 +110,6 @@ def _event_display(
     s2_fuzz=50,
     s1_fuzz=0,
     max_peaks=500,
-    xenon1t=False,
     display_peak_info=PEAK_DISPLAY_DEFAULT_INFO,
     display_event_info=EVENT_DISPLAY_DEFAULT_INFO,
     s1_hp_kwargs=None,
@@ -170,7 +167,6 @@ def _event_display(
     # Hit patterns options:
     for hp_opt, color_map in ((s1_hp_kwargs, "Blues"), (s2_hp_kwargs, "Greens")):
         _common_opt = dict(
-            xenon1t=xenon1t,
             pmt_label_color="lightgrey",
             log_scale=True,
             vmin=0.1,
@@ -239,7 +235,7 @@ def _event_display(
                 )
                 # Mark reconstructed position (corrected)
                 plt.scatter(event["x"], event["y"], marker="X", s=100, c="k")
-                if not xenon1t and axi == 0 and plot_all_positions:
+                if axi == 0 and plot_all_positions:
                     _scatter_rec(event)
 
     # Fill panels with peak/event info
@@ -279,9 +275,8 @@ def _event_display(
             single_figure=False,
         )
         ax_rec.tick_params(axis="x", rotation=0)
-        if not xenon1t:
-            # Top vs bottom division
-            ax_rec.axhline(straxen.n_top_pmts, c="k")
+        # Top vs bottom division
+        ax_rec.axhline(straxen.n_top_pmts, c="k")
         if ev_range is not None:
             plt.xlim(*ev_range)
 
@@ -450,7 +445,6 @@ Make a waveform-display of a given event. Requires events, peaks and
 :param s2_fuzz: extra time around main S2 [ns]
 :param s1_fuzz: extra time around main S1 [ns]
 :param max_peaks: max peaks for plotting in the wf plot
-:param xenon1t: True: is 1T, False: is nT
 :param display_peak_info: tuple, items that will be extracted from
     event and displayed in the event info panel see above for format
 :param display_event_info: tuple, items that will be extracted from

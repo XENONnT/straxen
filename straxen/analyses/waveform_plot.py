@@ -111,7 +111,6 @@ def plot_hit_pattern(
     log_scale=False,
     label=None,
     single_figure=False,
-    xenon1t=False,
     figsize=(10, 4),
 ):
     if single_figure:
@@ -124,7 +123,6 @@ def plot_hit_pattern(
         vmin=vmin,
         log_scale=log_scale,
         label=label,
-        xenon1t=xenon1t,
     )
 
 

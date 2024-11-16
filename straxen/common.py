@@ -2,8 +2,6 @@ import os
 import os.path as osp
 import json
 from re import match
-import ast
-import configparser
 import gzip
 import inspect
 from typing import Union, Dict, Any
@@ -23,7 +21,6 @@ export, __all__ = strax.exporter()
 __all__.extend(
     [
         "straxen_dir",
-        "first_sr1_run",
         "tpc_r",
         "tpc_z",
         "aux_repo",
@@ -100,35 +97,14 @@ def rotate_perp_wires(x_obs: np.ndarray, y_obs: np.ndarray, angle_extra: Union[f
 
 
 @export
-def pmt_positions(xenon1t=False):
+def pmt_positions():
     """Return pandas dataframe with PMT positions
     columns: array (top/bottom), i (PMT number), x, y
     """
-    if xenon1t:
-        # Get PMT positions from the XENON1T config without PAX
-        config = configparser.ConfigParser()
-        config.read_string(
-            resource_from_url(
-                "https://raw.githubusercontent.com/XENON1T/pax/master/pax/config/XENON1T.ini"
-            )
-        )
-        pmt_config = ast.literal_eval(config["DEFAULT"]["pmts"])
-        return pd.DataFrame(
-            [
-                dict(
-                    x=q["position"]["x"],
-                    y=q["position"]["y"],
-                    i=q["pmt_position"],
-                    array=q.get("array", "other"),
-                )
-                for q in pmt_config[:248]
-            ]
-        )
-    else:
-        return resource_from_url(
-            aux_repo + "874de2ffe41147719263183b89d26c9ee562c334/pmt_positions_xenonnt.csv",
-            fmt="csv",
-        )
+    return resource_from_url(
+        aux_repo + "874de2ffe41147719263183b89d26c9ee562c334/pmt_positions_xenonnt.csv",
+        fmt="csv",
+    )
 
 
 # In-memory resource cache
@@ -585,17 +561,3 @@ def _swap_values_in_array(data_arr, buffer, items, replacements):
                 buffer[i] = replacements[k]
                 break
     return buffer
-
-
-##
-# Old XENON1T Stuff
-##
-
-
-first_sr1_run = 170118_1327
-
-
-@export
-def pax_file(x):
-    """Return URL to file hosted in the pax repository master branch."""
-    return "https://raw.githubusercontent.com/XENON1T/pax/master/pax/data/" + x

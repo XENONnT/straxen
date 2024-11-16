@@ -46,13 +46,15 @@ def get_filled_peaks(peak_length, data_length, n_widths):
     strat.lists(strat.integers(min_value=0, max_value=10), min_size=8, max_size=8, unique=True),
 )
 def test_create_outside_peaks_region(time):
+    if not straxen.utilix_is_configured():
+        return
     time = strax.stable_sort(time)
     time_intervals = np.zeros(len(time) // 2, strax.time_dt_fields)
     time_intervals["time"] = time[::2]
     time_intervals["length"] = time[1::2] - time[::2]
     time_intervals["dt"] = 1
 
-    st = straxen.contexts.demo()
+    st = straxen.test_utils.nt_test_context()
     p = st.get_single_plugin("0", "peaklets")
     outside = p.create_outside_peaks_region(time_intervals, 0, np.max(time))
 
