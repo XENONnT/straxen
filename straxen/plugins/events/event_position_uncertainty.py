@@ -303,7 +303,7 @@ class EventPositionUncertainty(strax.Plugin):
                 events[f"{type_}_position_contour_cnf"][..., 0],
             )
 
-            avg_theta = np.arctan2(events["y_cnf"], events["x_cnf"])
+            avg_theta = np.arctan2(events[f"{type_}_y_cnf"], events[f"{type_}_x_cnf"])
 
             theta_diff = PeakPositionsCNF.calculate_theta_diff(theta_array, avg_theta)
 
