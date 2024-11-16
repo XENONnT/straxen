@@ -237,7 +237,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
         theta_array = np.arctan2(contours[..., 1], contours[..., 0])
 
-        avg_theta = np.arctan2(result[f"y_{self.algorithm}"], result[f"x_{self.algorithm}"])
+        avg_theta = np.arctan2(xy[:, 1], xy[:, 0])
 
         theta_diff = self.calculate_theta_diff(theta_array, avg_theta)
 
