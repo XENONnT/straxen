@@ -77,7 +77,8 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
             theta_array : np.ndarray
             A 2D numpy array where each row represents a set of angles in radians.
             avg_theta : np.ndarray
-            A 1D numpy array representing the average angle in radians for each row in `theta_array`.
+            A 1D numpy array representing the average angle in radians for each
+            row in `theta_array`.
 
         Returns:
             theta_diff : np.ndarray
@@ -236,9 +237,9 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
         theta_array = np.arctan2(contours[..., 1], contours[..., 0])
 
-        avg_theta = np.arctan2(peaks["y_cnf"], peaks["x_cnf"])
+        avg_theta = np.arctan2(result[f"y_{self.algorithm}"], result[f"x_{self.algorithm}"])
 
-        theta_diff = calculate_theta_diff(theta_array, avg_theta)
+        theta_diff = self.calculate_theta_diff(theta_array, avg_theta)
 
         result[f"r_uncertainty_{self.algorithm}"][peak_mask] = (r_max - r_min) / 2
         result[f"theta_uncertainty_{self.algorithm}"][peak_mask] = np.abs(theta_diff) / 2
