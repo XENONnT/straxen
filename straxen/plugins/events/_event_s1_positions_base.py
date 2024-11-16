@@ -80,9 +80,9 @@ class EventS1PositionBase(strax.Plugin):
         result = np.ones(len(events), dtype=self.dtype)
         result["time"], result["endtime"] = events["time"], strax.endtime(events)
 
-        result["event_x_" + self.algorithm] *= float("nan")
-        result["event_y_" + self.algorithm] *= float("nan")
-        result["event_z_" + self.algorithm] *= float("nan")
+        result["event_x_" + self.algorithm] *= np.nan
+        result["event_y_" + self.algorithm] *= np.nan
+        result["event_z_" + self.algorithm] *= np.nan
 
         model = self.get_tf_model()
 

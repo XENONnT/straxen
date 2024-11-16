@@ -62,9 +62,7 @@ class LEDAfterpulseProcessing(strax.Plugin):
         default="cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id",
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_tpc_pmts, or a number,"
-            'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
-            "hitfinder_thresholds.py"
+            "Specify as a tuple of length n_tpc_pmts, or a number, "
             'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
             "calling cmt."
         ),
@@ -179,7 +177,7 @@ def find_ap(
         return buffer
 
     # sort hits first by record_i, then by time
-    hits_sorted = np.sort(hits, order=("record_i", "time"))
+    hits_sorted = strax.stable_sort(hits, order=("record_i", "time"))
     res = _find_ap(
         hits_sorted,
         records,
