@@ -13,6 +13,7 @@ def _not_close_to_0_or_1(x, rtol=R_TOL_DEFAULT):
     return not (np.isclose(x, 1, rtol=rtol) or np.isclose(x, 0, rtol=rtol))
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 class TestComputePeakBasics(unittest.TestCase):
     """Tests for peak basics plugin."""
 
