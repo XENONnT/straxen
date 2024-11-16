@@ -198,9 +198,9 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
         result["time"], result["endtime"] = peaks["time"], strax.endtime(peaks)
 
         # Set default values to NaN
-        result[f"x_{self.algorithm}"] *= float("nan")
-        result[f"y_{self.algorithm}"] *= float("nan")
-        result[f"position_contour_{self.algorithm}"] *= float("nan")
+        result[f"x_{self.algorithm}"] *= np.nan
+        result[f"y_{self.algorithm}"] *= np.nan
+        result[f"position_contour_{self.algorithm}"] *= np.nan
         result[f"r_uncertainty_{self.algorithm}"] *= np.nan
         result[f"theta_uncertainty_{self.algorithm}"] *= np.nan
 
