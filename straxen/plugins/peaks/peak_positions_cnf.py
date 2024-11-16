@@ -117,7 +117,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
                 np.float32,
             ),
             (
-                ("Position uncertainty contour", f"position_contour_{self.algorithm}"),
+                ("Position uncertainty contour (cm)", f"position_contour_{self.algorithm}"),
                 np.float32,
                 (self.n_poly + 1, 2),
             ),

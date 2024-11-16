@@ -97,8 +97,8 @@ class EventPositionContour(strax.Plugin):
             dtype += [
                 (
                     (
-                        f"Naive flow position contour for {infoline[type_]}",
-                        f"{type_}_position_contour_cnf_naive",
+                        f"Position uncertainty contour for {infoline[type_]}",
+                        f"{type_}_position_contour_cnf",
                     ),
                     np.float32,
                     (self.n_poly + 1, 2),
@@ -108,16 +108,19 @@ class EventPositionContour(strax.Plugin):
         # Add fields for flow position contour and corrected positions
         dtype += [
             (
-                (f"Flow position contour", "position_contour_cnf"),
+                (
+                    "Position uncertainty contour, field-distortion corrected (cm)",
+                    "position_contour_cnf_fdc",
+                ),
                 np.float32,
                 (self.n_poly + 1, 2),
             ),
             (
-                (f"Flow x position", "x_cnf_fdc"),
+                ("Reconstructed cnf S2 X position, field-distortion corrected (cm)", "x_cnf_fdc"),
                 np.float32,
             ),
             (
-                (f"Flow y position", "y_cnf_fdc"),
+                ("Reconstructed cnf S2 Y position, field-distortion corrected (cm)", "y_cnf_fdc"),
                 np.float32,
             ),
         ]
@@ -147,8 +150,8 @@ class EventPositionContour(strax.Plugin):
 
         # Initialize contour fields with NaN values
         for type_ in ["s2", "alt_s2"]:
-            result[f"{type_}_position_contour_cnf_naive"] *= np.nan
-        result[f"position_contour_cnf"] *= np.nan
+            result[f"{type_}_position_contour_cnf"] *= np.nan
+        result["position_contour_cnf_fdc"] *= np.nan
 
         # Split peaks by containment in events
         split_peaks = strax.split_by_containment(peaks, events)
@@ -159,9 +162,9 @@ class EventPositionContour(strax.Plugin):
                 type_index = event[f"{type_}_index"]
                 if type_index != -1:
                     # Store naive flow position contour
-                    result[f"{type_}_position_contour_cnf_naive"][event_i] = sp[
-                        "position_contour_cnf"
-                    ][type_index]
+                    result[f"{type_}_position_contour_cnf"][event_i] = sp["position_contour_cnf"][
+                        type_index
+                    ]
 
                 if type_ == "s2":
                     if self.use_fdc_for_contour:
@@ -185,13 +188,13 @@ class EventPositionContour(strax.Plugin):
                         scaled_2d_contour = contour_with_z[:, :2] * scale[:, np.newaxis]
 
                         # Store corrected contour and positions
-                        result["position_contour_cnf"][event_i] = scaled_2d_contour[:-1]
+                        result["position_contour_cnf_fdc"][event_i] = scaled_2d_contour[:-1]
                         result["x_cnf_fdc"][event_i] = scaled_2d_contour[-1, 0]
                         result["y_cnf_fdc"][event_i] = scaled_2d_contour[-1, 1]
                     else:
                         # Apply simple scaling based on field distortion correction
                         scale = event["r_field_distortion_correction"] / event["r_naive"] + 1
-                        result["position_contour_cnf"][event_i] = (
+                        result["position_contour_cnf_fdc"][event_i] = (
                             sp["position_contour_cnf"][type_index] * scale
                         )
                         result["x_cnf_fdc"][event_i] = sp["x_cnf"][type_index] * scale
@@ -227,7 +230,7 @@ class EventPositionUncertainty(strax.Plugin):
 
     __version__ = "0.0.2"
 
-    depends_on = ("event_info", "event_position_contour")
+    depends_on = ("event_info", "event_positions", "event_position_contour")
     provides = "event_position_uncertainty"
 
     def infer_dtype(self):
@@ -262,11 +265,11 @@ class EventPositionUncertainty(strax.Plugin):
         # Add fields for corrected position uncertainties
         dtype += [
             (
-                ("Flow position uncertainty in r (cm)", "r_position_uncertainty"),
+                ("Position uncertainty in r (cm)", "r_position_uncertainty"),
                 np.float32,
             ),
             (
-                ("Flow position uncertainty in theta (rad)", "theta_position_uncertainty"),
+                ("Position uncertainty in theta (rad)", "theta_position_uncertainty"),
                 np.float32,
             ),
         ]
@@ -290,20 +293,17 @@ class EventPositionUncertainty(strax.Plugin):
         # Calculate uncertainties for main and alternative S2 signals
         for type_ in ["s2", "alt_s2"]:
             # Calculate radial uncertainties
-            r_array = np.linalg.norm(events[f"{type_}_position_contour_cnf_naive"], axis=2)
+            r_array = np.linalg.norm(events[f"{type_}_position_contour_cnf"], axis=2)
             r_min = np.min(r_array, axis=1)
             r_max = np.max(r_array, axis=1)
 
             # Calculate angular uncertainties
             theta_array = np.arctan2(
-                events[f"{type_}_position_contour_cnf_naive"][..., 1],
-                events[f"{type_}_position_contour_cnf_naive"][..., 0],
+                events[f"{type_}_position_contour_cnf"][..., 1],
+                events[f"{type_}_position_contour_cnf"][..., 0],
             )
 
-            avg_theta = np.arctan2(
-                np.mean(events[f"{type_}_position_contour_cnf_naive"][..., 1], axis=1),
-                np.mean(events[f"{type_}_position_contour_cnf_naive"][..., 0], axis=1),
-            )
+            avg_theta = np.arctan2(events["y_cnf"], events["x_cnf"])
 
             theta_diff = PeakPositionsCNF.calculate_theta_diff(theta_array, avg_theta)
 
