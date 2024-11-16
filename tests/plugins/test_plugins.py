@@ -10,7 +10,6 @@ import bayes_plugin
 import event_building
 import peak_building
 import posrec_plugins
-import pulse_processing
 import nv_processing
 import local_minimum_plugin
 

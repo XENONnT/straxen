@@ -112,9 +112,9 @@ def nt_test_context(
         "012882-raw_records-z7q2d2ye2t.tar"
     )
     if keep_default_storage:
-        st.storage += [strax.DataDirectory("./strax_test_data")]
+        st.storage += [strax.DataDirectory("./strax_test_data", deep_scan=True)]
     else:
-        st.storage = [strax.DataDirectory("./strax_test_data")]
+        st.storage = [strax.DataDirectory("./strax_test_data", deep_scan=True)]
     assert st.is_stored(nt_test_run_id, "raw_records"), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)
@@ -214,9 +214,6 @@ class DummyRawRecords(strax.Plugin):
             rr = np.copy(r)
             # Add detector specific channel offset:
             for key, channel_key in self.channel_map_keys.items():
-                if channel_key not in self.config["channel_map"]:
-                    # Channel map for 1T is different.
-                    continue
                 if p.endswith(key):
                     first_channel, last_channel = self.config["channel_map"][channel_key]
                     rr["channel"] += first_channel
