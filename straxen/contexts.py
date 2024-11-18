@@ -26,6 +26,11 @@ common_opts: Dict[str, Any] = dict(
         straxen.EnergyEstimates,
         straxen.EventInfoDouble,
         straxen.DistinctChannels,
+        # Make sure the dependency tree is clean before merging PR
+        straxen.PeakletPositionsMLP,
+        straxen.PeakletPositionsCNF,
+        straxen.PeakletPositionsNT,
+        straxen.MergedPeakPositionsNT,
     ],
     check_available=("peak_basics", "event_basics"),
     store_run_fields=("name", "number", "start", "end", "livetime", "mode", "source"),

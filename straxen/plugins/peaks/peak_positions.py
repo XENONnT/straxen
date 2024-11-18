@@ -2,7 +2,7 @@ import numpy as np
 import strax
 import straxen
 
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, FAKE_MERGED_S2_TYPE
 
 export, __all__ = strax.exporter()
 
@@ -47,3 +47,77 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
         for xy in ("x", "y"):
             result[xy] = peaks[f"{xy}_{algorithm}"]
         return result
+
+
+@export
+class PeakletPositionsNT(PeakPositionsNT):
+
+    __version__ = "0.0.0"
+    provides = "peaklet_positions"
+    depends_on = (
+        "peaklet_positions_mlp",
+        "peaklet_positions_cnf",
+    )
+
+    def compute(self, peaklets):
+        return super().compute(peaklets)
+
+
+@export
+class MergedPeakPositionsNT(strax.Plugin):
+
+    __version__ = "0.0.0"
+
+    depends_on = ("peaklet_positions", "peaklet_classification", "merged_s2s", "peak_basics")
+    data_kind = "peaks"
+    provides = "peak_positions"
+
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
+
+    merge_without_s1 = straxen.URLConfig(
+        default=True,
+        infer_type=False,
+        help=(
+            "If true, S1s will be igored during the merging. "
+            "It's now possible for a S1 to be inside a S2 post merging"
+        ),
+    )
+
+    def infer_dtype(self):
+        dtype = self.deps["peaklet_positions"].dtype_for("peaklet_positions")
+        return dtype
+
+    def compute(self, peaklets, merged_s2s, peaks):
+        # Remove fake merged S2s from dirty hack, see above
+        merged_s2s = merged_s2s[merged_s2s["type"] != FAKE_MERGED_S2_TYPE]
+
+        if self.merge_without_s1:
+            is_s1_peaklets = peaklets["type"] == 1
+            _peaklets = peaklets[~is_s1_peaklets]
+        else:
+            _peaklets = peaklets
+        windows = strax.touching_windows(_peaklets, merged_s2s)
+
+        result = np.zeros(len(merged_s2s), dtype=peaklets.dtype)
+        indices = np.full(len(_peaklets), -1)
+
+        for i, (start, end) in enumerate(windows):
+            indices[start:end] = i
+            for name in peaklets.dtype.names:
+                result[name][i] = np.nanmean(_peaklets[name][start:end], axis=0)
+
+        result["time"] = merged_s2s["time"]
+        result["endtime"] = strax.endtime(merged_s2s)
+
+        if self.merge_without_s1:
+            result = strax.sort_by_time(
+                np.concatenate([peaklets[is_s1_peaklets], _peaklets[indices == -1], result])
+            )
+        else:
+            result = strax.sort_by_time(np.concatenate([_peaklets[indices == -1], result]))
+
+        _result = np.zeros(len(result), self.dtype)
+        strax.copy_to_buffer(result, _result, "_copy_requested_peak_positions_fields")
+        return _result

@@ -30,7 +30,7 @@ class PeakPositionsBaseNT(strax.Plugin):
 
     min_reconstruction_area = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this",
-        default=10,
+        default=0,
         infer_type=False,
     )
 
@@ -90,6 +90,7 @@ class PeakPositionsBaseNT(strax.Plugin):
             return result
 
         # Keep large peaks only
+        assert self.min_reconstruction_area == 0
         peak_mask = peaks["area"] > self.min_reconstruction_area
         if not np.sum(peak_mask):
             # Nothing to do, and .predict crashes on empty arrays
@@ -108,3 +109,15 @@ class PeakPositionsBaseNT(strax.Plugin):
         result["x_" + self.algorithm][peak_mask] = output[:, 0]
         result["y_" + self.algorithm][peak_mask] = output[:, 1]
         return result
+
+
+@export
+class PeakletPositionsBaseNT(PeakPositionsBaseNT):
+    """Pose-rec on peaklets instead of peaks."""
+
+    __version__ = "0.0.0"
+    child_plugin = True
+    depends_on = "peaklets"
+
+    def compute(self, peaklets):
+        return super().compute(peaklets)

@@ -1,6 +1,6 @@
 import strax
 import straxen
-from straxen.plugins.peaks._peak_positions_base import PeakPositionsBaseNT
+from straxen.plugins.peaks._peak_positions_base import PeakPositionsBaseNT, PeakletPositionsBaseNT
 
 
 export, __all__ = strax.exporter()
@@ -29,3 +29,11 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
         ),
         cache=3,
     )
+
+
+@export
+class PeakletPositionsMLP(PeakletPositionsBaseNT, PeakPositionsMLP):
+
+    provides = "peaklet_positions_mlp"
+    __version__ = "0.0.0"
+    child_plugin = True
