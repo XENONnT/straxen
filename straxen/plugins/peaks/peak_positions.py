@@ -68,7 +68,7 @@ class MergedPeakPositionsNT(strax.Plugin):
 
     __version__ = "0.0.0"
 
-    depends_on = ("peaklet_positions", "peaklet_classification", "merged_s2s", "peak_basics")
+    depends_on = ("peaklet_positions", "peaklet_classification", "merged_s2s")
     data_kind = "peaks"
     provides = "peak_positions"
 
@@ -89,7 +89,7 @@ class MergedPeakPositionsNT(strax.Plugin):
         dtype = self.deps["peaklet_positions"].dtype_for("peaklet_positions")
         return dtype
 
-    def compute(self, peaklets, merged_s2s, peaks):
+    def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above
         merged_s2s = merged_s2s[merged_s2s["type"] != FAKE_MERGED_S2_TYPE]
 
@@ -100,24 +100,22 @@ class MergedPeakPositionsNT(strax.Plugin):
             _peaklets = peaklets
         windows = strax.touching_windows(_peaklets, merged_s2s)
 
-        result = np.zeros(len(merged_s2s), dtype=peaklets.dtype)
+        _merged_s2 = np.zeros(len(merged_s2s), dtype=peaklets.dtype)
         indices = np.full(len(_peaklets), -1)
 
         for i, (start, end) in enumerate(windows):
             indices[start:end] = i
             for name in peaklets.dtype.names:
-                result[name][i] = np.nanmean(_peaklets[name][start:end], axis=0)
+                _merged_s2[name][i] = np.nanmean(_peaklets[name][start:end], axis=0)
 
-        result["time"] = merged_s2s["time"]
-        result["endtime"] = strax.endtime(merged_s2s)
+        _merged_s2["time"] = merged_s2s["time"]
+        _merged_s2["endtime"] = strax.endtime(merged_s2s)
+
+        _result = strax.sort_by_time(np.concatenate([_peaklets[indices == -1], _merged_s2]))
 
         if self.merge_without_s1:
-            result = strax.sort_by_time(
-                np.concatenate([peaklets[is_s1_peaklets], _peaklets[indices == -1], result])
-            )
-        else:
-            result = strax.sort_by_time(np.concatenate([_peaklets[indices == -1], result]))
+            _result = strax.sort_by_time(np.concatenate([peaklets[is_s1_peaklets], _result]))
 
-        _result = np.zeros(len(result), self.dtype)
-        strax.copy_to_buffer(result, _result, "_copy_requested_peak_positions_fields")
-        return _result
+        result = np.zeros(len(_result), dtype=self.dtype)
+        strax.copy_to_buffer(_result, result, "_copy_requested_peak_positions_fields")
+        return result
