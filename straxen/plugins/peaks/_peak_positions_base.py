@@ -121,3 +121,15 @@ class PeakletPositionsBaseNT(PeakPositionsBaseNT):
 
     def compute(self, peaklets):
         return super().compute(peaklets)
+
+
+@export
+class MergedS2sPositionsBaseNT(PeakPositionsBaseNT):
+    """Pose-rec on merged_s2s instead of peaks."""
+
+    __version__ = "0.0.0"
+    child_plugin = True
+    depends_on = "merged_s2s"
+
+    def compute(self, merged_s2s):
+        return super().compute(merged_s2s)

@@ -1,6 +1,10 @@
 import strax
 import straxen
-from straxen.plugins.peaks._peak_positions_base import PeakPositionsBaseNT, PeakletPositionsBaseNT
+from straxen.plugins.peaks._peak_positions_base import (
+    PeakPositionsBaseNT,
+    PeakletPositionsBaseNT,
+    MergedS2sPositionsBaseNT,
+)
 
 
 export, __all__ = strax.exporter()
@@ -35,5 +39,13 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 class PeakletPositionsMLP(PeakletPositionsBaseNT, PeakPositionsMLP):
 
     provides = "peaklet_positions_mlp"
+    __version__ = "0.0.0"
+    child_plugin = True
+
+
+@export
+class MergedS2sPositionsMLP(MergedS2sPositionsBaseNT, PeakPositionsMLP):
+
+    provides = "merged_s2s_positions_mlp"
     __version__ = "0.0.0"
     child_plugin = True
