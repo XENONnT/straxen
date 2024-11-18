@@ -111,6 +111,8 @@ class MergedPeakPositionsNT(strax.Plugin):
         _merged_s2["time"] = merged_s2s["time"]
         _merged_s2["endtime"] = strax.endtime(merged_s2s)
 
+        # TODO: We have to make sure that the sorting here is the same to in the Peaks plugin
+        # because maybe different peaklets can have same time
         _result = strax.sort_by_time(np.concatenate([_peaklets[indices == -1], _merged_s2]))
 
         if self.merge_without_s1:
