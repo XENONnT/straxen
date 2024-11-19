@@ -16,14 +16,10 @@ export, __all__ = strax.exporter()
 
 corrections_w_file = [
     "mlp_model",
-    "cnn_model",
     "s2_xy_map_mlp",
-    "s2_xy_map_cnn",
     "s2_xy_map",
     "s1_xyz_map_mlp",
-    "s1_xyz_map_cnn",
     "fdc_map_mlp",
-    "fdc_map_cnn",
     "s1_aft_xyz_map",
     "bayes_model",
 ]
@@ -280,7 +276,7 @@ class CorrectionsManagementServices:
         utilix.mongo_storage.MongoDownloader()
 
         :param run_id: run id from runDB
-        :param model_type: model type and neural network type; model_mlp, or model_cnn
+        :param model_type: model type and neural network type; model_mlp, or model_cnf
         :param version: version
         :param return: NN weights file name
 
