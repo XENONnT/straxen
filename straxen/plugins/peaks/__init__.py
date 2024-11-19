@@ -22,9 +22,6 @@ from .peak_positions_cnn import *
 from . import peak_positions_cnf
 from .peak_positions_cnf import *
 
-from . import peak_positions_gcn
-from .peak_positions_gcn import *
-
 from . import peak_positions_mlp
 from .peak_positions_mlp import *
 
