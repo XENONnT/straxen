@@ -1,11 +1,9 @@
 from typing import Tuple
-
-import strax
-import straxen
-from straxen.plugins.peaklets.peaklets import drop_data_top_field
-
 import numpy as np
 import numba
+import strax
+import straxen
+from straxen.plugins.peaklets.peaklets import drop_data_field
 
 
 export, __all__ = strax.exporter()
@@ -16,7 +14,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.0.2"
+    __version__ = "1.1.0"
 
     depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
     data_kind = "merged_s2s"
@@ -58,16 +56,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
 
-    sum_waveform_top_array = straxen.URLConfig(
-        default=True, type=bool, help="Digitize the sum waveform of the top array separately"
-    )
-
     merged_s2s_get_window_size_factor = straxen.URLConfig(
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
     )
 
     def setup(self):
         self.to_pe = self.gain_model
+
+    def _have_data(self, field):
+        return field in self.deps["peaklets"].dtype_for("peaklets").names
 
     def infer_dtype(self):
         peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
@@ -91,7 +88,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             peaklets = peaklets[peaklets["type"] != 1]
 
         if len(peaklets) <= 1:
-            return np.zeros(0, dtype=self.dtype)
+            return self.empty_result()
 
         gap_thresholds = self.s2_merge_gap_thresholds
         max_gap = gap_thresholds[0][1]
@@ -99,13 +96,16 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         if max_gap < 0:
             # Do not merge at all
-            return np.zeros(0, dtype=self.dtype)
+            return self.empty_result()
 
-        if "data_top" not in peaklets.dtype.names:
+        if not (self._have_data("data_top") and self._have_data("data_start")):
             peaklets_w_field = np.zeros(
-                len(peaklets), dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True)
+                len(peaklets),
+                dtype=strax.peak_dtype(
+                    n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
+                ),
             )
-            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
+            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_or_start_field")
             del peaklets
             peaklets = peaklets_w_field
 
@@ -123,6 +123,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         )
 
         assert "data_top" in peaklets.dtype.names
+        assert "data_start" in peaklets.dtype.names
 
         merged_s2s = strax.merge_peaks(
             peaklets,
@@ -140,14 +141,21 @@ class MergedS2s(strax.OverlapWindowPlugin):
         lh["length"] = lh["right_integration"] - lh["left_integration"]
         lh = strax.sort_by_time(lh)
 
-        # If sum_waveform_top_array is false, don't digitize the top array
-        n_top_pmts_if_digitize_top = self.n_top_pmts if "data_top" in self.dtype.names else -1
-        strax.add_lone_hits(merged_s2s, lh, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
+        _n_top_pmts = self.n_top_pmts if "data_top" in self.dtype.names else -1
+        _store_data_start = "data_start" in self.dtype.names
+        strax.add_lone_hits(
+            merged_s2s,
+            lh,
+            self.to_pe,
+            n_top_channels=_n_top_pmts,
+            store_data_start=_store_data_start,
+        )
 
         strax.compute_widths(merged_s2s)
 
-        if n_top_pmts_if_digitize_top <= 0:
-            merged_s2s = drop_data_top_field(merged_s2s, self.dtype, "_drop_top_merged_s2s")
+        if (_n_top_pmts <= 0) or (not _store_data_start):
+            merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
+
         return merged_s2s
 
     @staticmethod
@@ -161,7 +169,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         max_duration,
         max_gap,
         max_area,
-        sort_kind="mergesort",
     ):
         """
         Finding the group of peaklets to merge. To do this start with the
@@ -179,7 +186,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         peaklet_start_index = np.arange(len(peaklet_starts))
         peaklet_end_index = np.arange(len(peaklet_starts))
 
-        for gap_i in np.argsort(peaklet_gaps, kind=sort_kind):
+        for gap_i in strax.stable_argsort(peaklet_gaps):
             start_idx = peaklet_start_index[gap_i]
             inclusive_end_idx = peaklet_end_index[gap_i + 1]
             sum_area = np.sum(areas[start_idx : inclusive_end_idx + 1])

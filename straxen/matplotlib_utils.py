@@ -13,7 +13,6 @@ def plot_pmts(
     c,
     label="",
     figsize=None,
-    xenon1t=False,
     show_tpc=True,
     extend="neither",
     vmin=None,
@@ -40,7 +39,7 @@ def plot_pmts(
         # Single-valued array passed
         vmax += 1
     if figsize is None:
-        figsize = (11.25, 4.25) if xenon1t else (13.25, 5.75)
+        figsize = (13.25, 5.75)
 
     f, axes = plt.subplots(1, 2, figsize=figsize)
     plot_result = None
@@ -51,7 +50,6 @@ def plot_pmts(
 
         plot_result = plot_on_single_pmt_array(
             c,
-            xenon1t=xenon1t,
             array_name=array_name,
             show_tpc=show_tpc,
             vmin=vmin,
@@ -75,7 +73,6 @@ def plot_pmts(
 def plot_on_single_pmt_array(
     c,
     array_name="top",
-    xenon1t=False,
     r=straxen.tpc_r * 1.03,
     pmt_label_size=8,
     pmt_label_color="white",
@@ -106,7 +103,7 @@ def plot_on_single_pmt_array(
     if vmax is None:
         vmax = c.max()
 
-    pmt_positions = straxen.pmt_positions(xenon1t=xenon1t).to_records()
+    pmt_positions = straxen.pmt_positions().to_records()
 
     ax = plt.gca()
     ax.set_aspect("equal")
@@ -183,7 +180,9 @@ def logticks(tmin, tmax=None, tick_at=None):
     a, b = np.log10([tmin, tmax])
     a = np.floor(a)
     b = np.ceil(b)
-    ticks = np.sort(np.unique(np.outer(np.array(tick_at), 10.0 ** np.arange(a, b)).ravel()))
+    ticks = strax.stable_sort(
+        np.unique(np.outer(np.array(tick_at), 10.0 ** np.arange(a, b)).ravel())
+    )
     ticks = ticks[(tmin <= ticks) & (ticks <= tmax)]
     return ticks
 

@@ -1,6 +1,6 @@
-import strax
 import numpy as np
 import numba
+import strax
 import straxen
 
 
@@ -22,7 +22,6 @@ class EventBasics(strax.Plugin):
     depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity")
     provides = "event_basics"
     data_kind = "events"
-    loop_over = "events"
 
     electron_drift_velocity = straxen.URLConfig(
         default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
@@ -274,7 +273,7 @@ class EventBasics(strax.Plugin):
             largest_s2s, s2_idx = largest_s2s[0:2], s2_idx[0:2]
 
         if self.force_main_before_alt:
-            s2_order = np.argsort(largest_s2s["time"])
+            s2_order = strax.stable_argsort(largest_s2s["time"])
             largest_s2s = largest_s2s[s2_order]
             s2_idx = s2_idx[s2_order]
 
@@ -365,7 +364,7 @@ class EventBasics(strax.Plugin):
 
         selected_peaks = peaks[s_mask]
         s_index = np.arange(len(peaks))[s_mask]
-        largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:][::-1]
+        largest_peaks = strax.stable_argsort(selected_peaks["area"])[-number_of_peaks:][::-1]
         return selected_peaks[largest_peaks], s_index[largest_peaks]
 
     # If only we could numbafy this... Unfortunatly we cannot.

@@ -1,11 +1,8 @@
 """For all of the context, do a quick check to see that we are able to search a field (i.e. can
 build the dependencies in the context correctly) See issue #233 and PR #236."""
 
-import os
 import unittest
-import tempfile
 import straxen
-from straxen.contexts import xenon1t_dali, xenon1t_led, fake_daq, demo
 from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt
 
 
@@ -78,133 +75,9 @@ def test_cmt_versions():
             pass
     print(
         f"This straxen version works with {success_for} but is "
-        f"incompatible with {set(cmt_versions)-set(success_for)}"
+        f"incompatible with {set(cmt_versions) - set(success_for)}"
     )
 
     test = unittest.TestCase()
     # We should always work for one offline and the online version
     test.assertTrue(len(success_for) >= 2)
-
-
-##
-# XENON1T
-##
-
-
-def test_xenon1t_dali():
-    st = xenon1t_dali()
-    st.search_field("time")
-
-
-def test_demo():
-    """Test the demo context.
-
-    Since we download the folder to the current working directory, make sure we are in a tempfolder
-    where we can write the data to
-
-    """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        try:
-            print("Temporary directory is ", temp_dir)
-            os.chdir(temp_dir)
-            st = demo()
-            st.search_field("time")
-        # On windows, you cannot delete the current process'
-        # working directory, so we have to chdir out first.
-        finally:
-            os.chdir("..")
-
-
-def test_fake_daq():
-    st = fake_daq()
-    st.search_field("time")
-
-
-def test_xenon1t_led():
-    st = xenon1t_led()
-    st.search_field("time")
-
-
-##
-# WFSim
-##
-
-
-# Simulation contexts are only tested when special flags are set
-
-
-@unittest.skipIf(
-    "ALLOW_WFSIM_TEST" not in os.environ,
-    "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`",
-)
-class TestSimContextNT(unittest.TestCase):
-    @staticmethod
-    def context(*args, **kwargs):
-        kwargs.setdefault("cmt_version", "global_ONLINE")
-        return straxen.contexts.xenonnt_simulation(*args, **kwargs)
-
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-    def test_nt_sim_context_main(self):
-        st = self.context(cmt_run_id_sim="008000")
-        st.search_field("time")
-
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-    def test_nt_sim_context_alt(self):
-        """Some examples of how to run with a custom WFSim context."""
-        self.context(cmt_run_id_sim="008000", cmt_run_id_proc="008001")
-        self.context(cmt_run_id_sim="008000", cmt_option_overwrite_sim={"elife": 1e6})
-
-        self.context(cmt_run_id_sim="008000", overwrite_fax_file_sim={"elife": 1e6})
-
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-    def test_nt_diverging_context_options(self):
-        """Test diverging options. Idea is that you can use different settings for processing and
-        generating data, should have been handled by RawRecordsFromWFsim but is now hacked into the
-        xenonnt_simulation context.
-
-        Just to show how convoluted this syntax for the
-        xenonnt_simulation context / CMT is...
-
-        """
-        self.context(
-            cmt_run_id_sim="008000",
-            cmt_option_overwrite_sim={"elife": ("elife_constant", 1e6, True)},
-            cmt_option_overwrite_proc={"elife": ("elife_constant", 1e5, True)},
-            overwrite_from_fax_file_proc=True,
-            overwrite_from_fax_file_sim=True,
-            _config_overlap={"electron_lifetime_liquid": "elife"},
-        )
-
-    def test_nt_sim_context_bad_inits(self):
-        with self.assertRaises(RuntimeError):
-            self.context(
-                cmt_run_id_sim=None,
-                cmt_run_id_proc=None,
-            )
-
-
-@unittest.skipIf(
-    "ALLOW_WFSIM_TEST" not in os.environ,
-    "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`",
-)
-def test_sim_context():
-    straxen.contexts.xenon1t_simulation()
-
-
-@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-@unittest.skipIf(
-    "ALLOW_WFSIM_TEST" not in os.environ,
-    "if you want test wfsim context do `export 'ALLOW_WFSIM_TEST'=1`",
-)
-def test_sim_offline_context():
-    straxen.contexts.xenonnt_simulation_offline(
-        run_id="026000",
-        global_version="global_v11",
-        fax_config="fax_config_nt_sr0_v4.json",
-    )
-
-
-@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_offline():
-    st = xenonnt("latest")
-    st.provided_dtypes()

@@ -8,11 +8,7 @@ import tempfile
 import pymongo
 import datetime
 import socket
-from straxen import RunDB
-
-
-def mongo_uri_not_set():
-    return "TEST_MONGO_URI" not in os.environ
+from straxen import RunDB, mongo_uri_not_set
 
 
 @unittest.skipIf(mongo_uri_not_set(), "No access to test database")
@@ -66,6 +62,7 @@ class TestRunDBFrontend(unittest.TestCase):
             """Change class to mathc current host too."""
 
             hosts = {"bla": f"{socket.getfqdn()}"}
+            userdisks = {"BLA_USERDISK": f"{socket.getfqdn()}"}
 
         cls.rundb_sf_with_current_host = RunDBTestLocal(
             readonly=False,
@@ -106,9 +103,9 @@ class TestRunDBFrontend(unittest.TestCase):
     @property
     def is_all_targets_stored(self) -> bool:
         """This should always be False as one of the targets (records) is not stored in mongo."""
-        return all([
-            all([self.st.is_stored(r, t) for t in self.all_targets]) for r in self.test_run_ids
-        ])
+        return all(
+            [all([self.st.is_stored(r, t) for t in self.all_targets]) for r in self.test_run_ids]
+        )
 
     def test_finding_runs(self):
         rdb = self.rundb_sf
@@ -177,11 +174,11 @@ class TestRunDBFrontend(unittest.TestCase):
             r = self.test_run_ids[0]
             keys = [self.st.key_for(r, t) for t in self.all_targets]
             self.rundb_sf.find_several(keys, fuzzy_for=self.all_targets)
-        with self.assertRaises(strax.DataNotAvailable):
-            self.rundb_sf.find(self.st.key_for("_super-run", self.all_targets[0]))
-        with self.assertRaises(strax.DataNotAvailable):
+        with self.assertRaises(strax.RunMetadataNotAvailable):
+            self.rundb_sf.find(self.st.key_for("_superrun", self.all_targets[0]))
+        with self.assertRaises(strax.RunMetadataNotAvailable):
             self.rundb_sf._find(
-                self.st.key_for("_super-run", self.all_targets[0]),
+                self.st.key_for("_superrun", self.all_targets[0]),
                 write=False,
                 allow_incomplete=False,
                 fuzzy_for=[],
@@ -199,7 +196,7 @@ class TestRunDBFrontend(unittest.TestCase):
         rd["data"] = [
             {
                 "host": "rucio-catalogue",
-                "location": "UC_DALI_USERDISK",
+                "location": "BLA_USERDISK",
                 "status": "transferred",
                 "did": did,
                 "number": int(rucio_id),

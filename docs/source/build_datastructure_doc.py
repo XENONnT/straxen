@@ -11,12 +11,14 @@ For extra credit, the SVGs are clickable.
 from collections import defaultdict
 import os
 import shutil
+from immutabledict import immutabledict
+import numpy as np
 import pandas as pd
 import graphviz
 import strax
 import straxen
-from immutabledict import immutabledict
-import numpy as np
+from straxen import kind_colors
+from straxen.docs_utils import add_spaces, add_deps_to_graph_tree
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -78,12 +80,12 @@ because changing any of those options affect this data indirectly.
 """
 
 data_kinds_header = """
-XENON nT data kinds
+XENONnT data kinds
 ====================
 As explained in the
 `demo <https://straxen.readthedocs.io/en/latest/tutorials/strax_demo.html>`_,
 in straxen, we have **data types** and **data kinds**. The **data types** are
-documented in `the datastructure <https://straxen.readthedocs.io/en/latest/reference/datastructure_nT.html>`_
+documented in `the datastructure <https://straxen.readthedocs.io/en/latest/reference/datastructure.html>`_
 page and are the type of data that one can load in straxen using
 ``st.get_array(<RUN_ID>, <DATA_TYPE>)`` or ``st.get_df(<RUN_ID>, <DATA_TYPE>)``.
 
@@ -95,7 +97,6 @@ two data types but they contain information about the same data kind: `peaks`.
 
 When writing a plugin, the ``plugin.compute(self, <DATA KIND>)`` method takes the **data kind**.
 
-nT data kinds
 --------------------------------------------------------
 
 .. raw:: html
@@ -106,47 +107,18 @@ nT data kinds
 """
 
 titles = {
-    "": "Straxen {xT} datastructure",
-    "_he": "Straxen {xT} datastructure for high energy channels",
-    "_nv": "Straxen {xT} datastructure for neutron veto",
-    "_mv": "Straxen {xT} datastructure for muon veto",
+    "": "Straxen datastructure",
+    "_he": "Straxen datastructure for high energy channels",
+    "_nv": "Straxen datastructure for neutron veto",
+    "_mv": "Straxen datastructure for muon veto",
 }
 tree_suffices = list(titles.keys())
-
-kind_colors = dict(
-    events="#ffffff",
-    peaks="#98fb98",
-    hitlets="#0066ff",
-    peaklets="#d9ff66",
-    merged_s2s="#ccffcc",
-    lone_hits="#CAFF70",
-    records="#ffa500",
-    raw_records="#ff4500",
-    raw_records_aqmon="#ff4500",
-    raw_records_aux_mv="#ff4500",
-    online_peak_monitor="deepskyblue",
-    online_monitor="deepskyblue",
-)
 
 suffices = ["_he", "_nv", "_mv"]
 for suffix in suffices:
     to_copy = list(kind_colors.keys())
     for c in to_copy:
         kind_colors[c + suffix] = kind_colors[c]
-
-
-def add_spaces(x):
-    """Add four spaces to every line in x.
-
-    This is needed to make html raw blocks in rst format correctly
-
-    """
-    y = ""
-    if isinstance(x, str):
-        x = x.split("\n")
-    for q in x:
-        y += "    " + q
-    return y
 
 
 def get_plugins_deps(st):
@@ -171,29 +143,23 @@ def get_plugins_deps(st):
     return plugins_by_deps
 
 
-def get_context(is_nt):
+def get_context():
     """Need to init a context without initializing the runs_db as that requires the appropriate
     passwords.
 
     :return: straxen context that mimics the xenonnt_online context without the rundb init
 
     """
-    if is_nt:
-        st = straxen.contexts.xenonnt_online(_database_init=False)
-        st.context_config["forbid_creation_of"] = straxen.daqreader.DAQReader.provides
-    else:
-        st = straxen.contexts.xenon1t_dali()
-        st.register_all(straxen.legacy.plugins_1t.x1t_cuts)
-        st.context_config["forbid_creation_of"] = straxen.daqreader.DAQReader.provides
+    st = straxen.contexts.xenonnt_online(_database_init=False)
+    st.context_config["forbid_creation_of"] = straxen.daqreader.DAQReader.provides
     return st
 
 
-def build_datastructure_doc(is_nt):
+def build_datastructure_doc():
     """Build a dependency tree for all plugins."""
     pd.set_option("display.max_colwidth", int(1e9))
 
-    st = get_context(is_nt)
-    one_tonne_or_n_tonne = "nT" if is_nt else "1T"
+    st = get_context()
     # Too lazy to write proper graph sorter
     # Make dictionary {total number of dependencies below -> list of plugins}
 
@@ -201,14 +167,11 @@ def build_datastructure_doc(is_nt):
 
     # Make graph for each suffix ('' referring to TPC)
     for suffix in tree_suffices:
-        title = titles[suffix].format(xT=one_tonne_or_n_tonne)
-        out = page_header.format(title=title, context="xenonnt_online" if is_nt else "xenon1t_dali")
-        if not is_nt and suffix != "":
-            # No NV/MV/HE for 1T
-            continue
+        title = titles[suffix]
+        out = page_header.format(title=title, context="xenonnt_online")
 
-        print(f"------------ {one_tonne_or_n_tonne}{suffix} ------------")
-        os.makedirs(this_dir + f"/graphs{suffix}_{one_tonne_or_n_tonne}", exist_ok=True)
+        print(f"------------ {suffix} ------------")
+        os.makedirs(this_dir + f"/graphs{suffix}", exist_ok=True)
         for n_deps in list(reversed(sorted(list(plugins_by_deps[suffix].keys())))):
             for this_data_type in plugins_by_deps[suffix][n_deps]:
                 this_plugin = st._get_plugins(targets=(this_data_type,), run_id="0")[this_data_type]
@@ -219,7 +182,7 @@ def build_datastructure_doc(is_nt):
                 add_deps_to_graph_tree(graph_tree, this_plugin, this_data_type)
 
                 # Where to save this node
-                fn = this_dir + f"/graphs{suffix}_{one_tonne_or_n_tonne}/" + this_data_type
+                fn = this_dir + f"/graphs{suffix}/" + this_data_type
                 graph_tree.render(fn)
                 with open(f"{fn}.svg", mode="r") as f:
                     svg = add_spaces(f.readlines()[5:])
@@ -252,39 +215,13 @@ def build_datastructure_doc(is_nt):
                     config_options=add_spaces(config_df.to_html(index=False)),
                 )
 
-        with open(
-            this_dir + f"/reference/datastructure{suffix}_{one_tonne_or_n_tonne}.rst", mode="w"
-        ) as f:
+        with open(this_dir + f"/reference/datastructure{suffix}.rst", mode="w") as f:
             f.write(out)
 
-        shutil.rmtree(this_dir + f"/graphs{suffix}_{one_tonne_or_n_tonne}")
+        shutil.rmtree(this_dir + f"/graphs{suffix}")
 
 
-def add_deps_to_graph_tree(graph_tree, plugin, data_type, _seen=None):
-    """Recursively add nodes to graph base on plugin.deps."""
-    if _seen is None:
-        _seen = []
-    if data_type in _seen:
-        return graph_tree, _seen
-
-    # Add new one
-    graph_tree.node(
-        data_type,
-        style="filled",
-        href="#" + data_type.replace("_", "-"),
-        fillcolor=kind_colors.get(plugin.data_kind_for(data_type), "grey"),
-    )
-    for dep in plugin.depends_on:
-        graph_tree.edge(data_type, dep)
-
-    # Add any of the lower plugins if we have to
-    for lower_data_type, lower_plugin in plugin.deps.items():
-        graph_tree, _seen = add_deps_to_graph_tree(graph_tree, lower_plugin, lower_data_type, _seen)
-    _seen.append(data_type)
-    return graph_tree, _seen
-
-
-def tree_to_svg(graph_tree, save_as="data_kinds_nT"):
+def tree_to_svg(graph_tree, save_as="data_kinds"):
     # Where to save this node
     graph_tree.render(save_as)
     with open(f"{save_as}.svg", mode="r") as f:
@@ -297,7 +234,7 @@ def tree_to_svg(graph_tree, save_as="data_kinds_nT"):
 def write_data_kind_dep_tree():
     """Work in progress to build a dependency tree of the datakinds."""
     print("------------ data kinds ------------")
-    st = get_context(is_nt=True)
+    st = get_context()
 
     def get_plugin(pov):
         return st._get_plugins((pov,), "0")[pov]
@@ -336,7 +273,7 @@ def write_data_kind_dep_tree():
         for d in tree[data_kind]:
             graph_tree.edge(data_kind, d)
 
-    svg = tree_to_svg(graph_tree, save_as="data_kinds_nT")
+    svg = tree_to_svg(graph_tree, save_as="data_kinds")
     output = data_kinds_header.format(svg=svg)
 
     # Sort by largest first
@@ -385,7 +322,7 @@ The ``{data_kind}``-data kind includes the following data types:
         for d in data_types:
             extra += f"\n - ``{d}``"
         output = output.format(data_types=extra)
-    data_type = this_dir + f"/reference/data_kinds_nT.rst"
+    data_type = this_dir + f"/reference/data_kinds.rst"
     with open(data_type, mode="w") as f:
         f.write(output)
     assert os.path.exists(data_type)
@@ -393,5 +330,4 @@ The ``{data_kind}``-data kind includes the following data types:
 
 if __name__ == "__main__":
     write_data_kind_dep_tree()
-    build_datastructure_doc(True)
-    build_datastructure_doc(False)
+    build_datastructure_doc()

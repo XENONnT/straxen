@@ -26,7 +26,7 @@ class PeakPositionsBaseNT(strax.Plugin):
     depends_on = "peaks"
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True  # can set to "process" after #82
+    parallel = True
 
     min_reconstruction_area = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this",
@@ -59,7 +59,7 @@ class PeakPositionsBaseNT(strax.Plugin):
         return dtype
 
     def get_tf_model(self):
-        """Simple wrapper to have several tf_model_mlp, tf_model_cnn, ..
+        """Simple wrapper to have several tf_model_mlp, tf_model_cnf, ..
 
         point to this same function in the compute method
 
@@ -81,8 +81,8 @@ class PeakPositionsBaseNT(strax.Plugin):
         result = np.ones(len(peaks), dtype=self.dtype)
         result["time"], result["endtime"] = peaks["time"], strax.endtime(peaks)
 
-        result["x_" + self.algorithm] *= float("nan")
-        result["y_" + self.algorithm] *= float("nan")
+        result["x_" + self.algorithm] *= np.nan
+        result["y_" + self.algorithm] *= np.nan
         model = self.get_tf_model()
 
         if model is None:

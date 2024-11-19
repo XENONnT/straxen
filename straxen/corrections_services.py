@@ -33,7 +33,6 @@ corrections_w_file = [
 ]
 
 single_value_corrections = [
-    "elife_xenon1t",
     "elife",
     "baseline_samples_nv",
     "electron_drift_velocity",
@@ -76,15 +75,14 @@ class CorrectionsManagementServices:
 
     """
 
-    def __init__(self, username=None, password=None, mongo_url=None, is_nt=True):
+    def __init__(self, username=None, password=None, mongo_url=None):
         """
         :param username: corrections DB username
             read the .xenon_config for the users "pymongo_user" has
             readonly permissions to the corrections DB
             the "CMT admin user" has r/w permission to corrections DB
-            and read permission to runsDB
+            and read permission to RunDB
         :param password: DB password
-        :param is_nt: bool if True we are looking at nT if False we are looking at 1T
         """
 
         mongo_kwargs = {
@@ -101,17 +99,13 @@ class CorrectionsManagementServices:
         # Setup the interface
         self.interface = strax.CorrectionsInterface(self.client, database_name="corrections")
 
-        self.is_nt = is_nt
-        if self.is_nt:
-            self.collection = self.client["xenonnt"]["runs"]
-        else:
-            self.collection = self.client["run"]["runs_new"]
+        self.collection = self.client["xenonnt"]["runs"]
 
     def __str__(self):
         return self.__repr__()
 
     def __repr__(self):
-        return str(f'{"XENONnT " if self.is_nt else "XENON1T"}-Corrections_Management_Services')
+        return str("XENONnT_Corrections_Management_Services")
 
     def get_corrections_config(self, run_id, config_model=None):
         """Get context configuration for a given correction.
@@ -143,7 +137,7 @@ class CorrectionsManagementServices:
                 f"{corrections_w_file} "
             )
 
-    # entry for e.g. for super runs
+    # entry for e.g. for superruns
     # cache results, this would help when looking at the same gains
     @lru_cache(maxsize=None)
     def _get_correction(self, run_id, correction, version):
@@ -164,9 +158,7 @@ class CorrectionsManagementServices:
             # because every pmt is its own dataframe...of course
             if correction in {"pmt", "n_veto", "mu_veto"}:
                 # get lists of pmts
-                df_global = self.interface.read(
-                    "global_xenonnt" if self.is_nt else "global_xenon1t"
-                )
+                df_global = self.interface.read("global_xenonnt")
                 gains = df_global["global_ONLINE"][0]  # global is where all pmts are grouped
                 pmts = list(gains.keys())
                 for it_correction in pmts:  # loop over all PMTs
@@ -288,7 +280,8 @@ class CorrectionsManagementServices:
         return to_pe
 
     def get_config_from_cmt(self, run_id, model_type, version="ONLINE"):
-        """Smart logic to return NN weights file name to be downloader by straxen.MongoDownloader()
+        """Smart logic to return NN weights file name to be downloader by
+        utilix.mongo_storage.MongoDownloader()
 
         :param run_id: run id from runDB
         :param model_type: model type and neural network type; model_mlp, or model_gcn or model_cnn
@@ -312,20 +305,16 @@ class CorrectionsManagementServices:
         return file_name
 
     def get_start_time(self, run_id):
-        """Smart logic to return start time from runsDB.
+        """Smart logic to return start time from RunDB.
 
         :param run_id: run id from runDB
         :return: run start time
 
         """
 
-        if self.is_nt:
-            # xenonnt use int
-            run_id = int(run_id)
+        run_id = int(run_id)
 
-        rundoc = self.collection.find_one(
-            {"number" if self.is_nt else "name": run_id}, {"start": 1}
-        )
+        rundoc = self.collection.find_one({"number": run_id}, {"start": 1})
         if rundoc is None:
             raise ValueError(f"run_id = {run_id} not found")
         time = rundoc["start"]
@@ -493,6 +482,7 @@ def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> N
 
     if len(global_config):
         context.set_config(global_config)
+        context.set_context_config({"xedocs_version": filter_kwargs["version"]})
     else:
         warnings.warn(
             f"Could not find any context configs matchin {filter_kwargs}",

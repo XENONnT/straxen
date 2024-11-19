@@ -1,7 +1,7 @@
 """Define unit system for pax (i.e., seconds, etc.)
 
 This sets up variables for the various unit abbreviations, ensuring we always have a 'consistent'
-unit system.  There are almost no cases that you should change this without talking with a
+unit system. There are almost no cases that you should change this without talking with a
 maintainer.
 
 """

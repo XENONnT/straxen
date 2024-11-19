@@ -16,9 +16,6 @@ class MergedS2sHighEnergy(MergedS2s):
     __version__ = "0.1.0"
     child_plugin = True
 
-    # We cannot, we only have the top array, so should not.
-    sum_waveform_top_array = False
-
     @property
     def n_tpc_pmts(self):
         # Have to hack the url config to avoid nasty numba errors for the main MergedS2s plugin
@@ -29,6 +26,6 @@ class MergedS2sHighEnergy(MergedS2s):
 
     def compute(self, peaklets_he):
         # There are not any lone hits for the high energy channel,
-        #  so create a dummy for the compute method.
+        # so create a dummy for the compute method.
         lone_hits = np.zeros(0, dtype=strax.hit_dtype)
         return super().compute(peaklets_he, lone_hits)

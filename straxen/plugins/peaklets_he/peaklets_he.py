@@ -56,16 +56,14 @@ class PeakletsHighEnergy(Peaklets):
         infer_type=False,
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_tpc_pmts, or a number,"
-            'or a string like "pmt_commissioning_initial" which means calling'
-            "hitfinder_thresholds.py"
+            "Specify as a tuple of length n_tpc_pmts, or a number, "
             "or a tuple like (correction=str, version=str, nT=boolean),"
             "which means we are using cmt."
         ),
     )
 
     # We cannot, we only have the top array, so should not.
-    sum_waveform_top_array = False
+    store_data_top = False
 
     @property
     def n_tpc_pmts(self):
@@ -73,7 +71,7 @@ class PeakletsHighEnergy(Peaklets):
         return self.n_he_pmts
 
     def infer_dtype(self):
-        return strax.peak_dtype(n_channels=self.n_he_pmts, digitize_top=self.sum_waveform_top_array)
+        return strax.peak_dtype(n_channels=self.n_he_pmts, store_data_top=self.store_data_top)
 
     def setup(self):
         self.to_pe = self.gain_model

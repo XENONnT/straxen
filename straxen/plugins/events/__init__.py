@@ -49,6 +49,9 @@ from .s2_recon_pos_diff import *
 from . import veto_proximity
 from .veto_proximity import *
 
+from . import event_position_uncertainty
+from .event_position_uncertainty import *
+
 from . import event_s2_positions_mlp
 from .event_s2_positions_mlp import *
 
@@ -72,3 +75,6 @@ from .event_basics_som import *
 
 from . import event_nearest_triggering
 from .event_nearest_triggering import *
+
+from . import event_se_score
+from .event_se_score import *

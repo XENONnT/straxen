@@ -3,16 +3,20 @@ from sys import getsizeof, stderr
 import inspect
 import warnings
 import datetime
+import fnmatch
+from immutabledict import immutabledict
 import pytz
 from itertools import chain
 from collections import defaultdict, OrderedDict, deque
 from importlib import import_module
 from platform import python_version
 import typing as ty
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 import socket
+import graphviz
 import strax
 import straxen
 from git import Repo, InvalidGitRepositoryError
@@ -28,6 +32,23 @@ _is_jupyter = any("jupyter" in arg for arg in sys.argv)
 
 
 export, __all__ = strax.exporter()
+__all__.extend(["kind_colors"])
+
+
+kind_colors = dict(
+    events="#ffffff",
+    peaks="#98fb98",
+    hitlets="#0066ff",
+    peaklets="#d9ff66",
+    merged_s2s="#ccffcc",
+    lone_hits="#CAFF70",
+    records="#ffa500",
+    raw_records="#ff4500",
+    raw_records_aqmon="#ff4500",
+    raw_records_aux_mv="#ff4500",
+    online_peak_monitor="deepskyblue",
+    online_monitor="deepskyblue",
+)
 
 
 @export
@@ -53,10 +74,12 @@ def dataframe_to_wiki(df, float_digits=5, title="Awesome table", force_int: ty.T
     for _, row in df.iterrows():
         table += (
             "| "
-            + " | ".join([
-                str(int(x) if i in force_int else format_float(x))
-                for i, x in enumerate(row.values.tolist())
-            ])
+            + " | ".join(
+                [
+                    str(int(x) if i in force_int else format_float(x))
+                    for i, x in enumerate(row.values.tolist())
+                ]
+            )
             + " |\n"
         )
     return table
@@ -186,11 +209,13 @@ class TimeWidgets:
         self._time_zone_widget = self._create_time_zone_widget()
         self._created_widgets = True
 
-        return widgets.VBox([
-            widgets.HBox([self._time_zone_widget, widgets.HTML(value="ns:")]),
-            self._start_widget,
-            self._end_widget,
-        ])
+        return widgets.VBox(
+            [
+                widgets.HBox([self._time_zone_widget, widgets.HTML(value="ns:")]),
+                self._start_widget,
+                self._end_widget,
+            ]
+        )
 
     def get_start_end(self):
         """Returns start and end time of the specfied time interval in nano- seconds utc unix
@@ -350,7 +375,7 @@ def total_size(o, handlers=None, verbose=False):
     """Returns the approximate memory footprint an object and all of its contents.
 
     Automatically finds the contents of the following builtin containers and
-    their subclasses:  tuple, list, deque, dict, set and frozenset.
+    their subclasses: tuple, list, deque, dict, set and frozenset.
     To search other containers, add handlers to iterate over their contents:
 
         handlers = {SomeContainerClass: iter,
@@ -389,3 +414,148 @@ def total_size(o, handlers=None, verbose=False):
         return s
 
     return sizeof(o)
+
+
+@strax.Context.add_method
+def dependency_tree(
+    st,
+    target="event_info",
+    include_class=False,
+    include_level=False,
+    exclude_pattern=None,
+    dump_plot=True,
+    to_dir="./",
+    format="svg",
+):
+    """Plot the dependency graph.
+
+    :param target: str of the target plugin to check
+    :param include_class: bool, whether include class name in label
+    :param exclude_pattern: str, list or tuple of patterns to exclude
+    :param dump_plot: bool, if True, save the plot to the to_dir
+    :param to_dir: str, directory to save the plot
+    :param format: str, format of the plot
+
+    """
+    if exclude_pattern is None:
+        exclude_pattern = []
+    elif isinstance(exclude_pattern, str):
+        exclude_pattern = [exclude_pattern]
+
+    if not isinstance(exclude_pattern, (list, tuple)):
+        raise ValueError("exclude_pattern should be a str or list or tuple!")
+
+    st._fixed_plugin_cache = None
+
+    plugins = st._get_plugins((target,), run_id="0")
+    graph = graphviz.Digraph(name=f"{to_dir}/{target}", strict=True)
+    graph.attr(bgcolor="transparent")
+    for d, p in plugins.items():
+        if any([fnmatch.fnmatch(d, pattern) for pattern in exclude_pattern]):
+            continue
+        label = d
+        if include_class:
+            label += f"\n{p.__class__.__name__}"
+        if include_level:
+            label += f"\nlevel: {st.tree_levels[d]['level']} "
+            label += f"order: {st.tree_levels[d]['order']}"
+        graph.node(
+            d,
+            label=label,
+            style="filled",
+            fillcolor=kind_colors.get(p.data_kind_for(d), "grey"),
+        )
+        for dep in p.depends_on:
+            graph.edge(d, dep)
+
+    # dump the plot if need
+    if dump_plot:
+        graph.render(format=format)
+
+
+@strax.Context.add_method
+def storage_graph(
+    st,
+    run_id,
+    target,
+    graph=None,
+    not_stored=None,
+    include_class=False,
+    dump_plot=True,
+    to_dir="./",
+    format="svg",
+):
+    """Plot the dependency graph indicating the storage of the plugins.
+
+    :param target: str of the target plugin to check
+    :param graph: graphviz.graphs.Digraph instance
+    :param not_stored: set of plugins which are not stored
+    :param dump_plot: bool, if True, save the plot to the to_dir
+    :param to_dir: str, directory to save the plot
+    :param format: str, format of the plot
+    :return: all plugins that will be calculated when running self.make(run_id, target)
+
+    The colors used in the graph represent the following storage states:
+    - grey: strax.SaveWhen.NEVER
+    - red: strax.SaveWhen.EXPLICIT
+    - orange: strax.SaveWhen.TARGET
+    - yellow: strax.SaveWhen.ALWAYS
+    - green: target is stored
+
+    """
+    save_when_colors = {
+        strax.SaveWhen.NEVER: "grey",
+        strax.SaveWhen.EXPLICIT: "red",
+        strax.SaveWhen.TARGET: "orange",
+        strax.SaveWhen.ALWAYS: "yellow",
+    }
+    if not_stored is None:
+        not_stored = set()
+    # the set of plugins which are not stored
+    if st.is_stored(run_id, target):
+        # if the plugin is stored, fill in green
+        fillcolor = "green"
+    else:
+        save_when = deepcopy(st._plugin_class_registry[target]().save_when)
+        if isinstance(save_when, immutabledict):
+            save_when = save_when[target]
+        # if it is not stored, fill in the color according to save_when
+        fillcolor = save_when_colors[save_when]
+
+    if graph is None:
+        graph = graphviz.Digraph(name=f"{to_dir}/{run_id}-{target}", strict=True)
+        graph.attr(bgcolor="transparent")
+    else:
+        if not isinstance(graph, graphviz.graphs.Digraph):
+            raise ValueError("graph should be a graphviz.Digraph instance!")
+    # add a node of target
+    p = st._Context__get_plugin(run_id, target)
+    graph.node(
+        target,
+        label=f"{target}\n{p.__class__.__name__}" if include_class else None,
+        style="filled",
+        fillcolor=fillcolor,
+    )
+    if (not st.is_stored(run_id, target)) and (target not in not_stored):
+        not_stored.add(target)
+        depends_on = deepcopy(st._plugin_class_registry[target]().depends_on)
+        depends_on = strax.to_str_tuple(depends_on)
+        for dep in depends_on:
+            # only add the node to the graph but not save the plot
+            not_stored.update(
+                st.storage_graph(
+                    run_id,
+                    dep,
+                    graph=graph,
+                    not_stored=not_stored,
+                    include_class=include_class,
+                    dump_plot=False,
+                    to_dir=to_dir,
+                )
+            )
+            graph.edge(target, dep)
+
+    # dump the plot if need
+    if dump_plot:
+        graph.render(format=format)
+    return not_stored

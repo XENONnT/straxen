@@ -2,6 +2,7 @@ import numpy as np
 import numba
 import strax
 import straxen
+
 from .peak_ambience import _quick_assign
 from ..events import Events
 
@@ -60,8 +61,8 @@ class PeakNearestTriggering(Events):
         return 10 * self.shadow_time_window_backward
 
     def compute(self, peaks):
-        argsort = np.argsort(peaks["center_time"], kind="mergesort")
-        _peaks = np.sort(peaks, order="center_time")
+        argsort = strax.stable_argsort(peaks["center_time"])
+        _peaks = strax.stable_sort(peaks, order="center_time")
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_triggering(peaks, _peaks))
         return result
@@ -69,7 +70,7 @@ class PeakNearestTriggering(Events):
     def compute_triggering(self, peaks, current_peak):
         # sort peaks by center_time,
         # because later we will use center_time to find the nearest peak
-        _peaks = np.sort(peaks, order="center_time")
+        _peaks = strax.stable_sort(peaks, order="center_time")
         # only looking at triggering peaks
         if self.only_trigger_min_area:
             _is_triggering = _peaks["area"] > self.trigger_min_area

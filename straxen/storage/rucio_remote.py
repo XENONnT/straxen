@@ -12,7 +12,7 @@ try:
     from rucio.common.exception import DataIdentifierNotFound
 
     HAVE_ADMIX = True
-except ImportError:
+except (ImportError, AttributeError):
     HAVE_ADMIX = False
 
 export, __all__ = strax.exporter()
@@ -33,11 +33,14 @@ class RucioRemoteFrontend(strax.StorageFrontend):
     local_did_cache = None
     path = None
 
-    def __init__(self, download_heavy=False, staging_dir="./strax_data", *args, **kwargs):
+    def __init__(
+        self, download_heavy=False, staging_dir="./strax_data", rses_only=tuple(), *args, **kwargs
+    ):
         """
         :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
         :param args: Passed to strax.StorageFrontend
         :param kwargs: Passed to strax.StorageFrontend
+        :param rses_only: tuple, limits RSE selection to these options if provided
         """
         super().__init__(*args, **kwargs)
         self.readonly = True
@@ -46,12 +49,12 @@ class RucioRemoteFrontend(strax.StorageFrontend):
 
         if HAVE_ADMIX:
             self.backends = [
-                RucioRemoteBackend(staging_dir, download_heavy=download_heavy),
+                RucioRemoteBackend(staging_dir, download_heavy=download_heavy, rses_only=rses_only),
             ]
         else:
             self.log.warning(
                 "You passed use_remote=True to rucio fronted, "
-                "but you don't have access to admix/rucio! Using local backed only."
+                "but you don't have access to admix/rucio! Using local backend only."
             )
 
     def find_several(self, keys, **kwargs):
@@ -68,9 +71,10 @@ class RucioRemoteFrontend(strax.StorageFrontend):
                 "continuous"
             )
         try:
-            rules = admix.rucio.list_rules(did, state="OK")
-            if len(rules):
-                return "RucioRemoteBackend", did
+            for b in self.backends:
+                rse = b._get_rse(did, state="OK")
+                if rse:
+                    return "RucioRemoteBackend", did
         except DataIdentifierNotFound:
             pass
 
@@ -91,13 +95,14 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     # for caching RSE locations
     dset_cache: Dict[str, str] = {}
 
-    def __init__(self, staging_dir, download_heavy=False, **kwargs):
+    def __init__(self, staging_dir, download_heavy=False, rses_only=tuple(), **kwargs):
         """
         :param staging_dir: Path (a string) where to save data. Must be
             a writable location.
         :param download_heavy: Whether or not to allow downloads of the
             heaviest data (raw_records*, less aqmon and MV)
         :param kwargs: Passed to strax.FileSystemBackend
+        :param rses_only: tuple, limits RSE selection to these options if provided
         """
         mess = (
             f"You told the rucio backend to download data to {staging_dir}, "
@@ -114,16 +119,30 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         super().__init__(**kwargs)
         self.staging_dir = staging_dir
         self.download_heavy = download_heavy
+        self.rses_only = strax.to_str_tuple(rses_only)
+
+    def _get_rse(self, dset_did, **filters):
+        """Determine the appropriate Rucio Storage Element (RSE) for a dataset.
+
+        :param dset_did (str) :The dataset identifier.
+        :return (str) : The selected RSEs.
+        ------
+        Uses self.rses_only to filter available RSEs if set.
+
+        """
+        rses = admix.rucio.get_rses(dset_did, **filters)
+        rses = list(set(rses) & set(self.rses_only)) if self.rses_only else rses
+        rse = admix.downloader.determine_rse(rses)
+        return rse
 
     def _get_metadata(self, dset_did, **kwargs):
         if dset_did in self.dset_cache:
             rse = self.dset_cache[dset_did]
         else:
-            rses = admix.rucio.get_rses(dset_did)
-            rse = admix.downloader.determine_rse(rses)
+            rse = self._get_rse(dset_did)
             self.dset_cache[dset_did] = rse
 
-        metadata_did = f"{dset_did}-metadata.json"
+        metadata_did = strax.RUN_METADATA_PATTERN % dset_did
         downloaded = admix.download(metadata_did, rse=rse, location=self.staging_dir)
         if len(downloaded) != 1:
             raise ValueError(f"{metadata_did} should be a single file. We found {len(downloaded)}.")
@@ -156,8 +175,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             if dset_did in self.dset_cache:
                 rse = self.dset_cache[dset_did]
             else:
-                rses = admix.rucio.get_rses(dset_did)
-                rse = admix.downloader.determine_rse(rses)
+                rse = self._get_rse(dset_did)
                 self.dset_cache[dset_did] = rse
 
             downloaded = admix.download(chunk_did, rse=rse, location=self.staging_dir)
@@ -212,10 +230,3 @@ def did_to_dirname(did: str):
 def key_to_rucio_did(key: strax.DataKey) -> str:
     """Convert a strax.datakey to a rucio did field in rundoc."""
     return f"xnt_{key.run_id}:{key.data_type}-{key.lineage_hash}"
-
-
-@export
-class RucioFrontend(RucioRemoteFrontend):
-    def __init__(self, *args, **kwargs):
-        warn("RucioFrontend is deprecated, use RucioRemoteFrontend instead", DeprecationWarning)
-        super().__init__(*args, **kwargs)

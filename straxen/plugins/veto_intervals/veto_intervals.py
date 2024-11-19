@@ -1,7 +1,6 @@
 import typing
 import numpy as np
 import strax
-import straxen
 
 from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 
@@ -21,13 +20,13 @@ export, __all__ = strax.exporter()
 
 
 @export
-class VetoIntervals(strax.OverlapWindowPlugin):
+class VetoIntervals(strax.ExhaustPlugin):
     """Find pairs of veto start and veto stop signals and the veto.
 
     duration between them:
-     - busy_*  <= V1495 busy veto for tpc channels
-     - busy_he_*    <= V1495 busy veto for high energy tpc channels
-     - hev_*   <= DDC10 hardware high energy veto
+     - busy_* <= V1495 busy veto for tpc channels
+     - busy_he_* <= V1495 busy veto for high energy tpc channels
+     - hev_* <= DDC10 hardware high energy veto
      - straxen_deadtime <= special case of deadtime introduced by the
        DAQReader-plugin
 
@@ -37,22 +36,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     depends_on = "aqmon_hits"
     provides = "veto_intervals"
     data_kind = "veto_intervals"
-
-    # This option is just showing where the OverlapWindowPlugin fails.
-    # We need to buffer the entire run in order not to run into chunking
-    # issues. A better solution would be using
-    #   github.com/AxFoundation/strax/pull/654
-    max_veto_window = straxen.URLConfig(
-        default=int(7.2e12),
-        track=True,
-        type=int,
-        help=(
-            "Maximum separation between veto stop and start pulses [ns]. "
-            "Set to be >> than the max duration of the run to be able to "
-            "fully store one run into buffer since aqmon-hits are not "
-            "sorted by endtime"
-        ),
-    )
 
     def infer_dtype(self):
         dtype = [
@@ -65,10 +48,6 @@ class VetoIntervals(strax.OverlapWindowPlugin):
     def setup(self):
         self.veto_names = ["busy_", "busy_he_", "hev_"]
         self.channel_map = {aq_ch.name.lower(): int(aq_ch) for aq_ch in AqmonChannels}
-
-    def get_window_size(self):
-        # Give a very wide window
-        return self.max_veto_window
 
     def compute(self, aqmon_hits, start, end):
         # Allocate a nice big buffer and throw away the part we don't need later
@@ -109,7 +88,7 @@ class VetoIntervals(strax.OverlapWindowPlugin):
 
         result = result[:vetos_seen]
         result["veto_interval"] = result["endtime"] - result["time"]
-        sort = np.argsort(result["time"])
+        sort = strax.stable_argsort(result["time"])
         result = result[sort]
         return result
 
