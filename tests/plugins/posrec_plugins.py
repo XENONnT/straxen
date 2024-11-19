@@ -10,7 +10,7 @@ import numpy as np
 @PluginTestAccumulator.register("test_posrec_set_path")
 def test_posrec_set_path(
     self,
-    target="peak_positions_mlp",
+    target="peaklet_positions_mlp",
     config_name="tf_model_mlp",
     field="x_mlp",
 ):
@@ -42,7 +42,7 @@ def test_posrec_set_path(
 @PluginTestAccumulator.register("test_posrec_set_to_none")
 def test_posrec_set_to_none(
     self,
-    target="peak_positions_mlp",
+    target="peaklet_positions_mlp",
     config_name="tf_model_mlp",
     field="x_mlp",
 ):
@@ -56,7 +56,7 @@ def test_posrec_set_to_none(
 @PluginTestAccumulator.register("test_posrec_bad_configs_raising_errors")
 def test_posrec_bad_configs_raising_errors(
     self,
-    target="peak_positions_mlp",
+    target="peaklet_positions_mlp",
     config_name="tf_model_mlp",
 ):
     """Test that we get the right errors when we set invalid options."""
