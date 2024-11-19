@@ -29,10 +29,10 @@ common_opts: Dict[str, Any] = dict(
         # Make sure the dependency tree is clean before merging PR
         straxen.PeakletPositionsMLP,
         straxen.PeakletPositionsCNF,
-        straxen.PeakletPositionsNT,
+        straxen.PeakletPositions,
         straxen.MergedS2sPositionsMLP,
         straxen.MergedS2sPositionsCNF,
-        straxen.MergedS2sPositionsNT,
+        straxen.MergedS2sPositions,
         straxen.MergedPeakPositionsMLP,
         straxen.MergedPeakPositionsCNF,
     ],

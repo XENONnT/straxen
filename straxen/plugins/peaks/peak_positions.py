@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsNT(strax.MergeOnlyPlugin):
+class PeakPositions(strax.MergeOnlyPlugin):
     """Merge the reconstructed algorithms of the different algorithms into a single one that can be
     used in Event Basics.
 
@@ -50,7 +50,7 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
 
 
 @export
-class PeakletPositionsNT(PeakPositionsNT):
+class PeakletPositions(PeakPositions):
 
     __version__ = "0.0.0"
     provides = "peaklet_positions"
@@ -64,7 +64,7 @@ class PeakletPositionsNT(PeakPositionsNT):
 
 
 @export
-class MergedS2sPositionsNT(PeakPositionsNT):
+class MergedS2sPositions(PeakPositions):
 
     __version__ = "0.0.0"
     provides = "merged_s2s_positions"

@@ -14,7 +14,7 @@ DEFAULT_POSREC_ALGO = "mlp"
 
 
 @export
-class PeakPositionsBaseNT(strax.Plugin):
+class PeakPositionsBase(strax.Plugin):
     """Base class for reconstructions.
 
     This class should only be used when subclassed for the different algorithms. Provides
@@ -113,7 +113,7 @@ class PeakPositionsBaseNT(strax.Plugin):
 
 
 @export
-class PeakletPositionsBaseNT(PeakPositionsBaseNT):
+class PeakletPositionsBase(PeakPositionsBase):
     """Pose-rec on peaklets instead of peaks."""
 
     __version__ = "0.0.0"
@@ -125,7 +125,7 @@ class PeakletPositionsBaseNT(PeakPositionsBaseNT):
 
 
 @export
-class MergedS2sPositionsBaseNT(PeakPositionsBaseNT):
+class MergedS2sPositionsBase(PeakPositionsBase):
     """Pose-rec on merged_s2s instead of peaks."""
 
     __version__ = "0.0.0"
@@ -137,7 +137,7 @@ class MergedS2sPositionsBaseNT(PeakPositionsBaseNT):
 
 
 @export
-class MergedPeakPositionsBaseNT(Peaks):
+class MergedPeakPositionsBase(Peaks):
 
     __version__ = "0.0.0"
     child_plugin = True

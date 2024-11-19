@@ -1,10 +1,10 @@
 import strax
 import straxen
 from straxen.plugins.peaks._peak_positions_base import (
-    PeakPositionsBaseNT,
-    PeakletPositionsBaseNT,
-    MergedS2sPositionsBaseNT,
-    MergedPeakPositionsBaseNT,
+    PeakPositionsBase,
+    PeakletPositionsBase,
+    MergedS2sPositionsBase,
+    MergedPeakPositionsBase,
 )
 
 
@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsMLP(PeakPositionsBaseNT):
+class PeakPositionsMLP(PeakPositionsBase):
     """Multilayer Perceptron (MLP) neural net for position reconstruction."""
 
     provides: str = "peak_positions_mlp"
@@ -37,7 +37,7 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 
 
 @export
-class PeakletPositionsMLP(PeakletPositionsBaseNT, PeakPositionsMLP):
+class PeakletPositionsMLP(PeakletPositionsBase, PeakPositionsMLP):
 
     algorithm = "mlp"
     provides = "peaklet_positions_mlp"
@@ -46,7 +46,7 @@ class PeakletPositionsMLP(PeakletPositionsBaseNT, PeakPositionsMLP):
 
 
 @export
-class MergedS2sPositionsMLP(MergedS2sPositionsBaseNT, PeakPositionsMLP):
+class MergedS2sPositionsMLP(MergedS2sPositionsBase, PeakPositionsMLP):
 
     algorithm = "mlp"
     provides = "merged_s2s_positions_mlp"
@@ -55,7 +55,7 @@ class MergedS2sPositionsMLP(MergedS2sPositionsBaseNT, PeakPositionsMLP):
 
 
 @export
-class MergedPeakPositionsMLP(MergedPeakPositionsBaseNT):
+class MergedPeakPositionsMLP(MergedPeakPositionsBase):
 
     algorithm = "mlp"
     depends_on = (

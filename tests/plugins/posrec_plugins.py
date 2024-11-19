@@ -73,8 +73,8 @@ def test_posrec_bad_configs_raising_errors(
     with self.assertRaises(FileNotFoundError):
         plugin.get_tf_model()
 
-    dummy_st.register(straxen.plugins.peak_positions_cnf.PeakPositionsBaseNT)
-    plugin_name = strax.camel_to_snake("PeakPositionsBaseNT")
+    dummy_st.register(straxen.plugins.peak_positions_cnf.PeakPositionsBase)
+    plugin_name = strax.camel_to_snake("PeakPositionsBase")
     with self.assertRaises(NotImplementedError):
         dummy_st.get_single_plugin(self.run_id, plugin_name)
 

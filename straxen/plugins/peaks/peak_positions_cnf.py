@@ -2,17 +2,17 @@ import numpy as np
 import strax
 import straxen
 from straxen.plugins.peaks._peak_positions_base import (
-    PeakPositionsBaseNT,
-    PeakletPositionsBaseNT,
-    MergedS2sPositionsBaseNT,
-    MergedPeakPositionsBaseNT,
+    PeakPositionsBase,
+    PeakletPositionsBase,
+    MergedS2sPositionsBase,
+    MergedPeakPositionsBase,
 )
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsCNF(PeakPositionsBaseNT):
+class PeakPositionsCNF(PeakPositionsBase):
     """Conditional Normalizing Flow for position reconstruction.
 
     This plugin reconstructs the position of S2 peaks using a conditional normalizing flow model.
@@ -253,7 +253,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 
 
 @export
-class PeakletPositionsCNF(PeakletPositionsBaseNT, PeakPositionsCNF):
+class PeakletPositionsCNF(PeakletPositionsBase, PeakPositionsCNF):
 
     algorithm = "cnf"
     provides = "peaklet_positions_cnf"
@@ -262,7 +262,7 @@ class PeakletPositionsCNF(PeakletPositionsBaseNT, PeakPositionsCNF):
 
 
 @export
-class MergedS2sPositionsCNF(MergedS2sPositionsBaseNT, PeakPositionsCNF):
+class MergedS2sPositionsCNF(MergedS2sPositionsBase, PeakPositionsCNF):
 
     algorithm = "cnf"
     provides = "merged_s2s_positions_cnf"
@@ -271,7 +271,7 @@ class MergedS2sPositionsCNF(MergedS2sPositionsBaseNT, PeakPositionsCNF):
 
 
 @export
-class MergedPeakPositionsCNF(MergedPeakPositionsBaseNT):
+class MergedPeakPositionsCNF(MergedPeakPositionsBase):
 
     algorithm = "cnf"
     depends_on = (

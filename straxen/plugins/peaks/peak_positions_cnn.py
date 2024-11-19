@@ -1,13 +1,13 @@
 import strax
 import straxen
-from straxen.plugins.peaks._peak_positions_base import PeakPositionsBaseNT
+from straxen.plugins.peaks._peak_positions_base import PeakPositionsBase
 
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsCNN(PeakPositionsBaseNT):
+class PeakPositionsCNN(PeakPositionsBase):
     """Convolutional Neural Network (CNN) neural net for position reconstruction."""
 
     provides = "peak_positions_cnn"
