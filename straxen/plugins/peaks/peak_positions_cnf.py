@@ -5,6 +5,7 @@ from straxen.plugins.peaks._peak_positions_base import (
     PeakPositionsBaseNT,
     PeakletPositionsBaseNT,
     MergedS2sPositionsBaseNT,
+    MergedPeakPositionsBaseNT,
 )
 
 export, __all__ = strax.exporter()
@@ -254,6 +255,7 @@ class PeakPositionsCNF(PeakPositionsBaseNT):
 @export
 class PeakletPositionsCNF(PeakletPositionsBaseNT, PeakPositionsCNF):
 
+    algorithm = "cnf"
     provides = "peaklet_positions_cnf"
     __version__ = "0.0.0"
     child_plugin = True
@@ -262,6 +264,23 @@ class PeakletPositionsCNF(PeakletPositionsBaseNT, PeakPositionsCNF):
 @export
 class MergedS2sPositionsCNF(MergedS2sPositionsBaseNT, PeakPositionsCNF):
 
+    algorithm = "cnf"
     provides = "merged_s2s_positions_cnf"
+    __version__ = "0.0.0"
+    child_plugin = True
+
+
+@export
+class MergedPeakPositionsCNF(MergedPeakPositionsBaseNT):
+
+    algorithm = "cnf"
+    depends_on = (
+        "peaklet_positions_cnf",
+        "peaklet_classification",
+        "merged_s2s",
+        "merged_s2s_positions_cnf",
+    )
+    provides = "peak_positions_cnf"
+
     __version__ = "0.0.0"
     child_plugin = True

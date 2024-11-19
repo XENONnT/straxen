@@ -4,6 +4,7 @@ from straxen.plugins.peaks._peak_positions_base import (
     PeakPositionsBaseNT,
     PeakletPositionsBaseNT,
     MergedS2sPositionsBaseNT,
+    MergedPeakPositionsBaseNT,
 )
 
 
@@ -14,7 +15,7 @@ export, __all__ = strax.exporter()
 class PeakPositionsMLP(PeakPositionsBaseNT):
     """Multilayer Perceptron (MLP) neural net for position reconstruction."""
 
-    provides = "peak_positions_mlp"
+    provides: str = "peak_positions_mlp"
     algorithm = "mlp"
     gc_collect_after_compute = True
 
@@ -38,6 +39,7 @@ class PeakPositionsMLP(PeakPositionsBaseNT):
 @export
 class PeakletPositionsMLP(PeakletPositionsBaseNT, PeakPositionsMLP):
 
+    algorithm = "mlp"
     provides = "peaklet_positions_mlp"
     __version__ = "0.0.0"
     child_plugin = True
@@ -46,6 +48,23 @@ class PeakletPositionsMLP(PeakletPositionsBaseNT, PeakPositionsMLP):
 @export
 class MergedS2sPositionsMLP(MergedS2sPositionsBaseNT, PeakPositionsMLP):
 
+    algorithm = "mlp"
     provides = "merged_s2s_positions_mlp"
+    __version__ = "0.0.0"
+    child_plugin = True
+
+
+@export
+class MergedPeakPositionsMLP(MergedPeakPositionsBaseNT):
+
+    algorithm = "mlp"
+    depends_on = (
+        "peaklet_positions_mlp",
+        "peaklet_classification",
+        "merged_s2s",
+        "merged_s2s_positions_mlp",
+    )
+    provides = "peak_positions_mlp"
+
     __version__ = "0.0.0"
     child_plugin = True

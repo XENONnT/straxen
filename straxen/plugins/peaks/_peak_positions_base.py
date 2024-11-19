@@ -1,11 +1,12 @@
 """Position reconstruction for Xenon-nT."""
 
-from typing import Optional
+from typing import Optional, Tuple, Union
+from warnings import warn
 
 import numpy as np
 import strax
 import straxen
-from warnings import warn
+from .peaks import Peaks
 
 export, __all__ = strax.exporter()
 
@@ -23,7 +24,7 @@ class PeakPositionsBaseNT(strax.Plugin):
 
     __version__ = "0.0.0"
 
-    depends_on = "peaks"
+    depends_on: Union[Tuple[str, ...], str] = "peaks"
     algorithm: Optional[str] = None
     compressor = "zstd"
     parallel = True
@@ -133,3 +134,20 @@ class MergedS2sPositionsBaseNT(PeakPositionsBaseNT):
 
     def compute(self, merged_s2s):
         return super().compute(merged_s2s)
+
+
+@export
+class MergedPeakPositionsBaseNT(Peaks):
+
+    __version__ = "0.0.0"
+    child_plugin = True
+    save_when = strax.SaveWhen.ALWAYS
+
+    def infer_dtype(self):
+        return self.deps[f"peaklet_positions_{self.algorithm}"].dtype_for(
+            f"peaklet_positions_{self.algorithm}"
+        )
+
+    def compute(self, peaklets, merged_s2s):
+        _merged_s2s = strax.merge_arrs([merged_s2s], dtype=peaklets.dtype, replacing=True)
+        return super().compute(peaklets, _merged_s2s)

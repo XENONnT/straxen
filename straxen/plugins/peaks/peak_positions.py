@@ -3,7 +3,6 @@ import strax
 import straxen
 
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
-from .peaks import Peaks
 
 export, __all__ = strax.exporter()
 
@@ -76,30 +75,3 @@ class MergedS2sPositionsNT(PeakPositionsNT):
 
     def compute(self, merged_s2s):
         return super().compute(merged_s2s)
-
-
-@export
-class MergedPeakPositionsNT(Peaks):
-
-    __version__ = "0.0.0"
-    child_plugin = True
-    save_when = strax.SaveWhen.ALWAYS
-
-    depends_on = (
-        "peaklet_positions",
-        "peaklet_classification",
-        "merged_s2s",
-        "merged_s2s_positions",
-    )
-    provides = "peak_positions"
-
-    default_reconstruction_algorithm = straxen.URLConfig(
-        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
-    )
-
-    def infer_dtype(self):
-        return self.deps["peaklet_positions"].dtype_for("peaklet_positions")
-
-    def compute(self, peaklets, merged_s2s):
-        _merged_s2s = strax.merge_arrs([merged_s2s], dtype=peaklets.dtype, replacing=True)
-        return super().compute(peaklets, _merged_s2s)
