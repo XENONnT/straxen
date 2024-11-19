@@ -5,8 +5,8 @@ import platform
 import numpy as np
 import pandas
 import strax
+from matplotlib.pyplot import clf
 import straxen
-from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
 
 
@@ -15,14 +15,9 @@ def is_py310():
     return platform.python_version_tuple()[:2] == ("3", "10")
 
 
-def test_pmt_pos_1t():
-    """Test if we can get the 1T PMT positions."""
-    pandas.DataFrame(straxen.pmt_positions(True))
-
-
 def test_pmt_pos_nt():
     """Test if we can get the nT PMT positions."""
-    pandas.DataFrame(straxen.pmt_positions(False))
+    pandas.DataFrame(straxen.pmt_positions())
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
@@ -69,7 +64,7 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def tearDown(self):
         """After each test, clear a figure (if one was open)"""
-        plt_clf()
+        clf()
 
     def test_target_peaks(self, target="peak_basics", tol=2):
         """Not a real mini analysis but let's see if the number of peaks matches some pre-defined
@@ -101,7 +96,7 @@ class TestMiniAnalyses(unittest.TestCase):
         self.test_plot_waveform(deep=True)
 
     def test_plot_hit_pattern(self):
-        self.st.plot_hit_pattern(nt_test_run_id, time_within=self.first_peak, xenon1t=False)
+        self.st.plot_hit_pattern(nt_test_run_id, time_within=self.first_peak)
 
     def test_plot_records_matrix(self):
         self._st_attr_for_one_peak("plot_records_matrix")
@@ -121,7 +116,6 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.event_display(
             nt_test_run_id,
             time_within=self.first_event,
-            xenon1t=False,
             plot_all_positions=plot_all_positions,
             simple_layout=True,
         )
@@ -133,7 +127,6 @@ class TestMiniAnalyses(unittest.TestCase):
             nt_test_run_id,
             events=self.st.get_array(nt_test_run_id, "events"),
             event_number=self.first_event["event_number"],
-            xenon1t=False,
             plot_all_positions=plot_all_positions,
         )
 
@@ -141,7 +134,6 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.event_display_interactive(
             nt_test_run_id,
             time_within=self.first_event,
-            xenon1t=False,
         )
 
     def test_plot_peaks_aft_histogram(self):
@@ -300,7 +292,6 @@ class TestMiniAnalyses(unittest.TestCase):
         fig = self.st.event_display_interactive(
             nt_test_run_id,
             time_within=self.first_event,
-            xenon1t=False,
             plot_record_matrix=True,
         )
         save_as = "test_display.html"
@@ -312,7 +303,6 @@ class TestMiniAnalyses(unittest.TestCase):
         st.event_display_interactive(
             nt_test_run_id,
             time_within=self.first_event,
-            xenon1t=False,
             plot_record_matrix=False,
             only_main_peaks=True,
         )
@@ -322,31 +312,32 @@ class TestMiniAnalyses(unittest.TestCase):
         from straxen.analyses.bokeh_waveform_plot import DataSelectionHist
 
         p = self.st.get_array(nt_test_run_id, "peak_basics", seconds_range=(0, 10))
-        ds = DataSelectionHist("ds")
-        fig = ds.histogram2d(
-            p,
-            p["area"],
-            p["area"],
-            bins=10,
-            hist_range=((0, 200), (0, 2000)),
-            log_color_scale=True,
-            clim=(10, None),
-            undeflow_color="white",
-        )
+        with self.assertRaises(NotImplementedError):
+            ds = DataSelectionHist("ds")
+            fig = ds.histogram2d(
+                p,
+                p["area"],
+                p["area"],
+                bins=10,
+                hist_range=((0, 200), (0, 2000)),
+                log_color_scale=True,
+                clim=(10, None),
+                undeflow_color="white",
+            )
 
-        import bokeh.plotting as bklt
+            import bokeh.plotting as bklt
 
-        save_as = "test_data_selector.html"
-        bklt.save(fig, save_as)
-        self.assertTrue(os.path.exists(save_as))
-        os.remove(save_as)
-        self.assertFalse(os.path.exists(save_as))
-        # Also test if we can write it to the wiki
-        straxen.bokeh_to_wiki(fig)
-        straxen.bokeh_to_wiki(fig, save_as)
-        self.assertTrue(os.path.exists(save_as))
-        os.remove(save_as)
-        self.assertFalse(os.path.exists(save_as))
+            save_as = "test_data_selector.html"
+            bklt.save(fig, save_as)
+            self.assertTrue(os.path.exists(save_as))
+            os.remove(save_as)
+            self.assertFalse(os.path.exists(save_as))
+            # Also test if we can write it to the wiki
+            straxen.bokeh_to_wiki(fig)
+            straxen.bokeh_to_wiki(fig, save_as)
+            self.assertTrue(os.path.exists(save_as))
+            os.remove(save_as)
+            self.assertFalse(os.path.exists(save_as))
 
     def test_nt_daq_plot(self):
         """Make an nt DAQ plot."""

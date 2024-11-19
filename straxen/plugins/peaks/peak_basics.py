@@ -98,7 +98,7 @@ class PeakBasics(strax.Plugin):
         # Negative-area peaks get NaN AFT
         m = p["area"] > 0
         r["area_fraction_top"][m] = area_top[m] / area_total[m]
-        r["area_fraction_top"][~m] = float("nan")
+        r["area_fraction_top"][~m] = np.nan
         r["rise_time"] = -p["area_decile_from_midpoint"][:, 1]
 
         if self.check_peak_sum_area_rtol is not None:

@@ -25,7 +25,7 @@ class PeakS1PositionBase(strax.Plugin):
 
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True  # can set to "process" after #82
+    parallel = True
 
     min_s1_area_s1_posrec = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this", default=1000, infer_type=False
@@ -80,9 +80,9 @@ class PeakS1PositionBase(strax.Plugin):
         result = np.ones(len(peaks), dtype=self.dtype)
         result["time"], result["endtime"] = peaks["time"], strax.endtime(peaks)
 
-        result["x_" + self.algorithm] *= float("nan")
-        result["y_" + self.algorithm] *= float("nan")
-        result["z_" + self.algorithm] *= float("nan")
+        result["x_" + self.algorithm] *= np.nan
+        result["y_" + self.algorithm] *= np.nan
+        result["z_" + self.algorithm] *= np.nan
 
         model = self.get_tf_model()
 

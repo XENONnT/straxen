@@ -33,7 +33,6 @@ def event_display_interactive(
     plot_all_pmts=False,
     plot_record_matrix=False,
     plot_records_threshold=10,
-    xenon1t=False,
     colors=("gray", "blue", "green"),
     yscale=("linear", "linear", "linear"),
     log=True,
@@ -53,7 +52,6 @@ def event_display_interactive(
     :param plot_records_threshold: Threshold at which zoom level to display
         record matrix as polygons. Larger values may lead to longer
         render times since more polygons are shown.
-    :param xenon1t: Flag to use event display with 1T data.
     :param colors: Colors to be used for peaks. Order is as peak types,
         0 = Unknown, 1 = S1, 2 = S2. Can be any colors accepted by bokeh.
     :param yscale: Defines scale for main/alt S1 == 0, main/alt S2 == 1,
@@ -149,7 +147,6 @@ def event_display_interactive(
         to_pe,
         labels,
         plot_all_pmts,
-        xenon1t=xenon1t,
         log=log,
     )
 
@@ -178,18 +175,21 @@ def event_display_interactive(
     else:
         upper_row = [fig_s1, fig_s2, fig_top]
 
-    upper_row = bokeh.layouts.Row(children=upper_row)
+    upper_row = bokeh.layouts.Row(
+        children=upper_row,
+        sizing_mode="scale_width",
+    )
 
     plots = bokeh.layouts.gridplot(
         children=[upper_row, waveform],
-        sizing_mode="scale_both",
+        sizing_mode="scale_width",
         ncols=1,
         merge_tools=True,
         toolbar_location="above",
     )
     event_display = bokeh.layouts.Column(
         children=[title, plots],
-        sizing_mode="scale_both",
+        sizing_mode="scale_width",
         max_width=1600,
     )
 
@@ -245,7 +245,9 @@ def event_display_interactive(
         # Set x-range of event plot:
         bokeh_set_x_range(waveform, straxen._BOKEH_X_RANGE, debug=False)
         event_display = panel.Column(
-            event_display, wf * records_in_window, sizing_mode="scale_width"
+            event_display,
+            wf * records_in_window,
+            sizing_mode="scale_width",
         )
 
     return event_display
@@ -301,7 +303,7 @@ def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors, yscale=("li
 
 
 def plot_pmt_arrays_and_positions(
-    top_array_keys, bottom_array_keys, signal, to_pe, labels, plot_all_pmts, xenon1t=False, log=True
+    top_array_keys, bottom_array_keys, signal, to_pe, labels, plot_all_pmts, log=True
 ):
     """Function which plots the Top and Bottom PMT array.
 
@@ -330,7 +332,6 @@ def plot_pmt_arrays_and_positions(
                 to_pe,
                 plot_all_pmts=plot_all_pmts,
                 label=labels[k],
-                xenon1t=xenon1t,
                 fig=fig,
                 log=log,
             )
@@ -436,7 +437,7 @@ def plot_peak_detail(
 
     tt = straxen.bokeh_utils.peak_tool_tip(p_type)
     tt = [v for k, v in tt.items() if k not in ["time_static", "center_time", "endtime"]]
-    fig.add_tools(bokeh.models.HoverTool(names=[label], tooltips=tt))
+    fig.add_tools(bokeh.models.HoverTool(name=label, tooltips=tt))
 
     source = straxen.bokeh_utils.get_peaks_source(
         peak,
@@ -509,7 +510,7 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
 
         tt = straxen.bokeh_utils.peak_tool_tip(i)
         tt = [v for k, v in tt.items() if k != "time_dynamic"]
-        fig.add_tools(bokeh.models.HoverTool(names=[LEGENDS[i]], tooltips=tt))
+        fig.add_tools(bokeh.models.HoverTool(name=LEGENDS[i], tooltips=tt))
         fig.add_tools(bokeh.models.WheelZoomTool(dimensions="width", name="wheel"))
         fig.toolbar.active_scroll = [t for t in fig.tools if t.name == "wheel"][0]
 
@@ -529,7 +530,6 @@ def plot_pmt_array(
     to_pe,
     plot_all_pmts=False,
     log=False,
-    xenon1t=False,
     fig=None,
     label="",
 ):
@@ -540,7 +540,6 @@ def plot_pmt_array(
     :param to_pe: PMT gains.
     :param log: If true use a log-scale for the color scale.
     :param plot_all_pmts: If True colors all PMTs instead of showing swtiched off PMTs as gray dots.
-    :param xenon1t: If True plots 1T array.
     :param fig: Instance of bokeh.plotting.figure if None one will be created via
         straxen.bokeh.utils.default_figure().
     :param label: Label of the peak which should be used for the plot legend
@@ -569,7 +568,7 @@ def plot_pmt_array(
     fig = _plot_tpc(fig)
 
     # Plotting PMTs:
-    pmts = straxen.pmt_positions(xenon1t)
+    pmts = straxen.pmt_positions()
     if plot_all_pmts:
         mask_pmts = np.zeros(len(pmts), dtype=np.bool_)
     else:
@@ -614,7 +613,7 @@ def plot_pmt_array(
         legend_label=label,
         name=label + "_pmt_array",
     )
-    fig.add_tools(bokeh.models.HoverTool(names=[label + "_pmt_array"], tooltips=tool_tip))
+    fig.add_tools(bokeh.models.HoverTool(name=label + "_pmt_array", tooltips=tool_tip))
     fig.legend.location = "top_left"
     fig.legend.click_policy = "hide"
     fig.legend.orientation = "horizontal"
@@ -708,7 +707,7 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     tt = [v for k, v in tt.items() if k not in ["time_dynamic", "amplitude"]]
     fig.add_tools(
         bokeh.models.HoverTool(
-            names=[label], tooltips=[("Position x [cm]", "@x"), ("Position y [cm]", "@y")] + tt
+            name=label, tooltips=[("Position x [cm]", "@x"), ("Position y [cm]", "@y")] + tt
         )
     )
     return fig, p
@@ -740,12 +739,11 @@ def _make_event_title(event, run_id, width=1600):
 
     title = bokeh.models.Div(
         text=text,
-        style={
+        styles={
             "text-align": "left",
         },
-        sizing_mode="scale_both",
+        sizing_mode="scale_width",
         width=width,
-        default_size=width,
         # orientation='vertical',
         width_policy="fit",
         margin=(0, 0, -30, 50),
@@ -788,6 +786,12 @@ class DataSelectionHist:
         :param size: Edge size of the figure in pixel.
 
         """
+        raise NotImplementedError(
+            "This function does not work with"
+            " the latest bokeh version. If you are still using"
+            " this function please let us know in tech-support"
+            " by the 01.04.2024, else we reomve this function."
+        )
         self.name = name
         self.selection_index = None
         self.size = size

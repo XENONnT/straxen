@@ -16,10 +16,6 @@ class EventAreaPerChannel(strax.Plugin):
     __version__ = "0.1.1"
 
     compressor = "zstd"
-    save_when = immutabledict({
-        "event_area_per_channel": strax.SaveWhen.EXPLICIT,
-        "event_n_channel": strax.SaveWhen.ALWAYS,
-    })
 
     n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int, help="Number of top PMTs")
 
@@ -88,10 +84,10 @@ class EventAreaPerChannel(strax.Plugin):
                             type_area_per_channel > 0
                         ).sum()
                         area_per_channel["s1_top_n_channels"][event_i] = (
-                            type_area_per_channel[: self.config["n_top_pmts"]] > 0
+                            type_area_per_channel[: self.n_top_pmts] > 0
                         ).sum()
                         area_per_channel["s1_bottom_n_channels"][event_i] = (
-                            type_area_per_channel[self.config["n_top_pmts"] :] > 0
+                            type_area_per_channel[self.n_top_pmts :] > 0
                         ).sum()
         for field in ["s1_n_channels", "s1_top_n_channels", "s1_bottom_n_channels"]:
             n_channel[field] = area_per_channel[field]

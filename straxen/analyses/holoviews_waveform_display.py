@@ -3,7 +3,7 @@ straxen' free of holoviews."""
 
 import numpy as np
 import pandas as pd
-
+import strax
 import straxen
 
 straxen._BOKEH_X_RANGE = None
@@ -42,7 +42,7 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array="bottom"):
     """
     import holoviews as hv
 
-    pmts = straxen.pmt_positions(xenon1t=config["n_tpc_pmts"] < 300)
+    pmts = straxen.pmt_positions()
     areas = np.bincount(
         records["channel"], weights=records["area"] * to_pe[records["channel"]], minlength=len(pmts)
     )
@@ -62,9 +62,10 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array="bottom"):
             hv.Dimension("area", label="Area", unit="PE"),
         ],
     )
-    pmts = pmts.to(
-        hv.Points, vdims=["area", "i"], group="PMTPattern", label=array.capitalize()
-    ).opts(
+    pmts = pmts.to(hv.Points, vdims=["area", "i"], group="PMTPattern", label=array.capitalize())
+
+    hv.opts.apply_groups(
+        pmts,
         plot=dict(color_index=2, tools=["hover"], show_grid=False),
         style=dict(size=17, cmap="plasma"),
     )
@@ -189,7 +190,10 @@ def _hvdisp_plot_records_2d(
             streams=[time_stream],
         ),
         threshold=0.1,
-    ).opts(
+    )
+
+    hv.opts.apply_groups(
+        shader,
         plot=dict(
             aspect=4,
             responsive="width",
@@ -199,7 +203,7 @@ def _hvdisp_plot_records_2d(
             default_tools=list(default_tools),
             fontsize={"labels": 12},
             show_grid=True,
-        )
+        ),
     )
 
     return shader, records, time_stream
@@ -269,12 +273,14 @@ def _rectangle(time=0, channel=0, width=1.1, height=1):
     """
     width = width / 2
     height = height / 2
-    return np.array([
-        (time - width, channel - height),
-        (time + width, channel - height),
-        (time + width, channel + height),
-        (time - width, channel + height),
-    ])
+    return np.array(
+        [
+            (time - width, channel - height),
+            (time + width, channel - height),
+            (time + width, channel + height),
+            (time - width, channel + height),
+        ]
+    )
 
 
 def get_records_matrix_in_window(polys, x_range, time_slice=10):
@@ -332,7 +338,7 @@ def hvdisp_plot_peak_waveforms(
     import holoviews as hv
 
     if show_largest is not None and len(peaks) > show_largest:
-        show_i = np.argsort(peaks["area"])[-show_largest::]
+        show_i = strax.stable_argsort(peaks["area"])[-show_largest::]
         peaks = peaks[show_i]
 
     curves = []
@@ -366,10 +372,21 @@ def hvdisp_plot_peak_waveforms(
                 kdims=time_dim,
                 vdims=hv.Dimension("amplitude", label="Amplitude", unit="PE/ns"),
                 group="PeakSumWaveform",
-            ).opts(style=dict(color=color))
+            )
         )
 
-    return hv.Overlay(items=curves).opts(plot=dict(width=width))
+        hv.opts.apply_groups(
+            curves[-1],
+            style=dict(color=color),
+        )
+
+    overlay = hv.Overlay(items=curves)
+    hv.opts.apply_groups(
+        overlay,
+        plot=dict(width=width),
+    )
+
+    return overlay
 
 
 def _range_plot(f, full_time_range, t_reference, **kwargs):

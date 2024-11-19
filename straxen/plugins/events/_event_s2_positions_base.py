@@ -17,7 +17,7 @@ class EventS2PositionBase(strax.Plugin):
 
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True  # can set to "process" after #82
+    parallel = True
 
     min_reconstruction_area = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this",
@@ -60,7 +60,7 @@ class EventS2PositionBase(strax.Plugin):
         return dtype
 
     def get_tf_model(self):
-        """Simple wrapper to have several tf_event_model_mlp, tf_event_model_cnn, ..
+        """Simple wrapper to have several tf_event_model_mlp, tf_event_model_cnf, ..
 
         point to this same function in the compute method
 
@@ -81,10 +81,10 @@ class EventS2PositionBase(strax.Plugin):
     def compute(self, events):
         result = np.ones(len(events), dtype=self.dtype)
         result["time"], result["endtime"] = events["time"], strax.endtime(events)
-        result["event_s2_x_" + self.algorithm] *= float("nan")
-        result["event_s2_y_" + self.algorithm] *= float("nan")
-        result["event_alt_s2_x_" + self.algorithm] *= float("nan")
-        result["event_alt_s2_y_" + self.algorithm] *= float("nan")
+        result["event_s2_x_" + self.algorithm] *= np.nan
+        result["event_s2_y_" + self.algorithm] *= np.nan
+        result["event_alt_s2_x_" + self.algorithm] *= np.nan
+        result["event_alt_s2_y_" + self.algorithm] *= np.nan
 
         model = self.get_tf_model()
 
