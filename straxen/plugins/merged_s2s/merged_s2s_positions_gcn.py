@@ -1,13 +1,16 @@
 import strax
-from straxen.plugins.merged_s2s._merged_s2s_positions_base import MergedS2sPositionsBase
+from straxen.plugins.peaklets.peaklet_positions_gcn import PeakletPositionsGCN
 
 export, __all__ = strax.exporter()
 
 
 @export
-class MergedS2sPositionsGCN(MergedS2sPositionsBase):
+class MergedS2sPositionsGCN(PeakletPositionsGCN):
 
     __version__ = "0.0.0"
     child_plugin = True
     algorithm = "gcn"
     provides = "merged_s2s_positions_gcn"
+
+    def compute(self, merged_s2s):
+        return super().compute(merged_s2s)
