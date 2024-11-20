@@ -10,6 +10,7 @@ class MergedS2sPositionsCNN(PeakletPositionsCNN):
     __version__ = "0.0.0"
     child_plugin = True
     algorithm = "cnn"
+    depends_on = "merged_s2s"
     provides = "merged_s2s_positions_cnn"
 
     def compute(self, merged_s2s):

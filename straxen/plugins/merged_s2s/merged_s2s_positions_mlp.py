@@ -10,6 +10,7 @@ class MergedS2sPositionsMLP(PeakletPositionsMLP):
     __version__ = "0.0.0"
     child_plugin = True
     algorithm = "mlp"
+    depends_on = "merged_s2s"
     provides = "merged_s2s_positions_mlp"
 
     def compute(self, merged_s2s):
