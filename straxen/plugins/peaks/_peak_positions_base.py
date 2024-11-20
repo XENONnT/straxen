@@ -9,7 +9,7 @@ from warnings import warn
 
 export, __all__ = strax.exporter()
 
-DEFAULT_POSREC_ALGO = "mlp"
+DEFAULT_POSREC_ALGO = "cnf"
 
 
 @export
