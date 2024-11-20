@@ -21,13 +21,13 @@ class PeakPositions(strax.MergeOnlyPlugin):
 
     """
 
+    __version__ = "0.0.0"
     provides = "peak_positions"
     depends_on = (
         "peak_positions_mlp",
         "peak_positions_cnf",
     )
     save_when = strax.SaveWhen.NEVER
-    __version__ = "0.0.0"
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
@@ -47,31 +47,3 @@ class PeakPositions(strax.MergeOnlyPlugin):
         for xy in ("x", "y"):
             result[xy] = peaks[f"{xy}_{algorithm}"]
         return result
-
-
-@export
-class PeakletPositions(PeakPositions):
-
-    __version__ = "0.0.0"
-    provides = "peaklet_positions"
-    depends_on = (
-        "peaklet_positions_mlp",
-        "peaklet_positions_cnf",
-    )
-
-    def compute(self, peaklets):
-        return super().compute(peaklets)
-
-
-@export
-class MergedS2sPositions(PeakPositions):
-
-    __version__ = "0.0.0"
-    provides = "merged_s2s_positions"
-    depends_on = (
-        "merged_s2s_positions_mlp",
-        "merged_s2s_positions_cnf",
-    )
-
-    def compute(self, merged_s2s):
-        return super().compute(merged_s2s)

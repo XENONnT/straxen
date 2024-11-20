@@ -16,7 +16,6 @@ class PeakletClassification(strax.Plugin):
 
     provides: Union[str, tuple] = "peaklet_classification"
     depends_on = "peaklets"
-    parallel = True
     dtype = strax.peak_interval_dtype + [("type", np.int8, "Classification of the peak(let)")]
 
     s1_risetime_area_parameters = straxen.URLConfig(

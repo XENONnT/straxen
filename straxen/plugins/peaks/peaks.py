@@ -22,7 +22,6 @@ class Peaks(strax.Plugin):
     depends_on: Union[Tuple[str, ...], str] = ("peaklets", "peaklet_classification", "merged_s2s")
     data_kind = "peaks"
     provides = "peaks"
-    parallel = True
     compressor = "zstd"
     save_when = strax.SaveWhen.EXPLICIT
 
