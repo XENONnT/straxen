@@ -1,10 +1,10 @@
 """Run with python tests/plugins/posrec_processing.py."""
 
 import os
-import strax
-import straxen
-from _core import PluginTestAccumulator, run_pytest_from_main
 import numpy as np
+import strax
+from _core import PluginTestAccumulator, run_pytest_from_main
+from straxen.plugins.peaklets._peaklet_positions_base import PeakletPositionsBase
 
 
 @PluginTestAccumulator.register("test_posrec_set_path")
@@ -73,8 +73,8 @@ def test_posrec_bad_configs_raising_errors(
     with self.assertRaises(FileNotFoundError):
         plugin.get_tf_model()
 
-    dummy_st.register(straxen.plugins.peaklets._peaklet_positions_base.PeakletPositionsBase)
-    plugin_name = strax.camel_to_snake("PeakletPositionsBase")
+    dummy_st.register(PeakletPositionsBase)
+    plugin_name = strax.camel_to_snake(PeakletPositionsBase.__name__)
     with self.assertRaises(NotImplementedError):
         dummy_st.get_single_plugin(self.run_id, plugin_name)
 
