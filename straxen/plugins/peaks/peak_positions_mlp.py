@@ -14,6 +14,6 @@ class PeakPositionsMLP(PeakPositionsBase):
         "peaklet_positions_mlp",
         "peaklet_classification",
         "merged_s2s",
-        "merged_s2s_positions_mlp",
+        "merged_s2_positions_mlp",
     )
     provides = "peak_positions_mlp"

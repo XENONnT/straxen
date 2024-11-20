@@ -14,6 +14,6 @@ class PeakPositionsGCN(PeakPositionsBase):
         "peaklet_positions_cnn",
         "peaklet_classification",
         "merged_s2s",
-        "merged_s2s_positions_cnn",
+        "merged_s2_positions_cnn",
     )
     provides = "peak_positions_cnn"
