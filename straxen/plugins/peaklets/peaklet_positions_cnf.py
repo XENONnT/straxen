@@ -178,19 +178,19 @@ class PeakletPositionsCNF(PeakletPositionsBase):
             contour_list.append(contour)
         return np.concatenate(xy_list, axis=0), np.concatenate(contour_list, axis=0)
 
-    def compute(self, peaks):
-        """Compute the position reconstruction for the given peaks.
+    def compute(self, peaklets):
+        """Compute the position reconstruction for the given peaklets.
 
         Args:
-            peaks: Input peak data
+            peaklets: Input peaklet data
 
         Returns:
             result: Array with reconstructed positions and uncertainties
 
         """
         # Initialize result array
-        result = np.ones(len(peaks), dtype=self.dtype)
-        result["time"], result["endtime"] = peaks["time"], strax.endtime(peaks)
+        result = np.ones(len(peaklets), dtype=self.dtype)
+        result["time"], result["endtime"] = peaklets["time"], strax.endtime(peaklets)
 
         # Set default values to NaN
         result[f"x_{self.algorithm}"] *= np.nan
@@ -199,14 +199,14 @@ class PeakletPositionsCNF(PeakletPositionsBase):
         result[f"r_uncertainty_{self.algorithm}"] *= np.nan
         result[f"theta_uncertainty_{self.algorithm}"] *= np.nan
 
-        # Keep large peaks only
-        peak_mask = peaks["area"] > self.min_reconstruction_area
-        if not np.sum(peak_mask):
+        # Keep large peaklets only
+        peaklet_mask = peaklets["area"] > self.min_reconstruction_area
+        if not np.sum(peaklet_mask):
             # Nothing to do, and .predict crashes on empty arrays
             return result
 
         # Prepare input data for the flow model
-        area_per_channel_top = peaks["area_per_channel"][peak_mask, 0 : self.n_top_pmts]
+        area_per_channel_top = peaklets["area_per_channel"][peaklet_mask, 0 : self.n_top_pmts]
         total_top_areas = np.sum(area_per_channel_top, axis=1)
         with np.errstate(divide="ignore", invalid="ignore"):
             flow_data = np.concatenate(
@@ -221,9 +221,9 @@ class PeakletPositionsCNF(PeakletPositionsBase):
         xy, contours = self.prediction_loop(flow_data)
 
         # Write output to the result array
-        result[f"x_{self.algorithm}"][peak_mask] = xy[:, 0]
-        result[f"y_{self.algorithm}"][peak_mask] = xy[:, 1]
-        result[f"position_contour_{self.algorithm}"][peak_mask] = contours
+        result[f"x_{self.algorithm}"][peaklet_mask] = xy[:, 0]
+        result[f"y_{self.algorithm}"][peaklet_mask] = xy[:, 1]
+        result[f"position_contour_{self.algorithm}"][peaklet_mask] = contours
 
         # Calculate uncertainties in r and theta
         r_array = np.linalg.norm(contours, axis=2)
@@ -236,7 +236,7 @@ class PeakletPositionsCNF(PeakletPositionsBase):
 
         theta_diff = self.calculate_theta_diff(theta_array, avg_theta)
 
-        result[f"r_uncertainty_{self.algorithm}"][peak_mask] = (r_max - r_min) / 2
-        result[f"theta_uncertainty_{self.algorithm}"][peak_mask] = np.abs(theta_diff) / 2
+        result[f"r_uncertainty_{self.algorithm}"][peaklet_mask] = (r_max - r_min) / 2
+        result[f"theta_uncertainty_{self.algorithm}"][peaklet_mask] = np.abs(theta_diff) / 2
 
         return result
