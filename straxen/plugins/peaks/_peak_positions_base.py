@@ -3,6 +3,7 @@ from .peaks import Peaks
 
 export, __all__ = strax.exporter()
 
+
 @export
 class PeakPositionsBase(Peaks):
 
