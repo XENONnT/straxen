@@ -1,13 +1,13 @@
 import strax
 import numpy as np
 
-from straxen.plugins.events.event_basics import EventBasics
+from straxen.plugins.events.event_basics_vanilla import EventBasicsVanilla
 
 export, __all__ = strax.exporter()
 
 
 @export
-class EventBasicsSOM(EventBasics):
+class EventBasicsSOM(EventBasicsVanilla):
     """Adds SOM fields for S1 and S2 peaks to event basics."""
 
     __version__ = "0.0.1"

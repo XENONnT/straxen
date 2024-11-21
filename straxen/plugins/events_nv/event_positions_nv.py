@@ -54,7 +54,7 @@ class nVETOEventPositions(strax.Plugin):
         angle = get_average_angle(hits_in_events, self.pmt_properties)
         event_angles["angle"] = angle
         compute_positions(event_angles, hits_in_events, self.pmt_properties)
-        strax.copy_to_buffer(events_nv, event_angles, f"_copy_events_nv")
+        strax.copy_to_buffer(events_nv, event_angles, "_copy_events_nv")
 
         return event_angles
 
