@@ -12,9 +12,3 @@ from .peaklet_positions_cnf import *
 
 from . import peaklet_positions_mlp
 from .peaklet_positions_mlp import *
-
-from . import peaklet_positions_cnn
-from .peaklet_positions_cnn import *
-
-from . import peaklet_positions_gcn
-from .peaklet_positions_gcn import *

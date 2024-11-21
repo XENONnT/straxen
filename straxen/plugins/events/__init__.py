@@ -55,12 +55,6 @@ from .event_position_uncertainty import *
 from . import event_s2_positions_mlp
 from .event_s2_positions_mlp import *
 
-from . import event_s2_positions_cnn
-from .event_s2_positions_cnn import *
-
-from . import event_s2_positions_gcn
-from .event_s2_positions_gcn import *
-
 from . import event_s1_positions_cnn
 from .event_s1_positions_cnn import *
 
