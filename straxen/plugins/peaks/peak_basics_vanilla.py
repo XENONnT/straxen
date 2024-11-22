@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakBasics(strax.Plugin):
+class PeakBasicsVanilla(strax.Plugin):
     """Compute the basic peak-properties, thereby dropping structured arrays.
 
     NB: This plugin can therefore be loaded as a pandas DataFrame.

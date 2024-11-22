@@ -1,11 +1,11 @@
 import strax
-from .peaks import Peaks
+from .peaks_vanilla import PeaksVanilla
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsBase(Peaks):
+class PeakPositionsBase(PeaksVanilla):
 
     __version__ = "0.0.0"
     child_plugin = True

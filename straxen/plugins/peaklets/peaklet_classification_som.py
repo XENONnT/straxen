@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.lib.recfunctions as rfn
 from scipy.spatial.distance import cdist
-from straxen.plugins.peaklets.peaklet_classification import PeakletClassification
+from straxen.plugins.peaklets.peaklet_classification_vanilla import PeakletClassificationVanilla
 import numba
 
 import strax
@@ -11,7 +11,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakletClassificationSOM(PeakletClassification):
+class PeakletClassificationSOM(PeakletClassificationVanilla):
     """
     Self-Organizing Maps (SOM)
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:lsanchez:unsupervised_neural_network_som_methods

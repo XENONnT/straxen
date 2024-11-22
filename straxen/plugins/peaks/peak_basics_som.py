@@ -1,12 +1,12 @@
 import numpy as np
 import strax
-from straxen.plugins.peaks.peak_basics import PeakBasics
+from straxen.plugins.peaks.peak_basics_vanilla import PeakBasicsVanilla
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakBasicsSOM(PeakBasics):
+class PeakBasicsSOM(PeakBasicsVanilla):
     """Adds SOM fields to peak basics to be propgated to event basics."""
 
     __version__ = "0.0.1"
