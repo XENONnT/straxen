@@ -87,7 +87,7 @@ def run_pytest_from_main():
     """Build new unit test for provided functions.
 
     For example, you might want to run it for a single module, in that case you don't want to run
-    ALL the tests. So you can do e.g. `python bayes_plugin.py` where we only collect the tests
+    ALL the tests. So you can do e.g. `python peak_building.py` where we only collect the tests
     defined in that module.
 
     """

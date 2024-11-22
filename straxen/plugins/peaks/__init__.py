@@ -45,6 +45,3 @@ from .peak_per_event import *
 
 from . import peak_corrections
 from .peak_corrections import *
-
-from . import peak_classification_bayes
-from .peak_classification_bayes import *

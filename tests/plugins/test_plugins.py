@@ -6,10 +6,9 @@ import os
 import inspect
 
 # Need import to attach new tests to the PluginTestAccumulator
-import bayes_plugin
-import event_building
 import peak_building
 import posrec_plugins
+import event_building
 import nv_processing
 import local_minimum_plugin
 

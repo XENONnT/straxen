@@ -21,7 +21,6 @@ corrections_w_file = [
     "s1_xyz_map_mlp",
     "fdc_map_mlp",
     "s1_aft_xyz_map",
-    "bayes_model",
 ]
 
 single_value_corrections = [

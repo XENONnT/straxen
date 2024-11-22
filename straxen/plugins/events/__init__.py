@@ -52,9 +52,6 @@ from .event_waveform import *
 from . import event_top_bottom_params
 from .event_top_bottom_params import *
 
-from . import event_w_bayes_class
-from .event_w_bayes_class import *
-
 from . import s2_recon_pos_diff
 from .s2_recon_pos_diff import *
 
