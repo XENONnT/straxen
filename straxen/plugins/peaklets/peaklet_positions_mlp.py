@@ -1,13 +1,13 @@
 import strax
 import straxen
-from ._peaklet_positions_base import PeakletPositionsBase
+from ._peaklet_positions_base import PeakletPositionsBaseNT
 
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakletPositionsMLP(PeakletPositionsBase):
+class PeakletPositionsMLP(PeakletPositionsBaseNT):
     """Multilayer Perceptron (MLP) neural net for position reconstruction."""
 
     __version__ = "0.0.0"

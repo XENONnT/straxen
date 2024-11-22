@@ -1,11 +1,11 @@
 import strax
-from straxen.plugins.peaks._peak_positions_base import PeakPositionsBase
+from straxen.plugins.peaks._peak_positions_base import PeakPositionsBaseNT
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakletPositions(PeakPositionsBase):
+class PeakletPositions(PeakPositionsBaseNT):
 
     __version__ = "0.0.0"
     child_plugin = True

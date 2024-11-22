@@ -5,7 +5,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsBase(Peaks):
+class PeakPositionsBaseNT(Peaks):
 
     __version__ = "0.0.0"
     child_plugin = True

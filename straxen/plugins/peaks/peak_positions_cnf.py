@@ -1,11 +1,11 @@
 import strax
-from ._peak_positions_base import PeakPositionsBase
+from ._peak_positions_base import PeakPositionsBaseNT
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsCNF(PeakPositionsBase):
+class PeakPositionsCNF(PeakPositionsBaseNT):
 
     __version__ = "0.0.0"
     child_plugin = True

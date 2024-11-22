@@ -1,13 +1,13 @@
 import numpy as np
 import strax
 import straxen
-from ._peaklet_positions_base import PeakletPositionsBase
+from ._peaklet_positions_base import PeakletPositionsBaseNT
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakletPositionsCNF(PeakletPositionsBase):
+class PeakletPositionsCNF(PeakletPositionsBaseNT):
     """Conditional Normalizing Flow for position reconstruction.
 
     This plugin reconstructs the position of peaklets using a conditional normalizing flow model.

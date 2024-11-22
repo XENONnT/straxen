@@ -9,7 +9,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakletPositionsBase(strax.Plugin):
+class PeakletPositionsBaseNT(strax.Plugin):
     """Base class for reconstructions.
 
     This class should only be used when subclassed for the different algorithms. Provides
