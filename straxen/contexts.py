@@ -29,6 +29,8 @@ common_opts: Dict[str, Any] = dict(
         straxen.EnergyEstimates,
         straxen.EventInfoDouble,
         straxen.DistinctChannels,
+        straxen.PeakPositionsMLP,
+        straxen.PeakPositionsCNF,
     ],
     check_available=("peak_basics", "event_basics"),
     store_run_fields=("name", "number", "start", "end", "livetime", "mode", "source"),

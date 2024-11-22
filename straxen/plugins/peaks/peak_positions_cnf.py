@@ -5,15 +5,15 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsMLP(PeakPositionsBase):
+class PeakPositionsCNF(PeakPositionsBase):
 
     __version__ = "0.0.0"
     child_plugin = True
-    algorithm = "mlp"
+    algorithm = "cnf"
     depends_on = (
-        "peaklet_positions_mlp",
+        "peaklet_positions_cnf",
         "peaklet_classification",
         "merged_s2s",
-        "merged_s2_positions_mlp",
+        "merged_s2_positions_cnf",
     )
-    provides = "peak_positions_mlp"
+    provides = "peak_positions_cnf"
