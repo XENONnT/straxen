@@ -1,3 +1,8 @@
+2.2.7 / 2024-11-26
+-------------------
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.6...v2.2.7
+
+
 2.2.6 / 2024-10-08
 -------------------
 * Specify strax version in pytest.yml by @chnlkx in https://github.com/XENONnT/straxen/pull/1431
