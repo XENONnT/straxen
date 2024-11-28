@@ -1,5 +1,4 @@
 import warnings
-
 import urllib
 import time
 from datetime import datetime
@@ -206,7 +205,7 @@ class SCADAInterface:
             # User specified a valid context and run_id, so get the start
             # and end time for our query:
             if isinstance(run_id, (list, tuple)):
-                run_id = np.sort(run_id)  # Do not trust the user's
+                run_id = strax.stable_sort(run_id)  # Do not trust the user's
                 start, _ = self.context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
                 _, end = self.context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
             else:
@@ -631,10 +630,10 @@ def convert_time_zone(df, tz):
     :return: pandas.DataFrame with converted time index.
 
     Notes:
-        1. ) The input pandas.DataFrame must be indexed via datetime
+        1.) The input pandas.DataFrame must be indexed via datetime
         objects which are timezone aware.
 
-        2.)  You can find a complete list of available timezones via:
+        2.) You can find a complete list of available timezones via:
         ```
         import pytz
         pytz.all_timezones

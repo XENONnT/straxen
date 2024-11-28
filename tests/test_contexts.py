@@ -1,11 +1,8 @@
 """For all of the context, do a quick check to see that we are able to search a field (i.e. can
 build the dependencies in the context correctly) See issue #233 and PR #236."""
 
-import os
 import unittest
-import tempfile
 import straxen
-from straxen.contexts import xenon1t_dali, xenon1t_led, fake_daq, demo
 from straxen.contexts import xenonnt_led, xenonnt_online, xenonnt
 
 
@@ -78,48 +75,9 @@ def test_cmt_versions():
             pass
     print(
         f"This straxen version works with {success_for} but is "
-        f"incompatible with {set(cmt_versions)-set(success_for)}"
+        f"incompatible with {set(cmt_versions) - set(success_for)}"
     )
 
     test = unittest.TestCase()
     # We should always work for one offline and the online version
     test.assertTrue(len(success_for) >= 2)
-
-
-##
-# XENON1T
-##
-
-
-def test_xenon1t_dali():
-    st = xenon1t_dali()
-    st.search_field("time")
-
-
-def test_demo():
-    """Test the demo context.
-
-    Since we download the folder to the current working directory, make sure we are in a tempfolder
-    where we can write the data to
-
-    """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        try:
-            print("Temporary directory is ", temp_dir)
-            os.chdir(temp_dir)
-            st = demo()
-            st.search_field("time")
-        # On windows, you cannot delete the current process'
-        # working directory, so we have to chdir out first.
-        finally:
-            os.chdir("..")
-
-
-def test_fake_daq():
-    st = fake_daq()
-    st.search_field("time")
-
-
-def test_xenon1t_led():
-    st = xenon1t_led()
-    st.search_field("time")

@@ -6,7 +6,7 @@ import numpy as np
 import strax
 import straxen
 import shutil
-from straxen.test_utils import nt_test_run_id as test_run_id_nT
+from straxen.test_utils import nt_test_context, nt_test_run_id
 from straxen import VetoIntervals, VetoProximity
 
 
@@ -189,14 +189,13 @@ class DummyEventBasics(strax.Plugin):
 
 class TestAqmonProcessing(TestCase):
     def setUp(self) -> None:
-        st = straxen.test_utils.nt_test_context().new_context()
+        st = nt_test_context()
         # I'm going to deregister all plugins, since I don't want to
         # get a thousand warnings that some config is not used, make
         # sure to mark all configs as "free options".
         st.set_context_config({"free_options": list(st.config.keys())})
         st._plugin_class_registry = {}
 
-        st.set_config(dict(veto_proximity_window=10**99))
         self.TOTAL_DEADTIME: List = []
         self.TOTAL_SIGNALS: List = []
 
@@ -216,7 +215,7 @@ class TestAqmonProcessing(TestCase):
         st.register(DummyVp)
         st.register(DummyEventBasics)
         self.st = st
-        self.run_id = test_run_id_nT
+        self.run_id = nt_test_run_id
         self.assertFalse(np.sum(self.TOTAL_DEADTIME))
         self.assertFalse(st.is_stored(self.run_id, "aqmon_hits"))
         self.assertFalse(st.is_stored(self.run_id, "veto_intervals"))

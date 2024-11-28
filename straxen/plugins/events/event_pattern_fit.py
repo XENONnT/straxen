@@ -506,7 +506,7 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     """Modified poisson distribution with proper normalization for shifted poisson.
 
     mu - expected number of photons per channel
-    areas  - observed areas per channel
+    areas - observed areas per channel
     mean_pe_photon - mean of area responce for one photon
 
     """
@@ -567,7 +567,11 @@ def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
     """Get close to <target> by doing a numeric derivative."""
     if abs(y1 - y0) < err:
         # break by passing dx == 0
-        return 0.0, x1, x1
+        if abs(y0 - target) < abs(y1 - target):
+            x = x0
+        else:
+            x = x1
+        return 0.0, x, x
 
     x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
     x = min(x, x_max)
@@ -682,7 +686,8 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
             # TODO:
             # binomial_test = binomtest(
-            #     k=round(area_top), n=round(area_tot), p=aft_prob, alternative='two-sided').pvalue
+            #     k=round(area_top), n=round(area_tot), p=aft_prob, alternative="two-sided"
+            # ).pvalue
         else:
             binomial_test = binom_test(area_top, area_tot, aft_prob)
 

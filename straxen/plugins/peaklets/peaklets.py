@@ -1,9 +1,8 @@
 from typing import Dict, Tuple, Union
-
 import numba
 import numpy as np
-import strax
 from immutabledict import immutabledict
+import strax
 from strax.processing.general import _touching_windows
 from strax.dtypes import DIGITAL_SUM_WAVEFORM_CHANNEL
 import straxen
@@ -40,7 +39,7 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
-    __version__ = "1.1.0"
+    __version__ = "1.2.0"
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False, help="No hits for this many ns triggers a new peak"
@@ -116,8 +115,12 @@ class Peaklets(strax.Plugin):
 
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
 
-    sum_waveform_top_array = straxen.URLConfig(
-        default=True, type=bool, help="Digitize the sum waveform of the top array separately"
+    store_data_top = straxen.URLConfig(
+        default=True, type=bool, help="Save the sum waveform of the top array separately"
+    )
+
+    store_data_start = straxen.URLConfig(
+        default=True, type=bool, help="Save the start time of the waveform with 10 ns dt"
     )
 
     saturation_correction_on = straxen.URLConfig(
@@ -171,7 +174,8 @@ class Peaklets(strax.Plugin):
         return dict(
             peaklets=strax.peak_dtype(
                 n_channels=self.n_tpc_pmts,
-                digitize_top=self.sum_waveform_top_array,
+                store_data_top=self.store_data_top,
+                store_data_start=self.store_data_start,
             ),
             lone_hits=strax.hit_dtype,
         )
@@ -192,9 +196,7 @@ class Peaklets(strax.Plugin):
         self.channel_range = self.channel_map["tpc"]
 
     def compute(self, records, start, end):
-        r = records
-
-        hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
+        hits = strax.find_hits(records, min_amplitude=self.hit_thresholds)
 
         # Remove hits in zero-gain channels
         # they should not affect the clustering!
@@ -212,7 +214,9 @@ class Peaklets(strax.Plugin):
             right_extension=self.peak_right_extension,
             min_channels=self.peak_min_pmts,
             # NB, need to have the data_top field here, will discard if not digitized later
-            result_dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True),
+            result_dtype=strax.peak_dtype(
+                n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
+            ),
             max_duration=self.peaklet_max_duration,
         )
 
@@ -233,6 +237,8 @@ class Peaklets(strax.Plugin):
             save_outside_hits=(self.peak_left_extension, self.peak_right_extension),
             n_channels=len(self.to_pe),
         )
+        if np.any(lone_hits["right_integration"] - lone_hits["left_integration"] <= 0):
+            raise ValueError("Find lone_hits with non-positive length!")
 
         # Compute basic peak properties -- needed before natural breaks
         hits = hits[~is_lone_hit]
@@ -260,14 +266,19 @@ class Peaklets(strax.Plugin):
         hitlets["length"] = hitlets["right_integration"] - hitlets["left_integration"]
 
         hitlets = strax.sort_by_time(hitlets)
-        hitlets_time = np.copy(hitlets["time"])
         self.clip_peaklet_times(hitlets, start, end)
         rlinks = strax.record_links(records)
 
-        # If sum_waveform_top_array is false, don't digitize the top array
-        n_top_pmts_if_digitize_top = self.n_top_pmts if self.sum_waveform_top_array else -1
+        # If store_data_top is false, don't digitize the top array
+        _n_top_pmts = self.n_top_pmts if self.store_data_top else -1
         strax.sum_waveform(
-            peaklets, hitlets, r, rlinks, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top
+            peaklets,
+            hitlets,
+            records,
+            rlinks,
+            self.to_pe,
+            n_top_channels=_n_top_pmts,
+            store_data_start=self.store_data_start,
         )
 
         strax.compute_widths(peaklets)
@@ -278,7 +289,7 @@ class Peaklets(strax.Plugin):
         peaklets = strax.split_peaks(
             peaklets,
             hitlets,
-            r,
+            records,
             rlinks,
             self.to_pe,
             algorithm="natural_breaks",
@@ -287,28 +298,25 @@ class Peaklets(strax.Plugin):
             filter_wing_width=self.peak_split_filter_wing_width,
             min_area=self.peak_split_min_area,
             do_iterations=self.peak_split_iterations,
-            n_top_channels=n_top_pmts_if_digitize_top,
+            n_top_channels=_n_top_pmts,
+            store_data_start=self.store_data_start,
         )
 
         # Saturation correction using non-saturated channels
         # similar method used in pax
         # see https://github.com/XENON1T/pax/pull/712
-        # Cases when records is not writeable for unclear reason
-        # only see this when loading 1T test data
-        # more details on https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html
-        if not r["data"].flags.writeable:
-            r = r.copy()
 
         if self.saturation_correction_on:
             peak_list = peak_saturation_correction(
-                r,
+                records,
                 rlinks,
                 peaklets,
                 hitlets,
                 self.to_pe,
                 reference_length=self.saturation_reference_length,
                 min_reference_length=self.saturation_min_reference_length,
-                n_top_channels=n_top_pmts_if_digitize_top,
+                n_top_channels=_n_top_pmts,
+                store_data_start=self.store_data_start,
             )
 
             # Compute the width again for corrected peaks
@@ -319,14 +327,8 @@ class Peaklets(strax.Plugin):
         # (a) doing hitfinding yet again (or storing hits)
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
-        hitlet_time_shift = (hitlets["left"] - hitlets["left_integration"]) * hitlets["dt"]
-        hit_max_times = (
-            hitlets_time + hitlet_time_shift
-        )  # add time shift again to get correct maximum
-        hit_max_times += hitlets["dt"] * hit_max_sample(records, hitlets)
-
-        hit_max_times_argsort = np.argsort(hit_max_times)
-        sorted_hit_max_times = hit_max_times[hit_max_times_argsort]
+        hit_max_times_argsort = strax.stable_argsort(hitlets["max_time"])
+        sorted_hit_max_times = hitlets["max_time"][hit_max_times_argsort]
         sorted_hit_channels = hitlets["channel"][hit_max_times_argsort]
         peaklet_max_times = peaklets["time"] + np.argmax(peaklets["data"], axis=1) * peaklets["dt"]
         peaklets["tight_coincidence"] = get_tight_coin(
@@ -339,10 +341,10 @@ class Peaklets(strax.Plugin):
         )
 
         # Add max and min time difference between apexes of hits
-        self.add_hit_features(hitlets, hit_max_times, peaklets)
+        self.add_hit_features(hitlets, peaklets)
 
-        if self.diagnose_sorting and len(r):
-            assert np.diff(r["time"]).min(initial=1) >= 0, "Records not sorted"
+        if self.diagnose_sorting and len(records):
+            assert np.diff(records["time"]).min(initial=1) >= 0, "Records not sorted"
             assert np.diff(hitlets["time"]).min(initial=1) >= 0, "Hits/Hitlets not sorted"
             assert np.all(
                 peaklets["time"][1:] >= strax.endtime(peaklets)[:-1]
@@ -353,9 +355,9 @@ class Peaklets(strax.Plugin):
         counts = np.diff(counts, axis=1).flatten()
         peaklets["n_hits"] = counts
 
-        # Drop the data_top field
-        if n_top_pmts_if_digitize_top <= 0:
-            peaklets = drop_data_top_field(peaklets, self.dtype_for("peaklets"))
+        # Drop the data_top or data_start field
+        if (_n_top_pmts <= 0) or (not self.store_data_start):
+            peaklets = drop_data_field(peaklets, self.dtype_for("peaklets"))
 
         # Check channel of peaklets
         peaklets_unique_channel = np.unique(peaklets["channel"])
@@ -416,24 +418,11 @@ class Peaklets(strax.Plugin):
         return outside_peaks
 
     @staticmethod
-    def add_hit_features(hitlets, hit_max_times, peaklets):
-        """Create hits timing features.
-
-        :param hitlets_max: hitlets with only max height time.
-        :param peaklets: Peaklets for which intervals should be computed.
-        :return: array of peaklet_timing dtype.
-
-        """
-        hits_w_max = np.zeros(
-            len(hitlets),
-            strax.merged_dtype([np.dtype([("max_time", np.int64)]), np.dtype(strax.time_fields)]),
-        )
-        hits_w_max["time"] = hitlets["time"]
-        hits_w_max["endtime"] = strax.endtime(hitlets)
-        hits_w_max["max_time"] = hit_max_times
-        split_hits = strax.split_by_containment(hits_w_max, peaklets)
+    def add_hit_features(hitlets, peaklets):
+        """Create hits timing features."""
+        split_hits = strax.split_by_containment(hitlets, peaklets)
         for peaklet, h_max in zip(peaklets, split_hits):
-            max_time_diff = np.diff(np.sort(h_max["max_time"]))
+            max_time_diff = np.diff(strax.stable_sort(h_max["max_time"]))
             if len(max_time_diff) > 0:
                 peaklet["max_diff"] = max_time_diff.max()
                 peaklet["min_diff"] = max_time_diff.min()
@@ -442,12 +431,12 @@ class Peaklets(strax.Plugin):
                 peaklet["min_diff"] = -1
 
 
-def drop_data_top_field(peaklets, goal_dtype, _name_function="_drop_data_top_field"):
-    """Return peaklets without the data_top field."""
-    peaklets_without_top_field = np.zeros(len(peaklets), dtype=goal_dtype)
-    strax.copy_to_buffer(peaklets, peaklets_without_top_field, _name_function)
+def drop_data_field(peaklets, goal_dtype, _name_function="_drop_data_field"):
+    """Return peaklets without the data_* field."""
+    peaklets_without_field = np.zeros(len(peaklets), dtype=goal_dtype)
+    strax.copy_to_buffer(peaklets, peaklets_without_field, _name_function)
     del peaklets
-    return peaklets_without_top_field
+    return peaklets_without_field
 
 
 @numba.jit(nopython=True, nogil=True, cache=False)
@@ -461,6 +450,7 @@ def peak_saturation_correction(
     min_reference_length=20,
     use_classification=False,
     n_top_channels=0,
+    store_data_start=False,
 ):
     """Correct the area and per pmt area of peaks from saturation.
 
@@ -475,6 +465,8 @@ def peak_saturation_correction(
         samples
     :param use_classification: Option of using classification to pick only S2
     :param n_top_channels: Number of top array channels.
+    :param store_data_start: Boolean which indicates whether to store the first samples of the
+        waveform in the peak.
 
     """
 
@@ -548,7 +540,16 @@ def peak_saturation_correction(
         peaks[peak_i]["length"] = p["length"] * p["dt"] / dt
         peaks[peak_i]["dt"] = dt
 
-    strax.sum_waveform(peaks, hitlets, records, rlinks, to_pe, n_top_channels, peak_list)
+    strax.sum_waveform(
+        peaks,
+        hitlets,
+        records,
+        rlinks,
+        to_pe,
+        n_top_channels,
+        store_data_start,
+        select_peaks_indices=peak_list,
+    )
     return peak_list
 
 
@@ -685,14 +686,3 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right, chan
         n_coin_channel[p_i] = np.sum(channels_seen)
 
     return n_coin_channel
-
-
-@numba.njit(cache=True, nogil=True)
-def hit_max_sample(records, hits):
-    """Return the index of the maximum sample for hits."""
-    result = np.zeros(len(hits), dtype=np.int16)
-    for i, h in enumerate(hits):
-        r = records[h["record_i"]]
-        w = r["data"][h["left"] : h["right"]]
-        result[i] = np.argmax(w)
-    return result

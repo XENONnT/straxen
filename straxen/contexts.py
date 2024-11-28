@@ -1,41 +1,41 @@
 import os
 import warnings
-from copy import deepcopy
 from typing import Dict, Any, List, Optional
 from immutabledict import immutabledict
 import socket
 
-from pandas.util._decorators import deprecate_kwarg
 import strax
 import straxen
 
 from straxen import HAVE_ADMIX
 
 common_opts: Dict[str, Any] = dict(
-    register_all=[],
-    # Register all peak/pulse processing by hand as 1T does not need to have
-    # the high-energy plugins.
+    register_all=[straxen.plugins],
     register=[
         straxen.PulseProcessing,
         straxen.Peaklets,
-        straxen.PeakletClassification,
+        straxen.PeakletClassificationSOM,
         straxen.MergedS2s,
-        straxen.Peaks,
-        straxen.PeakBasics,
+        straxen.PeaksSOM,
+        straxen.PeakBasicsSOM,
         straxen.PeakProximity,
         straxen.Events,
-        straxen.EventBasics,
+        straxen.EventBasicsSOM,
         straxen.EventPositions,
         straxen.CorrectedAreas,
         straxen.EnergyEstimates,
         straxen.EventInfoDouble,
         straxen.DistinctChannels,
+        straxen.PeakPositionsMLP,
+        straxen.PeakPositionsCNF,
     ],
     check_available=("peak_basics", "event_basics"),
     store_run_fields=("name", "number", "start", "end", "livetime", "mode", "source"),
+    use_per_run_defaults=False,
 )
 
-xnt_common_config = dict(
+
+common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
     gain_model="list-to-array://"
@@ -71,7 +71,7 @@ xnt_common_config = dict(
         aqmon_nv=(808, 815),  # nveto acquisition monitor
         tpc_blank=(999, 999),
         mv=(1000, 1083),
-        aux_mv=(1084, 1087),  # Aux mv channel 2 empty  1 pulser and 1 GPS
+        aux_mv=(1084, 1087),  # Aux mv channel 2 empty 1 pulser and 1 GPS
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999),
@@ -188,10 +188,6 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     return _include_rucio_local, __rucio_local_path
 
 
-@deprecate_kwarg("_minimum_run_number", "minimum_run_number")
-@deprecate_kwarg("_maximum_run_number", "maximum_run_number")
-@deprecate_kwarg("_include_rucio_remote", "include_rucio_remote")
-@deprecate_kwarg("_add_online_monitor_frontend", "include_online_monitor")
 def xenonnt_online(
     output_folder: str = "./strax_data",
     we_are_the_daq: bool = False,
@@ -213,7 +209,6 @@ def xenonnt_online(
         "/project/lgrandi/xenonnt/processed",
     ],
     # Testing options
-    _context_config_overwrite: Optional[dict] = None,
     _database_init: bool = True,
     _forbid_creation_of: Optional[dict] = None,
     **kwargs,
@@ -235,7 +230,6 @@ def xenonnt_online(
     :param _rucio_local_path: str, path of local RSE of rucio. Only use for testing!
     :param _raw_paths: list[str], common path of the raw-data
     :param _processed_paths: list[str]. common paths of output data
-    :param _context_config_overwrite: dict, overwrite config
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form being written (raw_records*
         is always forbidden).
@@ -243,9 +237,9 @@ def xenonnt_online(
     :return: strax.Context
 
     """
-    context_options = {**straxen.contexts.xnt_common_opts, **kwargs}
+    context_options = {**straxen.contexts.common_opts, **kwargs}
 
-    st = strax.Context(config=straxen.contexts.xnt_common_config, **context_options)
+    st = strax.Context(config=straxen.contexts.common_config, **context_options)
     st.register(
         [
             straxen.DAQReader,
@@ -352,7 +346,7 @@ def xenonnt_led(**kwargs):
     st.set_context_config(
         {
             "check_available": ("raw_records", "led_calibration"),
-            "free_options": list(xnt_common_config.keys()),
+            "free_options": list(common_config.keys()),
         }
     )
     # Return a new context with only raw_records and led_calibration registered
@@ -369,28 +363,3 @@ def xenonnt_led(**kwargs):
     )
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
-
-
-##
-# XENON1T, see straxen/legacy
-##
-
-
-def demo():
-    """Return strax context used in the straxen demo notebook."""
-    return straxen.legacy.contexts_1t.demo()
-
-
-def fake_daq():
-    """Context for processing fake DAQ data in the current directory."""
-    return straxen.legacy.contexts_1t.fake_daq()
-
-
-def xenon1t_dali(output_folder="./strax_data", build_lowlevel=False, **kwargs):
-    return straxen.legacy.contexts_1t.xenon1t_dali(
-        output_folder=output_folder, build_lowlevel=build_lowlevel, **kwargs
-    )
-
-
-def xenon1t_led(**kwargs):
-    return straxen.legacy.contexts_1t.xenon1t_led(**kwargs)

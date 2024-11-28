@@ -8,7 +8,13 @@ export, __all__ = strax.exporter()
 
 @export
 class LEDAfterpulseProcessing(strax.Plugin):
-    __version__ = "0.5.1"
+    """Plugin for processing LED afterpulses.
+
+    Detect LED pulses and afterpulses (APs) in raw_records waveforms. Compute the AP datatype.
+
+    """
+
+    __version__ = "0.6.0"
     depends_on = "raw_records"
     data_kind = "afterpulses"
     provides = "afterpulses"
@@ -26,16 +32,22 @@ class LEDAfterpulseProcessing(strax.Plugin):
         help="Number of PMTs in TPC",
     )
 
-    LED_window_left = straxen.URLConfig(
+    LED_hit_left_boundary = straxen.URLConfig(
         default=50,
         infer_type=False,
-        help="Left boundary of sample range for LED pulse integration",
+        help="Left boundary after which the first hit marks the position of the LED window",
     )
 
-    LED_window_right = straxen.URLConfig(
-        default=100,
+    LED_hit_right_boundary = straxen.URLConfig(
+        default=110,
         infer_type=False,
-        help="Right boundary of sample range for LED pulse integration",
+        help="Right boundary after which the LED hit will no longer be searched",
+    )
+
+    LED_window_width = straxen.URLConfig(
+        default=20,
+        infer_type=False,
+        help="Width of the window in which hits are merged into the LED hit after the first hit",
     )
 
     baseline_samples = straxen.URLConfig(
@@ -101,8 +113,9 @@ class LEDAfterpulseProcessing(strax.Plugin):
         hits_ap = find_ap(
             hits,
             records,
-            LED_window_left=self.LED_window_left,
-            LED_window_right=self.LED_window_right,
+            LED_hit_left_boundary=self.LED_hit_left_boundary,
+            LED_hit_right_boundary=self.LED_hit_right_boundary,
+            LED_window_width=self.LED_window_width,
             hit_left_extension=self.hit_left_extension,
             hit_right_extension=self.hit_right_extension,
         )
@@ -115,20 +128,62 @@ class LEDAfterpulseProcessing(strax.Plugin):
 
 @export
 def find_ap(
-    hits, records, LED_window_left, LED_window_right, hit_left_extension, hit_right_extension
+    hits,
+    records,
+    LED_hit_left_boundary,
+    LED_hit_right_boundary,
+    LED_window_width,
+    hit_left_extension,
+    hit_right_extension,
 ):
+    """Find afterpulses (APs) in the given hits data within specified LED hit boundaries and
+    extensions.
+
+    Parameters
+    ----------
+    hits :
+        Array containing hit data.
+    records :
+        Array containing record data.
+    LED_hit_left_boundary :
+        Left boundary of the LED hit window.
+    LED_hit_right_boundary :
+        Right boundary of the LED hit window.
+    LED_window_width :
+        Extension to the right of the first hit found in the LED hit window
+        within which hits are merged into the LED hit.
+    hit_left_extension :
+        Extension to the left of the hit window.
+    hit_right_extension :
+        Extension to the right of the hit window.
+
+    Returns
+    -------
+    Array containing afterpulse data.
+
+    Notes
+    -----
+    - Hits to the left of the LED_hit_left_boundary are ignored.
+    - If no hit is found between LED_hit_left_boundary and LED_hit_right_boundary
+    the record is skipped.
+    - The merged LED hits are also saved and can be selected for by having
+    t_delay = 0 by definition.
+
+    """
+
     buffer = np.zeros(len(hits), dtype=dtype_afterpulses())
 
     if not len(hits):
         return buffer
 
     # sort hits first by record_i, then by time
-    hits_sorted = np.sort(hits, order=("record_i", "time"))
+    hits_sorted = strax.stable_sort(hits, order=("record_i", "time"))
     res = _find_ap(
         hits_sorted,
         records,
-        LED_window_left,
-        LED_window_right,
+        LED_hit_left_boundary,
+        LED_hit_right_boundary,
+        LED_window_width,
         hit_left_extension,
         hit_right_extension,
         buffer=buffer,
@@ -140,8 +195,9 @@ def find_ap(
 def _find_ap(
     hits,
     records,
-    LED_window_left,
-    LED_window_right,
+    LED_hit_left_boundary,
+    LED_hit_right_boundary,
+    LED_window_width,
     hit_left_extension,
     hit_right_extension,
     buffer=None,
@@ -150,7 +206,8 @@ def _find_ap(
     offset = 0
 
     is_LED = False
-    t_LED = None
+    t_LED = None  # The position of the total LED pulse.
+    t_LED_window = None  # The position that defines the LED integration window.
 
     prev_record_i = hits[0]["record_i"]
     record_data = records[prev_record_i]["data"]
@@ -171,31 +228,36 @@ def _find_ap(
 
         res = buffer[offset]
 
-        if h["left"] < LED_window_left:
-            # if hit is before LED window: discard
+        if h["left"] < LED_hit_left_boundary:
+            # if hit is before LED hit window: discard
             continue
 
-        if h["left"] < LED_window_right:
-            # hit is in LED window
-            if not is_LED:
-                # this is the first hit in the LED window
-                fill_hitpars(
-                    res,
-                    h,
-                    hit_left_extension,
-                    hit_right_extension,
-                    record_data,
-                    record_len,
-                    baseline_fpart,
-                )
+        if (h["left"] < LED_hit_right_boundary) and not is_LED:
+            # this is the first hit in the LED hit window
+            fill_hitpars(
+                res,
+                h,
+                hit_left_extension,
+                hit_right_extension,
+                record_data,
+                record_len,
+                baseline_fpart,
+            )
 
-                # set the LED time in the current WF
-                t_LED = res["sample_10pc_area"]
-                is_LED = True
+            t_LED_window = res[
+                "sample_10pc_area"
+            ]  # Set it to the first hit in the LED hit boundary.
+            t_LED = res["sample_10pc_area"]
+            is_LED = True
 
-                continue
+            continue
 
-            # more hits in LED window: extend the first (merging all hits in the LED window)
+        if not is_LED:
+            # No hit found in the LED hit window: skip to next record
+            continue
+
+        if h["left"] < (t_LED_window + LED_window_width):
+            # This hit is still inside the LED window: extend the LED hit
             fill_hitpars(
                 res,
                 h,
@@ -207,14 +269,12 @@ def _find_ap(
                 extend=True,
             )
 
+            # set the LED time in the current WF
             t_LED = res["sample_10pc_area"]
 
             continue
 
         # Here begins a new hit after the LED window
-        if (h["left"] >= LED_window_right) and not is_LED:
-            # no LED hit found: ignore and go to next hit (until new record begins)
-            continue
 
         # if a hit is completely inside the previous hit's right_extension,
         # then skip it (because it's already included in the previous hit)
@@ -244,7 +304,13 @@ def _find_ap(
         res = buffer[offset]
 
         fill_hitpars(
-            res, h, hit_left_extension, hit_right_extension, record_data, record_len, baseline_fpart
+            res,
+            h,
+            hit_left_extension,
+            hit_right_extension,
+            record_data,
+            record_len,
+            baseline_fpart,
         )
 
         res["tdelay"] = res["sample_10pc_area"] - t_LED
@@ -255,7 +321,27 @@ def _find_ap(
 @export
 @numba.jit(nopython=True, nogil=True, cache=True)
 def get_sample_area_quantile(data, quantile, baseline_fpart):
-    """Returns first sample index in hit where integrated area of hit is above total area."""
+    """Return the index of the first sample in the hit where the integrated area of the hit to that
+    index is above the specified quantile of the total area.
+
+    Parameters:
+    - data :
+        Array containing the baselined waveform data of the hit.
+    - quantile :
+        The quantile (0 to 1) representing the threshold for the area.
+    - baseline_fpart :
+        Fractional part of the baseline (baseline % 1) of the record
+
+    Return:
+    - int: The index of the first sample where the area exceeds the quantile of the total area.
+           If no such sample is found, returns 0.
+
+    Notes:
+    - If no quantile is found where the area exceeds the threshold, it returns 0. This is
+    usually caused by real events in the baseline window, which can result in a negative
+    area.
+
+    """
 
     area = 0
     area_tot = data.sum() + len(data) * baseline_fpart
@@ -320,7 +406,12 @@ def fill_hitpars(
 
 @export
 def dtype_afterpulses():
-    # define new data type for afterpulse data
+    """The afterpulse datatype.
+
+    Return:
+    - The afterpulse datatype
+
+    """
     dtype_ap = [
         (("Channel/PMT number", "channel"), "<i2"),
         (("Time resolution in ns", "dt"), "<i2"),
@@ -329,16 +420,46 @@ def dtype_afterpulses():
         (("Integral in ADC x samples", "area"), "<i4"),
         (("Pulse area in PE", "area_pe"), "<f4"),
         (("Sample index in which hit starts", "left"), "<i2"),
-        (("Sample index in which hit area succeeds 10% of total area", "sample_10pc_area"), "<i2"),
-        (("Sample index in which hit area succeeds 50% of total area", "sample_50pc_area"), "<i2"),
+        (
+            (
+                "Sample index in which hit area succeeds 10% of total area",
+                "sample_10pc_area",
+            ),
+            "<i2",
+        ),
+        (
+            (
+                "Sample index in which hit area succeeds 50% of total area",
+                "sample_50pc_area",
+            ),
+            "<i2",
+        ),
         (("Sample index of hit maximum", "max"), "<i2"),
-        (("Index of first sample in record just beyond hit (exclusive bound)", "right"), "<i2"),
+        (
+            (
+                "Index of first sample in record just beyond hit (exclusive bound)",
+                "right",
+            ),
+            "<i2",
+        ),
         (("Height of hit in ADC counts", "height"), "<i4"),
         (("Height of hit in PE", "height_pe"), "<f4"),
         (("Delay of hit w.r.t. LED hit in same WF, in samples", "tdelay"), "<i2"),
-        (("Internal (temporary) index of fragment in which hit was found", "record_i"), "<i4"),
-        (("Index of sample in record where integration starts", "left_integration"), np.int16),
-        (("Index of first sample beyond integration region", "right_integration"), np.int16),
+        (
+            (
+                "Internal (temporary) index of fragment in which hit was found",
+                "record_i",
+            ),
+            "<i4",
+        ),
+        (
+            ("Index of sample in record where integration starts", "left_integration"),
+            np.int16,
+        ),
+        (
+            ("Index of first sample beyond integration region", "right_integration"),
+            np.int16,
+        ),
         (("ADC threshold applied in order to find hits", "threshold"), np.float32),
     ]
     return dtype_ap

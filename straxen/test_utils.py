@@ -1,7 +1,6 @@
 import io
 import os
 from warnings import warn
-from os import environ as os_environ
 from typing import Tuple
 import tarfile
 from immutabledict import immutabledict
@@ -65,7 +64,12 @@ def is_installed(module):
 @export
 def _is_on_pytest():
     """Check if we are on a pytest."""
-    return "PYTEST_CURRENT_TEST" in os_environ
+    return "PYTEST_CURRENT_TEST" in os.environ
+
+
+@export
+def mongo_uri_not_set():
+    return "TEST_MONGO_URI" not in os.environ
 
 
 def _get_fake_daq_reader():
@@ -108,14 +112,19 @@ def nt_test_context(
         "012882-raw_records-z7q2d2ye2t.tar"
     )
     if keep_default_storage:
-        st.storage += [strax.DataDirectory("./strax_test_data")]
+        st.storage += [strax.DataDirectory("./strax_test_data", deep_scan=True)]
     else:
-        st.storage = [strax.DataDirectory("./strax_test_data")]
+        st.storage = [strax.DataDirectory("./strax_test_data", deep_scan=True)]
     assert st.is_stored(nt_test_run_id, "raw_records"), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)
     for plugin in to_remove:
         del st._plugin_class_registry[plugin]
+
+    # Change the led_plugin default_run_comments to be compatible
+    # with the test run_id in straxen.
+    st.set_config({"default_run_comments": ["S1-only"]})
+
     return st
 
 
@@ -136,7 +145,7 @@ def create_unique_intervals(size, time_range=(0, 40), allow_zero_length=True):
 
 
 def _convert_to_interval(time_stamps, allow_zero_length):
-    time_stamps = np.sort(time_stamps)
+    time_stamps = strax.stable_sort(time_stamps)
     intervals = np.zeros(len(time_stamps) // 2, strax.time_dt_fields)
     intervals["dt"] = 1
     intervals["time"] = time_stamps[::2]
@@ -205,9 +214,6 @@ class DummyRawRecords(strax.Plugin):
             rr = np.copy(r)
             # Add detector specific channel offset:
             for key, channel_key in self.channel_map_keys.items():
-                if channel_key not in self.config["channel_map"]:
-                    # Channel map for 1T is different.
-                    continue
                 if p.endswith(key):
                     first_channel, last_channel = self.config["channel_map"][channel_key]
                     rr["channel"] += first_channel

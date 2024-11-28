@@ -55,8 +55,6 @@ class nVETOHitlets(strax.Plugin):
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
             "Specify as a tuple of length n_nveto_pmts, or a number, "
-            'or a string like "pmt_commissioning_initial" which means calling '
-            "hitfinder_thresholds.py, "
             "or a tuple like (correction=str, version=str, nT=boolean), "
             "which means we are using cmt."
         ),
@@ -81,30 +79,10 @@ class nVETOHitlets(strax.Plugin):
         ),
     )
 
-    entropy_template_nv = straxen.URLConfig(
-        default="flat",
-        track=True,
-        infer_type=False,
-        help=(
-            'Template data is compared with in conditional entropy. Can be either "flat" or an '
-            "template array."
-        ),
-    )
-
-    entropy_square_data_nv = straxen.URLConfig(
-        default=False,
-        track=True,
-        infer_type=False,
-        help=(
-            "Parameter which decides if data is first squared before normalized and compared to "
-            "the template."
-        ),
-    )
-
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
-        help="immutabledict mapping subdetector to (min, max) channel number.",
+        help="immutabledict mapping subdetector to (min, max) " "channel number.",
     )
 
     gain_model_nv = straxen.URLConfig(
@@ -165,8 +143,6 @@ class nVETOHitlets(strax.Plugin):
         # Compute other hitlet properties:
         # We have to loop here 3 times over all hitlets...
         strax.hitlet_properties(temp_hitlets)
-        entropy = strax.conditional_entropy(temp_hitlets, template="flat", square_data=False)
-        temp_hitlets["entropy"][:] = entropy
 
         # Remove data field:
         hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
@@ -174,15 +150,15 @@ class nVETOHitlets(strax.Plugin):
         return strax.sort_by_time(hitlets)
 
 
-def remove_switched_off_channels(hits, to_pe):
-    """Removes hits which were found in a channel without any gain.
+def remove_switched_off_channels(records, to_pe):
+    """Removes records of channels which gain was set to zero.
 
-    :param hits: Hits found in records.
+    :param records Hits found in records.
     :param to_pe: conversion factor from ADC per sample.
-    :return: Hits
+    :return: records
 
     """
     channel_off = np.argwhere(to_pe == 0).flatten()
-    mask_off = np.isin(hits["channel"], channel_off)
-    hits = hits[~mask_off]
-    return hits
+    mask_off = np.isin(records["channel"], channel_off)
+    records = records[~mask_off]
+    return records
