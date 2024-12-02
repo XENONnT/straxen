@@ -24,9 +24,9 @@ class VetoIntervals(strax.ExhaustPlugin):
     """Find pairs of veto start and veto stop signals and the veto.
 
     duration between them:
-     - busy_*  <= V1495 busy veto for tpc channels
-     - busy_he_*    <= V1495 busy veto for high energy tpc channels
-     - hev_*   <= DDC10 hardware high energy veto
+     - busy_* <= V1495 busy veto for tpc channels
+     - busy_he_* <= V1495 busy veto for high energy tpc channels
+     - hev_* <= DDC10 hardware high energy veto
      - straxen_deadtime <= special case of deadtime introduced by the
        DAQReader-plugin
 
@@ -88,7 +88,7 @@ class VetoIntervals(strax.ExhaustPlugin):
 
         result = result[:vetos_seen]
         result["veto_interval"] = result["endtime"] - result["time"]
-        sort = np.argsort(result["time"])
+        sort = strax.stable_argsort(result["time"])
         result = result[sort]
         return result
 

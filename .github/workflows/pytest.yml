@@ -25,7 +25,7 @@ on:
       - development
 
 jobs:
-  update:
+  test:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     env:
@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup python
-        uses: actions/setup-python@v5.1.0
+        uses: actions/setup-python@v5.3.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -59,7 +59,9 @@ jobs:
 
       - name: Install requirements
         run: |
-          pip install -r extra_requirements/requirements-tests.txt
+          pip install pytest hypothesis coverage coveralls
+          pip install git+https://github.com/XENONnT/base_environment.git --force-reinstall
+          pip install git+https://github.com/AxFoundation/strax.git --force-reinstall
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.11.0

@@ -17,7 +17,7 @@ def test_area_fraction_top(self: PluginTestCase):
 @PluginTestAccumulator.register("test_sum_wf")
 def test_sum_wf(self: PluginTestCase):
     st_alt = self.st.new_context()
-    st_alt.set_config(dict(sum_waveform_top_array=False))
+    st_alt.set_config(dict(store_data_top=True))
     peaks_alt = st_alt.get_array(self.run_id, ("peaks", "peak_basics"))
     peaks = self.st.get_array(self.run_id, ("peaks", "peak_basics"))
     np.testing.assert_array_equal(peaks_alt["data"], peaks["data"])

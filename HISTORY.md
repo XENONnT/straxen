@@ -1,3 +1,66 @@
+3.0.0 / 2024-10-24
+-------------------
+* Inherit `DEFAULT_CHUNK_SPLIT_NS` from strax by @dachengx in https://github.com/XENONnT/straxen/pull/1405
+* Use `pyproject.toml` to install straxen by @dachengx in https://github.com/XENONnT/straxen/pull/1408
+* Be compatible with new `Plugin.run_id` by @dachengx in https://github.com/XENONnT/straxen/pull/1410
+* Small restrax fix - DAQ by @cfuselli in https://github.com/XENONnT/straxen/pull/1402
+* Make targeted `raw_records` chunk 500MB by @dachengx in https://github.com/XENONnT/straxen/pull/1412
+* Bump actions/setup-python from 5.1.0 to 5.1.1 by @dependabot in https://github.com/XENONnT/straxen/pull/1403
+* fix peak per event plugin by @RoiFrankel in https://github.com/XENONnT/straxen/pull/1400
+* Dynamic led window by @tflehmke in https://github.com/XENONnT/straxen/pull/1401
+* Plugins for position reconstruction with conditional normalizing flow by @juehang in https://github.com/XENONnT/straxen/pull/1404
+* Remove redundant spaces by @dachengx in https://github.com/XENONnT/straxen/pull/1411
+* Stop using `self.config` because we do not use `strax.Option` by @dachengx in https://github.com/XENONnT/straxen/pull/1413
+* Remove `DetectorSynchronization` by @dachengx in https://github.com/XENONnT/straxen/pull/1414
+* Remove configuration `sum_waveform_top_array` from `MergedS2s` by @dachengx in https://github.com/XENONnT/straxen/pull/1415
+* Debug for `EventwBayesClass` because peaks overlapping by @dachengx in https://github.com/XENONnT/straxen/pull/1417
+* Refactor nv plugins by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1228
+* Changed NV software trigger by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1388
+* Assign `__version__` of `RecordsFromPax` by @dachengx in https://github.com/XENONnT/straxen/pull/1418
+* Minor debug for the `pyproject.toml` by @dachengx in https://github.com/XENONnT/straxen/pull/1420
+* Fix the usage of scripts by @dachengx in https://github.com/XENONnT/straxen/pull/1423
+* Deprecate selection_str by @dachengx in https://github.com/XENONnT/straxen/pull/1424
+* Fix singleton pattern for `MongoDownloader` by @dachengx in https://github.com/XENONnT/straxen/pull/1426
+* Use more `strax.RUN_METADATA_PATTERN` by @dachengx in https://github.com/XENONnT/straxen/pull/1432
+* Be compatible with utilix>0.9 by @dachengx in https://github.com/XENONnT/straxen/pull/1433
+* Specify available RSE in `RucioRemoteBackend` by @dachengx in https://github.com/XENONnT/straxen/pull/1435
+* Add docstring rucio by @yuema137 in https://github.com/XENONnT/straxen/pull/1436
+* `pymongo_collection` is a bit confusing by @dachengx in https://github.com/XENONnT/straxen/pull/1437
+* Put the RunDB API interface and MongoDB interface together by @yuema137 in https://github.com/XENONnT/straxen/pull/1442
+* change N_chunk to URLConfig in peak_positions_cnf by @juehang in https://github.com/XENONnT/straxen/pull/1443
+* Bump actions/setup-python from 5.1.1 to 5.2.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1419
+* Fixed default window position by @tflehmke in https://github.com/XENONnT/straxen/pull/1429
+* Add `data_start` to temporary dtype for `events_nv` by @dachengx in https://github.com/XENONnT/straxen/pull/1447
+* Add level in the tree when drawing dependency tree by @dachengx in https://github.com/XENONnT/straxen/pull/1446
+* Move the whole mongo_storage module to utilix by @yuema137 in https://github.com/XENONnT/straxen/pull/1445
+* Following the breaking change of https://github.com/AxFoundation/strax/pull/910 by @dachengx in https://github.com/XENONnT/straxen/pull/1452
+* Switch to master for docformatter by @yuema137 in https://github.com/XENONnT/straxen/pull/1453
+* Adjust saving preference by @yuema137 in https://github.com/XENONnT/straxen/pull/1451
+* Save first samples of peak(lets) waveform by @HenningSE in https://github.com/XENONnT/straxen/pull/1406
+* Only use `ThreadedMailboxProcessor` when `allow_multiprocess=True` by @dachengx in https://github.com/XENONnT/straxen/pull/1455
+* Remove redundant pos recon by @yuema137 in https://github.com/XENONnT/straxen/pull/1449
+* Clean `DeprecationWarning` and simplify plugins by @dachengx in https://github.com/XENONnT/straxen/pull/1456
+* Update  dependencies of strax, remove git repo from dependency list by @dachengx in https://github.com/XENONnT/straxen/pull/1458
+* Add fix integration window for the noise runs by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1457
+* Use `max_time` when calculating peaklets properties by @dachengx in https://github.com/XENONnT/straxen/pull/1459
+
+New Contributors
+* @RoiFrankel made their first contribution in https://github.com/XENONnT/straxen/pull/1400
+* @tflehmke made their first contribution in https://github.com/XENONnT/straxen/pull/1401
+* @juehang made their first contribution in https://github.com/XENONnT/straxen/pull/1404
+* @HenningSE made their first contribution in https://github.com/XENONnT/straxen/pull/1406
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.5...v3.0.0
+
+
+2.2.5 / 2024-08-17
+-------------------
+* Generate only one instance for `MongoDownloader` by @dachengx in https://github.com/XENONnT/straxen/pull/1398
+* Load whole run for `VetoIntervals` regardless the run length by @dachengx in https://github.com/XENONnT/straxen/pull/1399
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.4...v2.2.5
+
+
 2.2.4 / 2024-07-01
 -------------------
 * Parse USERDISK base on hostname in RunDB by @dachengx in https://github.com/XENONnT/straxen/pull/1384
@@ -445,7 +508,7 @@ Patch:
 -  Add MV trigger channel to acqmon hits https://github.com/XENONnT/straxen/pull/1035
 
 Notes:
- - only lineage changes for dtypes > `aqmon_hits`  (https://github.com/XENONnT/straxen/pull/1035)
+ - only lineage changes for dtypes > `aqmon_hits` (https://github.com/XENONnT/straxen/pull/1035)
 
 
 Full Changelog:
@@ -1082,7 +1145,7 @@ patches and fixes:
 - Matplotlib event display (#326)
 - Bokeh interactive event display (#330)
 - New tutorials and updated documentation (#322)
-- Scada-interface updates (#321,  #324)
+- Scada-interface updates (#321, #324)
 
 
 0.14.1 / 2021-01-04

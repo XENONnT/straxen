@@ -14,7 +14,7 @@ on:
       - master
 
 jobs:
-  update:
+  install:
     name: "py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
     strategy:
@@ -23,17 +23,15 @@ jobs:
         python-version: [ 3.9 ]
     steps:
       - name: Setup python
-        uses: actions/setup-python@v5.1.0
+        uses: actions/setup-python@v5.3.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Checkout repo
         uses: actions/checkout@v4
       - name: Install dependencies
         run: sudo apt-get install -y graphviz
-      - name: Pre-install requirements
-        run: pip install -r requirements.txt
       - name: Install straxen
-        run: python setup.py install
+        run: pip install .
       - name: Test import
         run: python -c "import straxen; straxen.print_versions()"
       - name: goodbye

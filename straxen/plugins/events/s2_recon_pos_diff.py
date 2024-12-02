@@ -15,14 +15,13 @@ class S2ReconPosDiff(strax.Plugin):
 
     __version__ = "0.0.3"
 
-    parallel = True
     depends_on = "event_basics"
     provides = "s2_recon_pos_diff"
     save_when = strax.SaveWhen.EXPLICIT
 
     recon_alg_included = straxen.URLConfig(
         help="The list of all reconstruction algorithm considered.",
-        default=("_mlp", "_gcn"),
+        default=("_mlp", "_cnf"),
         infer_type=False,
     )
 

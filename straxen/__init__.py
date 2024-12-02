@@ -1,5 +1,5 @@
 # mypy: disable-error-code="no-redef"
-__version__ = "2.2.4"
+__version__ = "3.0.0"
 
 from utilix import uconfig
 from .common import *
@@ -17,9 +17,6 @@ from .scada import *
 from .bokeh_utils import *
 from .config.url_config import *
 
-from . import legacy
-from .legacy import *
-
 from . import plugins
 from .plugins import *
 
@@ -29,6 +26,8 @@ from .storage import *
 from . import analyses
 
 from . import config
+
+from . import units
 
 # Do not make all contexts directly available under straxen.
 # Otherwise, we have straxen.demo() etc.
