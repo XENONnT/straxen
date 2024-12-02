@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.lib.recfunctions as rfn
 from scipy.spatial.distance import cdist
-from straxen.plugins.peaklets.peaklet_classification import PeakletClassification
+from straxen.plugins.peaklets.peaklet_classification_vanilla import PeakletClassificationVanilla
 import numba
 
 import strax
@@ -11,10 +11,11 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakletClassificationSOM(PeakletClassification):
+class PeakletClassificationSOM(PeakletClassificationVanilla):
     """
     Self-Organizing Maps (SOM)
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:lsanchez:unsupervised_neural_network_som_methods
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:lsanchez:som_summary_note
     For peaklet classification. We this pluggin will provide 2 data types, the 'type' we are
     already familiar with, classifying peaklets as s1, s2 (using the new classification) or
     unknown (from the previous classification). As well as a new data type, SOM type, which
@@ -30,6 +31,15 @@ class PeakletClassificationSOM(PeakletClassification):
     __version__ = "0.2.0"
     child_plugin = True
 
+    dtype = strax.peak_interval_dtype + [
+        ("type", np.int8, "Classification of the peak(let)"),
+        ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
+        ("old_type", np.int8, "Old type of the peak(let)"),
+        ("som_type", np.int8, "SOM type of the peak(let)"),
+        ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
+        ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
+    ]
+
     som_files = straxen.URLConfig(
         default="resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy"
     )
@@ -37,22 +47,11 @@ class PeakletClassificationSOM(PeakletClassification):
     use_som_as_default = straxen.URLConfig(
         default=True,
         help=(
-            "Boolean to indicate whether to use SOM"
-            " or the straxen classifcation method for"
-            "peaklet classification"
+            "Boolean to indicate whether to use SOM "
+            "or the straxen classifcation method for "
+            "peaklet classification."
         ),
     )
-
-    def infer_dtype(self):
-        dtype = strax.peak_interval_dtype + [
-            ("type", np.int8, "Classification of the peak(let)"),
-            ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
-            ("straxen_type", np.int8, "Old straxen type of the peak(let)"),
-            ("som_type", np.int8, "SOM type of the peak(let)"),
-            ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
-            ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
-        ]
-        return dtype
 
     def setup(self):
         self.som_weight_cube = self.som_files["weight_cube"]
@@ -69,32 +68,30 @@ class PeakletClassificationSOM(PeakletClassification):
 
         peaklet_with_som = np.zeros(len(peaklets_classifcation), dtype=self.dtype)
         strax.copy_to_buffer(peaklets_classifcation, peaklet_with_som, "_copy_peaklets_information")
-        peaklet_with_som["straxen_type"] = peaklets_classifcation["type"]
+        peaklet_with_som["old_type"] = peaklets_classifcation["type"]
         del peaklets_classifcation
 
         # SOM classification
         peaklets_w_type = peaklets.copy()
         peaklets_w_type["type"] = peaklet_with_som["type"]
-        _is_s1_or_s2 = peaklets_w_type["type"] != 0
+        _is_s1_or_s2 = np.isin(peaklets_w_type["type"], [1, 2])
 
         peaklets_w_type = peaklets_w_type[_is_s1_or_s2]
 
-        som_type, x_som, y_som = recall_populations(
+        som_sub_type, x_som, y_som = recall_populations(
             peaklets_w_type, self.som_weight_cube, self.som_img, self.som_norm_factors
         )
-        peaklet_with_som["som_sub_type"][_is_s1_or_s2] = som_type
+        strax_type = som_type_to_type(
+            som_sub_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
+        )
+        peaklet_with_som["som_sub_type"][_is_s1_or_s2] = som_sub_type
         peaklet_with_som["loc_x_som"][_is_s1_or_s2] = x_som
         peaklet_with_som["loc_y_som"][_is_s1_or_s2] = y_som
-
-        strax_type = som_type_to_type(
-            som_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
-        )
-
         peaklet_with_som["som_type"][_is_s1_or_s2] = strax_type
         if self.use_som_as_default:
             peaklet_with_som["type"][_is_s1_or_s2] = strax_type
         else:
-            peaklet_with_som["type"] = peaklet_with_som["straxen_type"]
+            peaklet_with_som["type"] = peaklet_with_som["old_type"]
 
         return peaklet_with_som
 
@@ -104,7 +101,7 @@ def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
     a dataset and a set of normalization factors.
 
     In theory, if these 5 things are provided, this function should output
-    the original data back with one added field with the name "SOM_type"
+    the original data back with one added field with the name "som_sub_type"
     weight_cube:      SOM weight cube (3D array)
     som_cls_img:      SOM reference image as a numpy array
     dataset:          Data to preform the recall on (Should be peaklet level data)
@@ -129,15 +126,14 @@ def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
     # preform a recall of the dataset with the weight cube
     # assign each population color a number (can do from previous function)
     ref_map = generate_color_ref_map(som_cls_img, unique_colors, xdim, ydim)
-    som_cls_array = np.empty(len(dataset["area"]))
-    som_cls_array[:] = np.nan
+    som_cls_array = np.full(len(dataset["area"]), np.nan)
     # Make new numpy structured array to save the SOM cls data
-    data_with_SOM_cls = rfn.append_fields(dataset, "SOM_type", som_cls_array)
-    # preforms the recall and assigns SOM_type label
+    data_with_SOM_cls = rfn.append_fields(dataset, "som_sub_type", som_cls_array)
+    # preforms the recall and assigns som_sub_type label
     output_data, x_som, y_som = som_cls_recall(
         data_with_SOM_cls, decile_transform_check, weight_cube, ref_map
     )
-    return output_data["SOM_type"], x_som, y_som
+    return output_data["som_sub_type"], x_som, y_som
 
 
 def generate_color_ref_map(color_image, unique_colors, xdim, ydim):
@@ -158,7 +154,7 @@ def som_cls_recall(array_to_fill, data_in_som_fmt, weight_cube, reference_map):
     )
     w_neuron = np.argmin(distances, axis=0)
     x_idx, y_idx = np.unravel_index(w_neuron, (som_xdim, som_ydim))
-    array_to_fill["SOM_type"] = reference_map[x_idx, y_idx]
+    array_to_fill["som_sub_type"] = reference_map[x_idx, y_idx]
     return array_to_fill, x_idx, y_idx
 
 
@@ -269,17 +265,3 @@ def compute_wf_attributes(data, sample_length, n_samples: int):
         quantiles[i] = cumsum_steps[1:] - cumsum_steps[:-1]
 
     return quantiles
-
-
-@export
-class PeakletSOMClass(PeakletClassificationSOM):
-    """Plugin which allows in addition to the straxen classification the SOM classification."""
-
-    child_plugin = True
-    __version__ = "0.0.1"
-
-    provides = "peaklet_classification_som"
-
-    def compute(self, peaklets):
-        peaklet_classifcation_som = super().compute(peaklets)
-        return peaklet_classifcation_som

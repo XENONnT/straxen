@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakBasics(strax.Plugin):
+class PeakBasicsVanilla(strax.Plugin):
     """Compute the basic peak-properties, thereby dropping structured arrays.
 
     NB: This plugin can therefore be loaded as a pandas DataFrame.
@@ -16,7 +16,6 @@ class PeakBasics(strax.Plugin):
     """
 
     __version__ = "0.1.4"
-    parallel = True
     depends_on = "peaks"
     provides = "peak_basics"
 
@@ -98,7 +97,7 @@ class PeakBasics(strax.Plugin):
         # Negative-area peaks get NaN AFT
         m = p["area"] > 0
         r["area_fraction_top"][m] = area_top[m] / area_total[m]
-        r["area_fraction_top"][~m] = float("nan")
+        r["area_fraction_top"][~m] = np.nan
         r["rise_time"] = -p["area_decile_from_midpoint"][:, 1]
 
         if self.check_peak_sum_area_rtol is not None:

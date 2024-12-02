@@ -1,6 +1,6 @@
-import strax
 import numpy as np
 import numba
+import strax
 import straxen
 
 
@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class EventBasics(strax.Plugin):
+class EventBasicsVanilla(strax.Plugin):
     """Computes the basic properties of the main/alternative S1/S2 within an event.
 
     The main S1 and alternative S1 are given by the largest two S1-Peaks within the event. The main
@@ -273,7 +273,7 @@ class EventBasics(strax.Plugin):
             largest_s2s, s2_idx = largest_s2s[0:2], s2_idx[0:2]
 
         if self.force_main_before_alt:
-            s2_order = np.argsort(largest_s2s["time"])
+            s2_order = strax.stable_argsort(largest_s2s["time"])
             largest_s2s = largest_s2s[s2_order]
             s2_idx = s2_idx[s2_order]
 
@@ -364,7 +364,7 @@ class EventBasics(strax.Plugin):
 
         selected_peaks = peaks[s_mask]
         s_index = np.arange(len(peaks))[s_mask]
-        largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:][::-1]
+        largest_peaks = strax.stable_argsort(selected_peaks["area"])[-number_of_peaks:][::-1]
         return selected_peaks[largest_peaks], s_index[largest_peaks]
 
     # If only we could numbafy this... Unfortunatly we cannot.

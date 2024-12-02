@@ -17,11 +17,10 @@ class EventS2PositionBase(strax.Plugin):
 
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True
 
     min_reconstruction_area = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this",
-        default=10,
+        default=0,
         infer_type=False,
     )
     n_top_pmts = straxen.URLConfig(
@@ -81,10 +80,10 @@ class EventS2PositionBase(strax.Plugin):
     def compute(self, events):
         result = np.ones(len(events), dtype=self.dtype)
         result["time"], result["endtime"] = events["time"], strax.endtime(events)
-        result["event_s2_x_" + self.algorithm] *= float("nan")
-        result["event_s2_y_" + self.algorithm] *= float("nan")
-        result["event_alt_s2_x_" + self.algorithm] *= float("nan")
-        result["event_alt_s2_y_" + self.algorithm] *= float("nan")
+        result["event_s2_x_" + self.algorithm] *= np.nan
+        result["event_s2_y_" + self.algorithm] *= np.nan
+        result["event_alt_s2_x_" + self.algorithm] *= np.nan
+        result["event_alt_s2_y_" + self.algorithm] *= np.nan
 
         model = self.get_tf_model()
 

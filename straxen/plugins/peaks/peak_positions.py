@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakPositionsNT(strax.MergeOnlyPlugin):
+class PeakPositions(strax.MergeOnlyPlugin):
     """Merge the reconstructed algorithms of the different algorithms into a single one that can be
     used in Event Basics.
 
@@ -21,13 +21,13 @@ class PeakPositionsNT(strax.MergeOnlyPlugin):
 
     """
 
+    __version__ = "0.0.0"
     provides = "peak_positions"
     depends_on = (
-        "peak_positions_mlp",
         "peak_positions_cnf",
+        "peak_positions_mlp",
     )
     save_when = strax.SaveWhen.NEVER
-    __version__ = "0.0.0"
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"

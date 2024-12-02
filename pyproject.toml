@@ -22,7 +22,6 @@ repository = "https://github.com/XENONnT/straxen"
 [tool.poetry.scripts]
 ajax = "straxen.scripts.ajax:main"
 bootstrax = "straxen.scripts.bootstrax:main"
-fake_daq = "straxen.scripts.fake_daq:main"
 microstrax = "straxen.scripts.microstrax:main"
 refresh_raw_records = "straxen.scripts.refresh_raw_records:main"
 restrax = "straxen.scripts.restrax:main"
@@ -31,7 +30,7 @@ straxer = "straxen.scripts.straxer:main"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
-strax = ">=2.0.0"
+strax = ">=2.0.1"
 bokeh = "*"
 commentjson = "*"
 gitpython = "*"

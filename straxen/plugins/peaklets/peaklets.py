@@ -1,9 +1,8 @@
 from typing import Dict, Tuple, Union
-
 import numba
 import numpy as np
-import strax
 from immutabledict import immutabledict
+import strax
 from strax.processing.general import _touching_windows
 from strax.dtypes import DIGITAL_SUM_WAVEFORM_CHANNEL
 import straxen
@@ -156,9 +155,7 @@ class Peaklets(strax.Plugin):
         default="cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id",
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_tpc_pmts, or a number,"
-            'or a string like "pmt_commissioning_initial" which means calling'
-            "hitfinder_thresholds.py"
+            "Specify as a tuple of length n_tpc_pmts, or a number, "
             "or a tuple like (correction=str, version=str, nT=boolean),"
             "which means we are using cmt."
         ),
@@ -321,7 +318,7 @@ class Peaklets(strax.Plugin):
         # (a) doing hitfinding yet again (or storing hits)
         # (b) increase strax memory usage / max_messages,
         #     possibly due to its currently primitive scheduling.
-        hit_max_times_argsort = np.argsort(hitlets["max_time"])
+        hit_max_times_argsort = strax.stable_argsort(hitlets["max_time"])
         sorted_hit_max_times = hitlets["max_time"][hit_max_times_argsort]
         sorted_hit_channels = hitlets["channel"][hit_max_times_argsort]
         peaklet_max_times = peaklets["time"] + np.argmax(peaklets["data"], axis=1) * peaklets["dt"]
@@ -416,7 +413,7 @@ class Peaklets(strax.Plugin):
         """Create hits timing features."""
         split_hits = strax.split_by_containment(hitlets, peaklets)
         for peaklet, h_max in zip(peaklets, split_hits):
-            max_time_diff = np.diff(np.sort(h_max["max_time"]))
+            max_time_diff = np.diff(strax.stable_sort(h_max["max_time"]))
             if len(max_time_diff) > 0:
                 peaklet["max_diff"] = max_time_diff.max()
                 peaklet["min_diff"] = max_time_diff.min()
