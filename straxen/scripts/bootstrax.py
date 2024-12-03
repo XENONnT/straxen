@@ -79,8 +79,10 @@ parser.add_argument(
     help="Don't allow bootstrax to switch to a different target for special runs",
 )
 parser.add_argument(
-    '--fix_resources', action='store_true',
-    help="Don't let bootstrax change number of cores/max_messages because of failures")
+    "--fix_resources",
+    action="store_true",
+    help="Don't let bootstrax change number of cores/max_messages because of failures",
+)
 parser.add_argument(
     "--infer_mode",
     action="store_true",
