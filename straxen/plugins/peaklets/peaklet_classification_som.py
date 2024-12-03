@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.lib.recfunctions as rfn
-from straxen.plugins.peaklets.peaklet_classification_vanilla import PeakletClassificationVanilla
 import numba
+from straxen.plugins.peaklets.peaklet_classification_vanilla import PeakletClassificationVanilla
 
 import strax
 import straxen
@@ -145,12 +145,17 @@ def generate_color_ref_map(color_image, unique_colors, xdim, ydim):
     return ref_map
 
 
-@numba.njit
+@export
 def euclidean_dist(XA, XB):
     # mimicking scipy.spatial.distance.cdist when metric='euclidean'
+    assert XA.shape[-1] == XB.shape[1], "Dimensions of points in XA and XB must match."
+    return _euclidean_dist(XA, XB)
+
+
+@numba.njit
+def _euclidean_dist(XA, XB):
     nA, dA = XA.shape
     nB, dB = XB.shape
-    assert dA == dB, "Dimensions of points in XA and XB must match."
     distances = np.empty((nA, nB))
     for i in range(nA):
         for j in range(nB):
