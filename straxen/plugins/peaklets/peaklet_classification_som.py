@@ -1,8 +1,7 @@
 import numpy as np
 import numpy.lib.recfunctions as rfn
-from scipy.spatial.distance import cdist
-from straxen.plugins.peaklets.peaklet_classification_vanilla import PeakletClassificationVanilla
 import numba
+from straxen.plugins.peaklets.peaklet_classification_vanilla import PeakletClassificationVanilla
 
 import strax
 import straxen
@@ -146,12 +145,32 @@ def generate_color_ref_map(color_image, unique_colors, xdim, ydim):
     return ref_map
 
 
+@export
+def euclidean_dist(XA, XB):
+    # mimicking scipy.spatial.distance.cdist when metric='euclidean'
+    assert XA.shape[-1] == XB.shape[1], "Dimensions of points in XA and XB must match."
+    return _euclidean_dist(XA, XB)
+
+
+@numba.njit
+def _euclidean_dist(XA, XB):
+    nA, dA = XA.shape
+    nB, dB = XB.shape
+    distances = np.empty((nA, nB))
+    for i in range(nA):
+        for j in range(nB):
+            dist = 0.0
+            for k in range(dA):
+                diff = XA[i, k] - XB[j, k]
+                dist += diff * diff
+            distances[i, j] = np.sqrt(dist)
+    return distances
+
+
 def som_cls_recall(array_to_fill, data_in_som_fmt, weight_cube, reference_map):
     som_xdim, som_ydim, _ = weight_cube.shape
     # for data_point in data_in_SOM_fmt:
-    distances = cdist(
-        weight_cube.reshape(-1, weight_cube.shape[-1]), data_in_som_fmt, metric="euclidean"
-    )
+    distances = euclidean_dist(weight_cube.reshape(-1, weight_cube.shape[-1]), data_in_som_fmt)
     w_neuron = np.argmin(distances, axis=0)
     x_idx, y_idx = np.unravel_index(w_neuron, (som_xdim, som_ydim))
     array_to_fill["som_sub_type"] = reference_map[x_idx, y_idx]
