@@ -80,7 +80,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--fix_resources', action='store_true',
-    help="Don't allow bootstrax to switch to a different number of cores and max_messages for failures")
+    help="Don't let bootstrax change number of cores/max_messages because of failures")
 parser.add_argument(
     '--infer_mode', action='store_true',
     help="Determine best number max-messages and cores for each run "
