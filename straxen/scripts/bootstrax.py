@@ -82,9 +82,11 @@ parser.add_argument(
     '--fix_resources', action='store_true',
     help="Don't let bootstrax change number of cores/max_messages because of failures")
 parser.add_argument(
-    '--infer_mode', action='store_true',
+    "--infer_mode",
+    action="store_true",
     help="Determine best number max-messages and cores for each run "
-         "automatically. Overrides --cores and --max_messages")
+    "automatically. Overrides --cores and --max_messages",
+)
 parser.add_argument(
     "--delete_live",
     action="store_true",
@@ -99,13 +101,12 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
-    '--ignore_checks', action='store_true',
+    "--ignore_checks",
+    action="store_true",
     help="Do not use! This disables checks on e.g. the timestamps! Should only "
-         "be used if some run is very valuable but some checks are failing.")
-parser.add_argument(
-    '--max_messages', type=int, default=10,
-    help="number of max mailbox messages")
-
+    "be used if some run is very valuable but some checks are failing.",
+)
+parser.add_argument("--max_messages", type=int, default=10, help="number of max mailbox messages")
 
 
 actions = parser.add_mutually_exclusive_group()
@@ -622,26 +623,26 @@ def infer_target(rd: dict) -> dict:
     elif "kr83m" in mode and (len(targets) or len(post_process)):
         # Override the first (highest level) plugin for Kr runs (could
         # also use source field, outcome is the same)
-        if 'event_info' in targets or 'event_info' in post_process:
-            targets = list(targets) + ['event_info_double']
-    elif 'ambe' in mode:
+        if "event_info" in targets or "event_info" in post_process:
+            targets = list(targets) + ["event_info_double"]
+    elif "ambe" in mode:
         # rates are very high, to ensure smooth operation let's just do this
         # based on calibrations of Apr 2023 this is the only safe working solution
-        log.debug('ambe-mode')
+        log.debug("ambe-mode")
 
         # get the mode from the daq_db
         # this is a new thing from Nov 2023
         # it overwrites the mode from the rundb
-        bootstrax_config_coll = daq_db['bootstrax_config']
-        bootstrax_config = bootstrax_config_coll.find_one({'name': 'bootstrax_config'})
+        bootstrax_config_coll = daq_db["bootstrax_config"]
+        bootstrax_config = bootstrax_config_coll.find_one({"name": "bootstrax_config"})
 
-        this_eb_ambe_mode = bootstrax_config['ambe_modes'].get(hostname[:3], 'default')
-        log.debug(f'Ambe mode for {hostname} is {this_eb_ambe_mode}')
+        this_eb_ambe_mode = bootstrax_config["ambe_modes"].get(hostname[:3], "default")
+        log.debug(f"Ambe mode for {hostname} is {this_eb_ambe_mode}")
 
-        if this_eb_ambe_mode != 'default':
-            log.debug(f'Overwriting targets and post processing for {hostname} from daq_db')
-            targets = bootstrax_config['modes_definitions'][this_eb_ambe_mode]['targets']
-            post_process = bootstrax_config['modes_definitions'][this_eb_ambe_mode]['post_process']
+        if this_eb_ambe_mode != "default":
+            log.debug(f"Overwriting targets and post processing for {hostname} from daq_db")
+            targets = bootstrax_config["modes_definitions"][this_eb_ambe_mode]["targets"]
+            post_process = bootstrax_config["modes_definitions"][this_eb_ambe_mode]["post_process"]
 
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
@@ -862,15 +863,14 @@ def infer_mode(rd):
     if data_rate and args.infer_mode:
 
         # Temporary solution
-        # It is a patch to try to process some ambe data without failing for memory 
+        # It is a patch to try to process some ambe data without failing for memory
         # If we are doing ambe -> consider the maximum rate
         # so that we have 10 cores and 12 messages for new ebs
         # and we have     8 cores and 6 messages for old ebs
         # added by Carlo on 19 April 2023
-        mode = str(rd.get('mode'))
-        if 'ambe' in mode:
+        mode = str(rd.get("mode"))
+        if "ambe" in mode:
             data_rate = 550
-
 
         df = pd.DataFrame(benchmark)
         if data_rate not in benchmark["mbs"]:
@@ -884,16 +884,14 @@ def infer_mode(rd):
                 result[k] = result[k + "_old"]
         del df, benchmark, result["cores_old"], result["max_messages_old"]
     else:
-        result = dict(cores=args.cores,
-                      max_messages=args.max_messages,
-                      timeout=1000)
+        result = dict(cores=args.cores, max_messages=args.max_messages, timeout=1000)
 
-    n_fails = rd['bootstrax'].get('n_failures', 0)
+    n_fails = rd["bootstrax"].get("n_failures", 0)
     if args.fix_resources:
         # If we are in a fix resource mode, we should not change the resources
         # based on the number of failures.
         n_fails = 0
-        log.debug(f'Fixing resources, ignoring {n_fails} previous failures')
+        log.debug(f"Fixing resources, ignoring {n_fails} previous failures")
 
     if n_fails:
         # Exponentially lower resources & increase timeout
