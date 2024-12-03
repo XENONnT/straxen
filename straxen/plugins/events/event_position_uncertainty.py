@@ -2,7 +2,7 @@ import numpy as np
 import strax
 import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
-from straxen.plugins.peaks.peak_positions_cnf import PeakPositionsCNF
+from straxen.plugins.peaklets.peaklet_positions_cnf import PeakletPositionsCNF
 
 
 export, __all__ = strax.exporter()
@@ -305,7 +305,7 @@ class EventPositionUncertainty(strax.Plugin):
 
             avg_theta = np.arctan2(events[f"{type_}_y_cnf"], events[f"{type_}_x_cnf"])
 
-            theta_diff = PeakPositionsCNF.calculate_theta_diff(theta_array, avg_theta)
+            theta_diff = PeakletPositionsCNF.calculate_theta_diff(theta_array, avg_theta)
 
             # Store uncertainties
             result[f"{type_}_r_position_uncertainty"] = (r_max - r_min) / 2

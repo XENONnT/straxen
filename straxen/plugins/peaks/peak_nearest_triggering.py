@@ -79,7 +79,7 @@ class PeakNearestTriggering(Events):
         _peaks = _peaks[_is_triggering]
         # init result
         result = np.zeros(len(current_peak), self.dtype)
-        straxen.EventBasics.set_nan_defaults(result)
+        straxen.EventBasicsVanilla.set_nan_defaults(result)
 
         # use center_time as the anchor of things
         things = np.zeros(len(_peaks), dtype=strax.time_fields)

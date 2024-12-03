@@ -121,9 +121,9 @@ def nt_test_context(
     for plugin in to_remove:
         del st._plugin_class_registry[plugin]
 
-    # Change the led_plugin defualt_run_comments to be compatible
+    # Change the led_plugin default_run_comments to be compatible
     # with the test run_id in straxen.
-    st.set_config({"defualt_run_comments": ["S1-only"]})
+    st.set_config({"default_run_comments": ["S1-only"]})
 
     return st
 

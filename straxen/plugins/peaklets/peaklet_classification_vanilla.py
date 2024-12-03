@@ -9,14 +9,13 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakletClassification(strax.Plugin):
+class PeakletClassificationVanilla(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
 
     __version__ = "3.0.3"
 
-    provides: Union[str, tuple] = "peaklet_classification"
     depends_on = "peaklets"
-    parallel = True
+    provides: Union[str, tuple] = "peaklet_classification"
     dtype = strax.peak_interval_dtype + [("type", np.int8, "Classification of the peak(let)")]
 
     s1_risetime_area_parameters = straxen.URLConfig(

@@ -8,7 +8,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class EventBasics(strax.Plugin):
+class EventBasicsVanilla(strax.Plugin):
     """Computes the basic properties of the main/alternative S1/S2 within an event.
 
     The main S1 and alternative S1 are given by the largest two S1-Peaks within the event. The main
