@@ -58,6 +58,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
         ),
     )
 
+    position_density_s2_area_threshold = straxen.URLConfig(
+        default=1e4,
+        infer_type=False,
+        help="Threshold of S2 area for using the position reconstruction density",
+    )
+
     dr_cnf_avg_threshold = straxen.URLConfig(
         default=14,
         infer_type=False,
@@ -144,13 +150,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
         )
 
-        assert self.merge_without_s1
-        area_top = peaklets["area_per_channel"][:, : self.n_top_pmts].sum(axis=1)
-        # by using pos-rec density, merge_without_s1 must be true
-        dr_cnf_avg = self.weighted_average_dr(area_top, peaklets, merged_s2s)
-        merged_s2s["type"] = 2
-        merged_s2s["type"][dr_cnf_avg > self.dr_cnf_avg_threshold] = 20
-
         # Updated time and length of lone_hits and sort again:
         lh = np.copy(lone_hits)
         del lone_hits
@@ -173,6 +172,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         if (_n_top_pmts <= 0) or (not _store_data_start):
             merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
+
+        assert self.merge_without_s1
+        area_top = peaklets["area_per_channel"][:, : self.n_top_pmts].sum(axis=1)
+        # by using pos-rec density, merge_without_s1 must be true
+        dr_cnf_avg = self.weighted_average_dr(area_top, peaklets, merged_s2s)
+        merged_s2s["type"] = 2
+        mask = merged_s2s["area"] < self.position_density_s2_area_threshold
+        mask &= dr_cnf_avg > self.dr_cnf_avg_threshold
+        merged_s2s["type"][mask] = 20
 
         return merged_s2s
 
