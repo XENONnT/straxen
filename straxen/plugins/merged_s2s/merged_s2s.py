@@ -257,7 +257,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         mask = area_top > 0
         mask &= ~np.isnan(peaklets["x_cnf"])
         mask &= ~np.isnan(peaklets["y_cnf"])
-        dr_cnf_avg = np.full(len(peaklets), np.nan)
+        dr_cnf_avg = np.full(len(merged_s2s), np.nan)
         windows = strax.touching_windows(peaklets, merged_s2s)
         for i, window in enumerate(windows):
             ps = slice(*window)
