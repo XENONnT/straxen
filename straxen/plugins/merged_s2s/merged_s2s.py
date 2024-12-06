@@ -14,9 +14,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.1.0"
+    __version__ = "2.0.0"
 
-    depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
+    # Use DEFAULT_POSREC_ALGO here?
+    depends_on: Tuple[str, ...] = (
+        "peaklets",
+        "peaklet_positions_cnf",
+        "peaklet_classification",
+        "lone_hits",
+    )
     data_kind = "merged_s2s"
     provides = "merged_s2s"
 
@@ -50,6 +56,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
             "If true, S1s will be igored during the merging. "
             "It's now possible for a S1 to be inside a S2 post merging"
         ),
+    )
+
+    dr_cnf_avg_threshold = straxen.URLConfig(
+        default=14,
+        infer_type=False,
+        help="Threshold for the average distance to the center of the top array allowed for S2s",
     )
 
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
@@ -131,7 +143,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
             end_merge_at,
             max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
         )
+
+        assert self.merge_without_s1
+        area_top = peaklets["area_per_channel"][:, : self.n_top_pmts].sum(axis=1)
+        # by using pos-rec density, merge_without_s1 must be true
+        dr_cnf_avg = self.weighted_average_dr(area_top, peaklets, merged_s2s)
         merged_s2s["type"] = 2
+        merged_s2s["type"][dr_cnf_avg > self.dr_cnf_avg_threshold] = 20
 
         # Updated time and length of lone_hits and sort again:
         lh = np.copy(lone_hits)
@@ -225,6 +243,26 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merge_start, merge_stop_exclusive = _filter_s1_starts(start_merge_at, types, end_merge_at)
 
         return merge_start, merge_stop_exclusive
+
+    def weighted_average_dr(self, area_top, peaklets, merged_s2s):
+        """Weighted average of the distance to the center of the top array for the peaklets."""
+        mask = area_top > 0
+        mask &= ~np.isnan(peaklets["x_cnf"])
+        mask &= ~np.isnan(peaklets["y_cnf"])
+        dr_cnf_avg = np.full(len(peaklets), np.nan)
+        windows = strax.touching_windows(peaklets, merged_s2s)
+        for i, window in enumerate(windows):
+            ps = slice(*window)
+            if mask[ps].sum() == 0:
+                continue
+            weights = area_top[ps][mask[ps]]
+            x_cnf = peaklets["x_cnf"][ps][mask[ps]]
+            y_cnf = peaklets["y_cnf"][ps][mask[ps]]
+            x_cnf_avg = np.average(x_cnf, weights=weights)
+            y_cnf_avg = np.average(y_cnf, weights=weights)
+            dr_cnf = np.sqrt((x_cnf - x_cnf_avg) ** 2 + (y_cnf - y_cnf_avg) ** 2)
+            dr_cnf_avg[i] = np.average(dr_cnf, weights=weights)
+        return dr_cnf_avg
 
 
 @numba.njit(cache=True, nogil=True)

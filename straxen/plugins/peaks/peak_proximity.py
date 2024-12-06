@@ -57,6 +57,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
 
     def compute(self, peaks):
         windows = strax.touching_windows(peaks, peaks, window=self.nearby_window)
+        # have to consider the peak with type 20
         n_left, n_tot = self.find_n_competing(peaks, windows, fraction=self.min_area_fraction)
 
         t_to_prev_peak = np.ones(len(peaks), dtype=np.int64) * self.peak_max_proximity_time
