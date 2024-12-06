@@ -158,20 +158,17 @@ class MergedS2s(strax.OverlapWindowPlugin):
         lh["length"] = lh["right_integration"] - lh["left_integration"]
         lh = strax.sort_by_time(lh)
 
-        _n_top_pmts = self.n_top_pmts if "data_top" in self.dtype.names else -1
+        _store_data_top = "data_top" in self.dtype.names
         _store_data_start = "data_start" in self.dtype.names
         strax.add_lone_hits(
             merged_s2s,
             lh,
             self.to_pe,
-            n_top_channels=_n_top_pmts,
+            n_top_channels=self.n_top_pmts if _store_data_top else -1,
             store_data_start=_store_data_start,
         )
 
         strax.compute_widths(merged_s2s)
-
-        if (_n_top_pmts <= 0) or (not _store_data_start):
-            merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
 
         assert self.merge_without_s1
         area_top = peaklets["area_per_channel"][:, : self.n_top_pmts].sum(axis=1)
@@ -181,6 +178,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
         mask = merged_s2s["area"] < self.position_density_s2_area_threshold
         mask &= dr_cnf_avg > self.dr_cnf_avg_threshold
         merged_s2s["type"][mask] = 20
+
+        # if (not _store_data_top) or (not _store_data_start):
+        merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
 
         return merged_s2s
 
