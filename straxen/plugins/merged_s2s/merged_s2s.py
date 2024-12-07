@@ -170,11 +170,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         strax.compute_widths(merged_s2s)
 
+        merged_s2s["type"] = 2
         assert self.merge_without_s1
         area_top = peaklets["area_per_channel"][:, : self.n_top_pmts].sum(axis=1)
         # by using pos-rec density, merge_without_s1 must be true
         dr_cnf_avg = self.weighted_average_dr(area_top, peaklets, merged_s2s)
-        merged_s2s["type"] = 2
         mask = merged_s2s["area"] < self.position_density_s2_area_threshold
         mask &= dr_cnf_avg > self.dr_cnf_avg_threshold
         merged_s2s["type"][mask] = 20
