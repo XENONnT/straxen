@@ -12,7 +12,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
     """Look for peaks around a peak to determine how many peaks are in proximity (in time) of a
     peak."""
 
-    __version__ = "0.4.0"
+    __version__ = "0.5.0"
 
     depends_on = "peak_basics"
     dtype = [
@@ -56,8 +56,12 @@ class PeakProximity(strax.OverlapWindowPlugin):
         return self.peak_max_proximity_time
 
     def compute(self, peaks):
-        windows = strax.touching_windows(peaks, peaks, window=self.nearby_window)
-        n_left, n_tot = self.find_n_competing(peaks, windows, fraction=self.min_area_fraction)
+        # later we can even remove type 0
+        mask = np.isin(peaks["type"], [0, 1, 2])
+        windows = strax.touching_windows(peaks[mask], peaks, window=self.nearby_window)
+        n_left, n_tot = self.find_n_competing(
+            peaks[mask], peaks, windows, fraction=self.min_area_fraction
+        )
 
         t_to_prev_peak = np.ones(len(peaks), dtype=np.int64) * self.peak_max_proximity_time
         t_to_prev_peak[1:] = peaks["time"][1:] - peaks["endtime"][:-1]
@@ -77,15 +81,18 @@ class PeakProximity(strax.OverlapWindowPlugin):
 
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
-    def find_n_competing(peaks, windows, fraction):
+    def find_n_competing(peaks_in_roi, peaks, windows, fraction):
         n_left = np.zeros(len(peaks), dtype=np.int32)
         n_tot = n_left.copy()
+        areas_in_roi = peaks_in_roi["area"]
         areas = peaks["area"]
+
+        dig = np.searchsorted(peaks_in_roi["center_time"], peaks["center_time"])
 
         for i, peak in enumerate(peaks):
             left_i, right_i = windows[i]
             threshold = areas[i] * fraction
-            n_left[i] = np.sum(areas[left_i:i] > threshold)
-            n_tot[i] = n_left[i] + np.sum(areas[i + 1 : right_i] > threshold)
+            n_left[i] = np.sum(areas_in_roi[left_i : dig[i]] > threshold)
+            n_tot[i] = n_left[i] + np.sum(areas_in_roi[dig[i] : right_i] > threshold)
 
         return n_left, n_tot
