@@ -1,5 +1,4 @@
 import strax
-import straxen
 from ._peak_positions_base import PeakPositionsBase
 
 export, __all__ = strax.exporter()
