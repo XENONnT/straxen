@@ -94,39 +94,7 @@ common_config = dict(
     "&method=RegularGridInterpolator",
 )
 # these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
-# s1,s2 and fd corrections are still problematic
-xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(
-    gain_model="legacy-to-pe://to_pe_placeholder",
-    gain_model_nv="legacy-to-pe://adc_nv",
-    gain_model_mv="legacy-to-pe://adc_mv",
-    elife=1e6,
-)
-
-# Plugins in these files have nT plugins, E.g. in pulse&peak(let)
-# processing there are plugins for High Energy plugins. Therefore, do not
-# st.register_all in 1T contexts.
-xnt_common_opts = common_opts.copy()
-xnt_common_opts.update(
-    {
-        "register": list(common_opts["register"])
-        + [
-            straxen.PeakletSOMClass,
-            straxen.PeaksSOMClassification,
-            straxen.EventSOMClassification,
-        ],
-        "register_all": list(common_opts["register_all"])
-        + [
-            straxen.plugins,
-        ],
-        "use_per_run_defaults": False,
-    }
-)
-
-
-##
-# XENONnT
-##
+# s1, s2 and fd corrections are still problematic
 
 
 def xenonnt(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
@@ -135,27 +103,6 @@ def xenonnt(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
         warnings.warn("Don't load a context directly from straxen, " "use cutax instead!")
 
     st = straxen.contexts.xenonnt_online(xedocs_version=xedocs_version, **kwargs)
-
-    return st
-
-
-def xenonnt_som(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
-    """XENONnT context for the SOM."""
-
-    st = straxen.contexts.xenonnt(
-        xedocs_version=xedocs_version,
-        _from_cutax=_from_cutax,
-        **kwargs,
-    )
-    del st._plugin_class_registry["peaklet_classification"]
-    st.register(
-        (
-            straxen.PeakletClassificationSOM,
-            straxen.PeaksSOM,
-            straxen.PeakBasicsSOM,
-            straxen.EventBasicsSOM,
-        )
-    )
 
     return st
 
@@ -213,7 +160,9 @@ def xenonnt_online(
     _forbid_creation_of: Optional[dict] = None,
     **kwargs,
 ):
-    """
+    """XENONnT online processing and analysis.
+
+    :param output_folder: str, Path of the strax.DataDirectory where new data can be stored
     :param we_are_the_daq: bool, if we have admin access to upload data
     :param minimum_run_number: int, lowest number to consider
     :param maximum_run_number: Highest number to consider. When None (the default) consider all runs
@@ -328,15 +277,6 @@ def xenonnt_online(
             )
         }
     )
-    if _context_config_overwrite is not None:
-        warnings.warn(
-            f"_context_config_overwrite is deprecated, please pass to context as kwargs",
-            DeprecationWarning,
-        )
-        st.set_context_config(_context_config_overwrite)
-
-    # if global_version is not None:
-    #    st.apply_xedocs_configs(version=global_version, **kwargs)
 
     return st
 

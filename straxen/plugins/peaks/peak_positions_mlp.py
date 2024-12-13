@@ -10,19 +10,10 @@ class PeakPositionsMLP(PeakPositionsBase):
     __version__ = "0.0.0"
     child_plugin = True
     algorithm = "mlp"
-
-    tf_model_mlp = straxen.URLConfig(
-        default=(
-            "tf://"
-            "resource://"
-            "xedocs://posrec_models"
-            "?attr=value"
-            "&fmt=abs_path"
-            "&kind=mlp"
-            "&run_id=plugin.run_id"
-            "&version=ONLINE"
-        ),
-        help='MLP model. Should be opened using the "tf" descriptor. '
-        'Set to "None" to skip computation',
-        cache=3,
+    depends_on = (
+        "peaklet_positions_mlp",
+        "peaklet_classification",
+        "merged_s2s",
+        "merged_s2_positions_mlp",
     )
+    provides = "peak_positions_mlp"
