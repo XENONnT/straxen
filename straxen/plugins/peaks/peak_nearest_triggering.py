@@ -4,7 +4,7 @@ import strax
 import straxen
 
 from .peak_ambience import _quick_assign
-from ..events import Events
+from ..events import Events, is_triggering
 
 export, __all__ = strax.exporter()
 
@@ -75,7 +75,13 @@ class PeakNearestTriggering(Events):
         if self.only_trigger_min_area:
             _is_triggering = _peaks["area"] > self.trigger_min_area
         else:
-            _is_triggering = self._is_triggering(_peaks)
+            _is_triggering = is_triggering(
+                _peaks,
+                self.trigger_min_area,
+                self.trigger_max_competing,
+                self.exclude_s1_as_triggering_peaks,
+                self.event_s1_min_coincidence,
+            )
         _peaks = _peaks[_is_triggering]
         # init result
         result = np.zeros(len(current_peak), self.dtype)

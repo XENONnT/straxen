@@ -39,12 +39,6 @@ class Events(strax.OverlapWindowPlugin):
 
     events_seen = 0
 
-    electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
-        cache=True,
-        help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
-    )
-
     trigger_min_area = straxen.URLConfig(
         default=100,
         type=(int, float),
@@ -55,28 +49,6 @@ class Events(strax.OverlapWindowPlugin):
         default=7,
         type=int,
         help="Peaks must have FEWER nearby larger or slightly smaller peaks to cause events",
-    )
-
-    left_event_extension = straxen.URLConfig(
-        default=int(0.25e6),
-        type=(int, float),
-        help=(
-            "Extend events this many ns to the left from each "
-            "triggering peak. This extension is added to the maximum "
-            "drift time."
-        ),
-    )
-
-    right_event_extension = straxen.URLConfig(
-        default=int(0.25e6),
-        type=(int, float),
-        help="Extend events this many ns to the right from each triggering peak.",
-    )
-
-    max_drift_length = straxen.URLConfig(
-        default=straxen.tpc_z,
-        type=(int, float),
-        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
     )
 
     exclude_s1_as_triggering_peaks = straxen.URLConfig(
@@ -96,6 +68,34 @@ class Events(strax.OverlapWindowPlugin):
 
     s1_min_coincidence = straxen.URLConfig(
         default=2, type=int, help="Minimum tight coincidence necessary to make an S1"
+    )
+
+    max_drift_length = straxen.URLConfig(
+        default=straxen.tpc_z,
+        type=(int, float),
+        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
+    )
+
+    electron_drift_velocity = straxen.URLConfig(
+        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        cache=True,
+        help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
+    )
+
+    left_event_extension = straxen.URLConfig(
+        default=int(0.25e6),
+        type=(int, float),
+        help=(
+            "Extend events this many ns to the left from each "
+            "triggering peak. This extension is added to the maximum "
+            "drift time."
+        ),
+    )
+
+    right_event_extension = straxen.URLConfig(
+        default=int(0.25e6),
+        type=(int, float),
+        help="Extend events this many ns to the right from each triggering peak.",
     )
 
     diagnose_overlapping = straxen.URLConfig(
@@ -118,19 +118,14 @@ class Events(strax.OverlapWindowPlugin):
         # Take a large window for safety, events can have long tails
         return 10 * (self.left_event_extension + self.drift_time_max + self.right_event_extension)
 
-    def _is_triggering(self, peaks):
-        _is_triggering = peaks["area"] > self.trigger_min_area
-        _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
-        if self.exclude_s1_as_triggering_peaks:
-            _is_triggering &= peaks["type"] == 2
-        else:
-            is_not_s1 = peaks["type"] != 1
-            has_tc_large_enough = peaks["tight_coincidence"] >= self.event_s1_min_coincidence
-            _is_triggering &= is_not_s1 | has_tc_large_enough
-        return _is_triggering
-
     def compute(self, peaks, start, end):
-        _is_triggering = self._is_triggering(peaks)
+        _is_triggering = is_triggering(
+            peaks,
+            self.trigger_min_area,
+            self.trigger_max_competing,
+            self.exclude_s1_as_triggering_peaks,
+            self.event_s1_min_coincidence,
+        )
 
         triggers = peaks[_is_triggering]
 
@@ -164,3 +159,23 @@ class Events(strax.OverlapWindowPlugin):
         self.events_seen += len(result)
 
         return result
+
+
+@export
+def is_triggering(
+    peaks,
+    trigger_min_area,
+    trigger_max_competing,
+    exclude_s1_as_triggering_peaks,
+    event_s1_min_coincidence,
+):
+    _is_triggering = np.isin(peaks["type"], [0, 1, 2])
+    _is_triggering &= peaks["area"] > trigger_min_area
+    _is_triggering &= peaks["n_competing"] <= trigger_max_competing
+    if exclude_s1_as_triggering_peaks:
+        _is_triggering &= peaks["type"] == 2
+    else:
+        is_not_s1 = peaks["type"] != 1
+        has_tc_large_enough = peaks["tight_coincidence"] >= event_s1_min_coincidence
+        _is_triggering &= is_not_s1 | has_tc_large_enough
+    return _is_triggering
