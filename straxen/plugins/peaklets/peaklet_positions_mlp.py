@@ -23,7 +23,7 @@ class PeakletPositionsMLP(PeakletPositionsBase):
             "xedocs://posrec_models"
             "?attr=value"
             "&fmt=abs_path"
-            "&kind=cnn"
+            "&kind=mlp"
             "&run_id=plugin.run_id"
             "&version=ONLINE"
         ),
