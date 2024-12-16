@@ -23,22 +23,37 @@ channel_list = [i for i in range(494)]
 
 @export
 class LEDCalibration(strax.Plugin):
-    """
-    Preliminary version, several parameters to set during commissioning.
-    LEDCalibration returns: channel, time, dt, length, Area,
-    amplitudeLED and amplitudeNOISE.
+    """LEDCalibration Plugin for PMT LED signal analysis.
 
-    The new variables are:
-        - Area: Area computed in the given window, averaged over 6
-          windows that have the same starting sample and different end
-          samples.
-        - amplitudeLED: peak amplitude of the LED on run in the given
-          window.
-        - amplitudeNOISE: amplitude of the LED on run in a window far
-          from the signal one.
+    This plugin processes raw PMT data and extracts various calibration
+    parameters related to LED signals and noise. It is used during PMT
+    calibration runs to measure LED pulse amplitudes, noise characteristics,
+    and other relevant metrics. The analysis assumes a fixed LED window and
+    computes parameters for both LED-on and LED-off runs.
+
+    **Key Features:**
+        - Extracts LED and noise amplitudes.
+        - Computes the area of LED pulses using multiple integration windows
+          for noise mitigation.
+        - Identifies triggered intervals based on hits.
+
+    **Returned Variables:**
+        - `area`: Area under the LED pulse, averaged over multiple integration windows.
+        - `area_noise`: Area in a noise window far from the LED signal.
+        - `amplitude_led`: Peak amplitude of the LED signal.
+        - `amplitude_noise`: Peak amplitude in a noise window.
+        - `channel`: PMT channel identifier.
+        - `time`: Start time of the interval (ns since UNIX epoch).
+        - `dt`: Time resolution in nanoseconds.
+        - `length`: Length of the interval in samples.
+        - `triggered`: Boolean indicating if a hit was found in the record.
+        - `hit_position`: Sample index of the hit defining the window position.
+        - `integration_window`: Integration window used for area calculations.
+        - `baseline`: Baseline of the record.
+
     """
 
-    __version__ = "0.3.1"
+    __version__ = "0.3.2"
 
     depends_on = "raw_records"
     data_kind = "led_cal"
@@ -125,8 +140,14 @@ class LEDCalibration(strax.Plugin):
         ),
     )
 
+    fixed_led_window = straxen.URLConfig(
+        default=(78, 142),
+        infer_type=False,
+        help="Window (samples) where we expect the signal in LED calibration",
+    )
+
     noise_window = straxen.URLConfig(
-        default=(10, 50), infer_type=False, help="Window (samples) to analyse the noise"
+        default=(1, 65), infer_type=False, help="Window (samples) to analysis the noise"
     )
 
     channel_list = straxen.URLConfig(
@@ -138,15 +159,12 @@ class LEDCalibration(strax.Plugin):
     led_cal_hit_min_height_over_noise = straxen.URLConfig(
         default=6,
         infer_type=False,
-        help=(
-            "Minimum hit amplitude in numbers of baseline_rms above baseline. "
-            "Actual threshold used is max(hit_min_amplitude, hit_min_"
-            "height_over_noise * baseline_rms)."
-        ),
+        help=("Minimum hit amplitude in numbers of baseline_rms above baseline. "),
     )
 
     dtype = [
         (("Area averaged in integration windows", "area"), np.float32),
+        (("Area averaged in noise integration windows", "area_noise"), np.float32),
         (("Amplitude in LED window", "amplitude_led"), np.float32),
         (("Amplitude in off LED window", "amplitude_noise"), np.float32),
         (("Channel", "channel"), np.int16),
@@ -191,16 +209,32 @@ class LEDCalibration(strax.Plugin):
             self.area_averaging_length,
         )
 
-        on, off = get_amplitude(records, led_windows, self.noise_window)
+        # The dynamic window algorithm gives
+        # unexpected results. Therefore, we
+        # decided to use an enlarged fixed window.
+        _fixed_led_window = np.tile(self.fixed_led_window, (len(temp), 1))
+        on, off = get_amplitude(records, _fixed_led_window, self.noise_window)
         temp["amplitude_led"] = on["amplitude"]
         temp["amplitude_noise"] = off["amplitude"]
 
-        area = get_area(records, led_windows, self.area_averaging_length, self.area_averaging_step)
+        area = get_area(
+            records, _fixed_led_window, self.area_averaging_length, self.area_averaging_step
+        )
         temp["area"] = area["area"]
 
+        _noise_window = np.tile(self.noise_window, (len(temp), 1))
+        area = get_area(
+            records, _noise_window, self.area_averaging_length, self.area_averaging_step
+        )
+        temp["area_noise"] = area["area"]
+
         temp["triggered"] = triggered
+        # The hit position retrieves the result
+        # of the hit-finding algorithm.
         temp["hit_position"] = led_windows[:, 0] - self.led_hit_extension[0]
-        temp["integration_window"] = led_windows
+        # The current version uses as integration window
+        # an hardcoded fixed window
+        temp["integration_window"] = _fixed_led_window
         temp["baseline"] = records["baseline"]
         return temp
 
@@ -356,6 +390,12 @@ def get_led_windows(
     triggered = np.zeros(len(records), dtype=bool)
 
     default_windows = np.tile(default_hit_position + np.array(led_hit_extension), (len(records), 1))
+    # Once we take the mode of the hits arrival time
+    # the hits are once more iterated and the
+    # default_hit_position is overwitten we the
+    # individual hit arrival time
+    # what is then the point of doing this?
+    # Giovanni 16/12/2024
     return _get_led_windows(
         hits, default_windows, led_hit_extension, maximum_led_position, triggered
     )
