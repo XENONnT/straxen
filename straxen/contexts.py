@@ -100,7 +100,7 @@ common_config = dict(
 def xenonnt(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
     """XENONnT context."""
     if not _from_cutax and xedocs_version != "global_ONLINE":
-        warnings.warn("Don't load a context directly from straxen, " "use cutax instead!")
+        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
 
     st = straxen.contexts.xenonnt_online(xedocs_version=xedocs_version, **kwargs)
 
