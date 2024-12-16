@@ -15,6 +15,7 @@ from urllib.parse import urlparse, parse_qs
 export, __all__ = strax.exporter()
 
 corrections_w_file = [
+    "mlp_model",  # there is no cnf_model because CNF is using another jax protocol
     "s2_xy_map_mlp",
     "s2_xy_map_cnf",
     "s1_xyz_map_mlp",
@@ -174,6 +175,8 @@ class CorrectionsManagementServices:
                     df = self.interface.read_at("fdc_map_mlp", when)
                 elif correction == "s1_xyz_map_cnf":
                     df = self.interface.read_at("s1_xyz_map_mlp", when)
+                elif correction == "s2_xy_map_cnf":
+                    df = self.interface.read_at("s2_xy_map_mlp", when)
                 else:
                     df = self.interface.read_at(correction, when)
                 if df[version].isnull().values.any():
