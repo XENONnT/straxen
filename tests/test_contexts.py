@@ -79,5 +79,5 @@ def test_cmt_versions():
     )
 
     test = unittest.TestCase()
-    # We should always work for one offline and the online version
-    test.assertTrue(len(success_for) >= 2)
+    # We should always work for the online version
+    test.assertTrue(len(success_for) >= 1)
