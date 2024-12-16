@@ -52,8 +52,8 @@ class PeakletsHighEnergy(Peaklets):
 
     hit_min_amplitude_he = straxen.URLConfig(
         default=(
-            "list-to-array:"
-            "//xedocs://hit_thresholds"
+            "list-to-array://"
+            "xedocs://hit_thresholds"
             "?as_list=True"
             "&sort=pmt"
             "&attr=value"

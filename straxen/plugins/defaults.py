@@ -9,14 +9,28 @@ MV_PREAMBLE = "Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n"
 NV_HIT_DEFAULTS = {
     "save_outside_hits_nv": (3, 15),
     "hit_min_amplitude_nv": (
-        "xedocs://hit_thresholds?version=ONLINE&run_id=plugin.run_id&detector=neutron_veto"
+        "list-to-array://"
+        "xedocs://hit_thresholds"
+        "?as_list=True"
+        "&sort=pmt"
+        "&attr=value"
+        "&detector=neutron_veto"
+        "&run_id=plugin.run_id"
+        "&version=ONLINE"
     ),
 }
 
 MV_HIT_DEFAULTS = {
     "save_outside_hits_mv": (2, 5),
     "hit_min_amplitude_mv": (
-        "xedocs://hit_thresholds?version=ONLINE&run_id=plugin.run_id&detector=muon_veto"
+        "list-to-array://"
+        "xedocs://hit_thresholds"
+        "?as_list=True"
+        "&sort=pmt"
+        "&attr=value"
+        "&detector=muon_veto"
+        "&run_id=plugin.run_id"
+        "&version=ONLINE"
     ),
 }
 
