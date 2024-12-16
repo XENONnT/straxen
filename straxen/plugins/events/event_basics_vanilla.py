@@ -2,6 +2,7 @@ import numpy as np
 import numba
 import strax
 import straxen
+from .events import is_triggering
 
 
 export, __all__ = strax.exporter()
@@ -17,16 +18,41 @@ class EventBasicsVanilla(strax.Plugin):
 
     """
 
-    __version__ = "1.3.3"
+    __version__ = "1.4.0"
 
     depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity")
     provides = "event_basics"
     data_kind = "events"
 
-    electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
-        cache=True,
-        help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
+    trigger_min_area = straxen.URLConfig(
+        default=100,
+        type=(int, float),
+        help="Peaks must have more area (PE) than this to cause events",
+    )
+
+    trigger_max_competing = straxen.URLConfig(
+        default=7,
+        type=int,
+        help="Peaks must have FEWER nearby larger or slightly smaller peaks to cause events",
+    )
+
+    exclude_s1_as_triggering_peaks = straxen.URLConfig(
+        default=True,
+        type=bool,
+        help="If true exclude S1s as triggering peaks.",
+    )
+
+    event_s1_min_coincidence = straxen.URLConfig(
+        default=2,
+        infer_type=False,
+        help=(
+            "Event level S1 min coincidence. Should be >= "
+            "s1_min_coincidence in the peaklet classification"
+        ),
+    )
+
+    s1_min_coincidence = straxen.URLConfig(
+        default=2, type=int, help="Minimum tight coincidence necessary to make an S1"
     )
 
     allow_posts2_s1s = straxen.URLConfig(
@@ -47,19 +73,16 @@ class EventBasicsVanilla(strax.Plugin):
         help="Make sure alt_s2 is in max drift time starting from main S1",
     )
 
-    event_s1_min_coincidence = straxen.URLConfig(
-        default=2,
-        infer_type=False,
-        help=(
-            "Event level S1 min coincidence. Should be >= s1_min_coincidence "
-            "in the peaklet classification"
-        ),
-    )
-
     max_drift_length = straxen.URLConfig(
         default=straxen.tpc_z,
         infer_type=False,
         help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
+    )
+
+    electron_drift_velocity = straxen.URLConfig(
+        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        cache=True,
+        help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
 
     def infer_dtype(self):
@@ -133,6 +156,11 @@ class EventBasicsVanilla(strax.Plugin):
         )
 
     def setup(self):
+        if self.s1_min_coincidence > self.event_s1_min_coincidence:
+            raise ValueError(
+                "Peak s1 coincidence requirement should be smaller "
+                "or equal to event_s1_min_coincidence"
+            )
         self.drift_time_max = int(self.max_drift_length / self.electron_drift_velocity)
 
     @staticmethod
@@ -237,7 +265,15 @@ class EventBasicsVanilla(strax.Plugin):
         """For a single event with the result_buffer."""
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         # number_of_peaks=0 selects all available s2 and sort by area
-        largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2, number_of_peaks=0)
+        largest_s2s, s2_idx = self.get_largest_sx_peaks(
+            peaks,
+            s_i=2,
+            trigger_min_area=self.trigger_min_area,
+            trigger_max_competing=self.trigger_max_competing,
+            exclude_s1_as_triggering_peaks=self.exclude_s1_as_triggering_peaks,
+            event_s1_min_coincidence=self.event_s1_min_coincidence,
+            number_of_peaks=0,
+        )
 
         if not self.allow_posts2_s1s and len(largest_s2s):
             s1_latest_time = largest_s2s[0]["time"]
@@ -247,8 +283,11 @@ class EventBasicsVanilla(strax.Plugin):
         largest_s1s, s1_idx = self.get_largest_sx_peaks(
             peaks,
             s_i=1,
+            trigger_min_area=self.trigger_min_area,
+            trigger_max_competing=self.trigger_max_competing,
+            exclude_s1_as_triggering_peaks=self.exclude_s1_as_triggering_peaks,
+            event_s1_min_coincidence=self.event_s1_min_coincidence,
             s1_before_time=s1_latest_time,
-            s1_min_coincidence=self.event_s1_min_coincidence,
         )
 
         if self.force_alt_s2_in_max_drift_time:
@@ -329,17 +368,24 @@ class EventBasicsVanilla(strax.Plugin):
             peaks_before_ms2 = peaks[peaks["time"] < largest_s2s[0]["time"]]
             result["area_before_main_s2"] = np.sum(peaks_before_ms2["area"])
 
-            s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2["type"] == 2]
-            if len(s2peaks_before_ms2) == 0:
+            s2_peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2["type"] == 2]
+            if len(s2_peaks_before_ms2) == 0:
                 result["large_s2_before_main_s2"] = 0
             else:
-                result["large_s2_before_main_s2"] = np.max(s2peaks_before_ms2["area"])
+                result["large_s2_before_main_s2"] = np.max(s2_peaks_before_ms2["area"])
         return result
 
     @staticmethod
     # @numba.njit <- works but slows if fill_events is not numbafied
     def get_largest_sx_peaks(
-        peaks, s_i, s1_before_time=np.inf, s1_min_coincidence=0, number_of_peaks=2
+        peaks,
+        s_i,
+        trigger_min_area,
+        trigger_max_competing,
+        exclude_s1_as_triggering_peaks=True,
+        event_s1_min_coincidence=0,
+        s1_before_time=np.inf,
+        number_of_peaks=2,
     ):
         """Get the largest S1/S2.
 
@@ -348,9 +394,19 @@ class EventBasicsVanilla(strax.Plugin):
         """
         # Find all peaks of this type (S1 or S2)
         s_mask = peaks["type"] == s_i
+        # Exclude non-triggering peaks if S2 or if (S1 and not exclude_s1_as_triggering_peaks)
+        if s_i == 2 or not exclude_s1_as_triggering_peaks:
+            s_mask &= is_triggering(
+                peaks,
+                trigger_min_area,
+                trigger_max_competing,
+                exclude_s1_as_triggering_peaks,
+                event_s1_min_coincidence,
+            )
+        # Extra condition for S1s
         if s_i == 1:
             s_mask &= peaks["time"] < s1_before_time
-            s_mask &= peaks["tight_coincidence"] >= s1_min_coincidence
+            s_mask &= peaks["tight_coincidence"] >= event_s1_min_coincidence
 
         selected_peaks = peaks[s_mask]
         s_index = np.arange(len(peaks))[s_mask]
