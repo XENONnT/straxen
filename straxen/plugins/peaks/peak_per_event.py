@@ -1,6 +1,5 @@
 import numpy as np
 import strax
-import straxen
 
 
 export, __all__ = strax.exporter()
@@ -31,7 +30,7 @@ class EventPeaks(strax.Plugin):
         split_peaks = strax.split_by_containment(peaks, events)
         split_peaks_ind = strax.fully_contained_in(peaks, events)
         result = np.zeros(len(peaks), self.dtype)
-        straxen.EventBasics.set_nan_defaults(result)
+        strax.set_nan_defaults(result)
 
         # Assign peaks features to main S1 and main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
