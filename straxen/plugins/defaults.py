@@ -10,8 +10,10 @@ NV_HIT_DEFAULTS = {
     "save_outside_hits_nv": (3, 15),
     "hit_min_amplitude_nv": (
         "list-to-array://"
+        "pad-array://"
         "xedocs://hit_thresholds"
-        "?as_list=True"
+        "?pad_left=2000"
+        "&as_list=True"
         "&sort=pmt"
         "&attr=value"
         "&detector=neutron_veto"
@@ -24,8 +26,10 @@ MV_HIT_DEFAULTS = {
     "save_outside_hits_mv": (2, 5),
     "hit_min_amplitude_mv": (
         "list-to-array://"
+        "pad-array://"
         "xedocs://hit_thresholds"
-        "?as_list=True"
+        "?pad_left=1000"
+        "&as_list=True"
         "&sort=pmt"
         "&attr=value"
         "&detector=muon_veto"

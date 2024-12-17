@@ -82,11 +82,10 @@ common_config = dict(
     "resource://"
     "xedocs://fdc_maps"
     "?algorithm=plugin.default_reconstruction_algorithm"
-    "&version=ONLINE"
+    "&fmt=json.gz"
     "&attr=value"
     "&run_id=plugin.run_id"
-    "&fmt=binary"
-    "&scale_coordinates=plugin.coordinate_scales",
+    "&version=ONLINE",
     z_bias_map="itp_map://"
     "resource://"
     "XnT_z_bias_map_chargeup_20230329.json.gz?"
