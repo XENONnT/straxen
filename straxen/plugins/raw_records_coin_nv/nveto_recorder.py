@@ -332,7 +332,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
     """
     nrr = len(raw_records)
-    result = np.zeros(nrr, np.bool_)
+    result = np.zeros(nrr, bool)
 
     last_interval_seen = 0
     for ind, rr in enumerate(raw_records):
@@ -437,7 +437,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     """
     # 1. estimate time difference between fragments:
     start_times = rr["time"]
-    mask = np.zeros(len(start_times), dtype=np.bool_)
+    mask = np.zeros(len(start_times), dtype=bool)
     t_diff = np.diff(start_times, prepend=start_times[0])
 
     # 2. Now we have to check if n-events are within resolving time:

@@ -37,10 +37,8 @@ class PeakBasics(strax.Plugin):
     )
 
     def infer_dtype(self):
-        dtype = [
-            (("Start time of the peak (ns since unix epoch)", "time"), np.int64),
-            (("End time of the peak (ns since unix epoch)", "endtime"), np.int64),
-            (("Weighted center time of the peak (ns since unix epoch)", "center_time"), np.int64),
+        dtype = strax.time_fields + [
+            (("Weighted center time of the peak [ns]", "center_time"), np.int64),
             (("Peak integral in PE", "area"), np.float32),
             (("Number of hits contributing at least one sample to the peak", "n_hits"), np.int32),
             (("Number of PMTs contributing to the peak", "n_channels"), np.int16),

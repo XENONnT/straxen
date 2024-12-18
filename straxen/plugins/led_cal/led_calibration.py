@@ -103,17 +103,13 @@ def get_records(raw_records, baseline_window):
 
     record_length = np.shape(raw_records.dtype["data"])[0]
 
-    _dtype = [
-        (("Start time since unix epoch [ns]", "time"), "<i8"),
-        (("Length of the interval in samples", "length"), "<i4"),
-        (("Width of one sample [ns]", "dt"), "<i2"),
-        (("Channel/PMT number", "channel"), "<i2"),
+    _dtype = strax.interval_dtype + [
         (
             ("Length of pulse to which the record belongs (without zero-padding)", "pulse_length"),
-            "<i4",
+            np.int32,
         ),
-        (("Fragment number in the pulse", "record_i"), "<i2"),
-        (("Waveform data in raw ADC counts", "data"), "f4", (record_length,)),
+        (("Fragment number in the pulse", "record_i"), np.int16),
+        (("Waveform data in raw ADC counts", "data"), np.float32, (record_length,)),
     ]
 
     records = np.zeros(len(raw_records), dtype=_dtype)
