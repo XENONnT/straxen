@@ -1,5 +1,4 @@
 import numpy as np
-import numba
 import strax
 import straxen
 
@@ -103,20 +102,12 @@ class PeakBasicsVanilla(strax.Plugin):
         if self.check_peak_sum_area_rtol is not None:
             self.check_area(area_total, p, self.check_peak_sum_area_rtol)
         # Negative or zero-area peaks have centertime at startime
-        r["center_time"] = p["time"]
-        r["center_time"][m] += self.compute_center_times(peaks[m])
+        r["center_time"] = np.where(
+            m,
+            strax.compute_center_time(p),
+            p["time"],
+        )
         return r
-
-    @staticmethod
-    @numba.njit(cache=True, nogil=True)
-    def compute_center_times(peaks):
-        result = np.zeros(len(peaks), dtype=np.int32)
-        for p_i, p in enumerate(peaks):
-            t = 0
-            for t_i, weight in enumerate(p["data"]):
-                t += t_i * p["dt"] * weight
-            result[p_i] = t / p["area"]
-        return result
 
     @staticmethod
     def check_area(area_per_channel_sum, peaks, rtol) -> None:
