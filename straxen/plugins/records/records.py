@@ -424,7 +424,7 @@ def _count_pulses(records, n_channels, result):
 
     # Array of booleans to track whether we are currently in a lone pulse
     # in each channel
-    in_lone_pulse = np.zeros(n_channels, dtype=bool)
+    in_lone_pulse = np.zeros(n_channels, dtype=np.bool_)
     baseline_buffer = np.zeros(n_channels, dtype=np.float64)
     baseline_rms_buffer = np.zeros(n_channels, dtype=np.float64)
     for r_i, r in enumerate(records):
