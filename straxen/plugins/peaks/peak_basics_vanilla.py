@@ -102,11 +102,8 @@ class PeakBasicsVanilla(strax.Plugin):
         if self.check_peak_sum_area_rtol is not None:
             self.check_area(area_total, p, self.check_peak_sum_area_rtol)
         # Negative or zero-area peaks have centertime at startime
-        r["center_time"] = np.where(
-            m,
-            strax.compute_center_time(p),
-            p["time"],
-        )
+        r["center_time"][~m] = p["time"][~m]
+        r["center_time"][m] = strax.compute_center_time(p[m])
         return r
 
     @staticmethod
