@@ -655,7 +655,7 @@ def get_tight_coin(hit_max_times, hit_channel, peak_max_times, left, right, chan
     left_hit_i = 0
     n_coin_channel = np.zeros(len(peak_max_times), dtype=np.int16)
     start_ch, end_ch = channels
-    channels_seen = np.zeros(end_ch - start_ch + 1, dtype=np.bool_)
+    channels_seen = np.zeros(end_ch - start_ch + 1, dtype=bool)
 
     # loop over peaks
     for p_i, p_t in enumerate(peak_max_times):
