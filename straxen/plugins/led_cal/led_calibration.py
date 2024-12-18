@@ -8,11 +8,11 @@ if you want to complain please contact:
 """
 
 from immutabledict import immutabledict
-import strax
-import straxen
 import numba
 import numpy as np
 import scipy.stats as sps
+import strax
+import straxen
 
 # This makes sure shorthands for only the necessary functions
 # are made available under straxen.[...]
@@ -162,15 +162,11 @@ class LEDCalibration(strax.Plugin):
         help=("Minimum hit amplitude in numbers of baseline_rms above baseline. "),
     )
 
-    dtype = [
+    dtype = strax.interval_dtype + [
         (("Area averaged in integration windows", "area"), np.float32),
         (("Area averaged in noise integration windows", "area_noise"), np.float32),
         (("Amplitude in LED window", "amplitude_led"), np.float32),
         (("Amplitude in off LED window", "amplitude_noise"), np.float32),
-        (("Channel", "channel"), np.int16),
-        (("Start time of the interval (ns since unix epoch)", "time"), np.int64),
-        (("Time resolution in ns", "dt"), np.int16),
-        (("Length of the interval in samples", "length"), np.int32),
         (("Whether there was a hit found in the record", "triggered"), bool),
         (("Sample index of the hit that defines the window position", "hit_position"), np.uint8),
         (("Window used for integration", "integration_window"), np.uint8, (2,)),
@@ -281,28 +277,28 @@ def get_records(raw_records, baseline_window, led_cal_record_length):
 
     record_length_padded = np.shape(raw_records.dtype["data"])[0]
 
-    _dtype = [
-        (("Start time since unix epoch [ns]", "time"), "<i8"),
-        (("Length of the interval in samples", "length"), "<i4"),
-        (("Width of one sample [ns]", "dt"), "<i2"),
-        (("Channel/PMT number", "channel"), "<i2"),
+    _dtype = strax.interval_dtype + [
         (
             (
                 "Length of pulse to which the record belongs (without zero-padding)",
                 "pulse_length",
             ),
-            "<i4",
+            np.int32,
         ),
-        (("Fragment number in the pulse", "record_i"), "<i2"),
+        (("Fragment number in the pulse", "record_i"), np.int16),
         (
             ("Baseline in ADC counts. data = int(baseline) - data_orig", "baseline"),
-            "f4",
+            np.float32,
         ),
         (
             ("Baseline RMS in ADC counts. data = baseline - data_orig", "baseline_rms"),
-            "f4",
+            np.float32,
         ),
-        (("Waveform data in raw ADC counts with 0 padding", "data"), "f4", (record_length_padded,)),
+        (
+            ("Waveform data in raw ADC counts with 0 padding", "data"),
+            np.float32,
+            (record_length_padded,),
+        ),
     ]
 
     records = np.zeros(len(raw_records), dtype=_dtype)
