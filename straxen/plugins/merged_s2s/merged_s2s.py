@@ -141,19 +141,20 @@ class MergedS2s(strax.OverlapWindowPlugin):
         lh["length"] = lh["right_integration"] - lh["left_integration"]
         lh = strax.sort_by_time(lh)
 
-        _n_top_pmts = self.n_top_pmts if "data_top" in self.dtype.names else -1
+        _store_data_top = "data_top" in self.dtype.names
         _store_data_start = "data_start" in self.dtype.names
         strax.add_lone_hits(
             merged_s2s,
             lh,
             self.to_pe,
-            n_top_channels=_n_top_pmts,
+            n_top_channels=self.n_top_pmts,
+            store_data_top=_store_data_top,
             store_data_start=_store_data_start,
         )
 
-        strax.compute_widths(merged_s2s)
+        strax.compute_center_time_widths(merged_s2s)
 
-        if (_n_top_pmts <= 0) or (not _store_data_start):
+        if (not _store_data_top) or (not _store_data_start):
             merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
 
         return merged_s2s
