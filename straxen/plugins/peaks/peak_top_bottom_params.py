@@ -90,7 +90,7 @@ class PeakTopBottomParams(strax.Plugin):
             result[f"center_time_{arr_}"] = peaks["time"]
             result[f"center_time_{arr_}"][mask] += recalc_ctime[mask].astype(int)
             # computing widths times
-            strax.compute_widths(fpeaks_)
+            strax.compute_center_time_widths(fpeaks_)
             result[f"rise_time_{arr_}"][:] = np.nan
             result[f"rise_time_{arr_}"][mask] = -fpeaks_["area_decile_from_midpoint"][mask][:, 1]
             result[f"range_50p_area_{arr_}"][:] = np.nan

@@ -1,6 +1,5 @@
 import numpy as np
 import strax
-import straxen
 
 
 export, __all__ = strax.exporter()
@@ -18,25 +17,9 @@ class PeakBasicsVanilla(strax.Plugin):
     depends_on = "peaks"
     provides = "peak_basics"
 
-    n_top_pmts = straxen.URLConfig(
-        default=straxen.n_top_pmts, infer_type=False, help="Number of top PMTs"
-    )
-
-    check_peak_sum_area_rtol = straxen.URLConfig(
-        default=None,
-        track=False,
-        infer_type=False,
-        help=(
-            "Check if the sum area and the sum of area per "
-            "channel are the same. If None, don't do the "
-            "check. To perform the check, set to the desired "
-            " rtol value used e.g. '1e-4' (see np.isclose)."
-        ),
-    )
-
     def infer_dtype(self):
         dtype = strax.time_fields + [
-            (("Weighted center time of the peak [ns]", "center_time"), np.int64),
+            (("Weighted average center time of the peak [ns]", "center_time"), np.int64),
             (("Peak integral in PE", "area"), np.float32),
             (("Number of hits contributing at least one sample to the peak", "n_hits"), np.int32),
             (("Number of PMTs contributing to the peak", "n_channels"), np.int16),
@@ -45,15 +28,10 @@ class PeakBasicsVanilla(strax.Plugin):
             (("Total number of saturated channels", "n_saturated_channels"), np.int16),
             (("Width (in ns) of the central 50% area of the peak", "range_50p_area"), np.float32),
             (("Width (in ns) of the central 90% area of the peak", "range_90p_area"), np.float32),
-            (
-                (
-                    "Fraction of area seen by the top array (NaN for peaks with non-positive area)",
-                    "area_fraction_top",
-                ),
-                np.float32,
-            ),
+            (("Fraction of area seen by the top array", "area_fraction_top"), np.float32),
             (("Length of the peak waveform in samples", "length"), np.int32),
             (("Time resolution of the peak waveform in ns", "dt"), np.int16),
+            (("Weighted relative median time of the peak [ns]", "median_time"), np.float32),
             (("Time between 10% and 50% area quantiles [ns]", "rise_time"), np.float32),
             (
                 ("Number of PMTs with hits within tight range of mean", "tight_coincidence"),
@@ -74,7 +52,9 @@ class PeakBasicsVanilla(strax.Plugin):
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
-        needed_fields = "time length dt area type max_diff min_diff"
+        needed_fields = (
+            "time center_time length dt median_time area area_fraction_top type max_diff min_diff"
+        )
         for q in needed_fields.split():
             r[q] = p[q]
         r["endtime"] = p["time"] + p["dt"] * p["length"]
@@ -86,22 +66,11 @@ class PeakBasicsVanilla(strax.Plugin):
         r["max_pmt_area"] = np.max(p["area_per_channel"], axis=1)
         r["tight_coincidence"] = p["tight_coincidence"]
         r["n_saturated_channels"] = p["n_saturated_channels"]
-
-        n_top = self.n_top_pmts
-        area_top = p["area_per_channel"][:, :n_top].sum(axis=1)
-        # Recalculate to prevent numerical inaccuracy #442
-        area_total = p["area_per_channel"].sum(axis=1)
-        # Negative-area peaks get NaN AFT
-        m = p["area"] > 0
-        r["area_fraction_top"][m] = area_top[m] / area_total[m]
-        r["area_fraction_top"][~m] = np.nan
         r["rise_time"] = -p["area_decile_from_midpoint"][:, 1]
 
         if self.check_peak_sum_area_rtol is not None:
+            area_total = p["area_per_channel"].sum(axis=1)
             self.check_area(area_total, p, self.check_peak_sum_area_rtol)
-        # Negative or zero-area peaks have centertime at startime
-        r["center_time"][~m] = p["time"][~m]
-        r["center_time"][m] = strax.compute_center_time(p[m])
         return r
 
     @staticmethod
