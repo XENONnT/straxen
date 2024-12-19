@@ -271,7 +271,7 @@ class Peaklets(strax.Plugin):
             store_data_start=self.store_data_start,
         )
 
-        strax.compute_center_time_widths(peaklets)
+        strax.compute_properties(peaklets, n_top_channels=self.n_top_pmts)
 
         # Split peaks using low-split natural breaks;
         # see https://github.com/XENONnT/straxen/pull/45
@@ -312,7 +312,9 @@ class Peaklets(strax.Plugin):
             )
 
             # Compute the width again for corrected peaks
-            strax.compute_center_time_widths(peaklets, select_peaks_indices=peak_list)
+            strax.compute_properties(
+                peaklets, n_top_channels=self.n_top_pmts, select_peaks_indices=peak_list
+            )
 
         # Compute tight coincidence level.
         # Making this a separate plugin would

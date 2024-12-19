@@ -152,7 +152,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             store_data_start=_store_data_start,
         )
 
-        strax.compute_center_time_widths(merged_s2s)
+        strax.compute_properties(merged_s2s, n_top_channels=self.n_top_pmts)
 
         if (not _store_data_top) or (not _store_data_start):
             merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")

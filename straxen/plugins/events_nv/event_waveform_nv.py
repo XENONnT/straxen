@@ -52,7 +52,7 @@ class nVETOEventWaveform(strax.Plugin):
         _tmp_events["length"] = (events_nv["endtime"] - events_nv["time"]) // 2
         _tmp_events["dt"] = 2
         strax.simple_summed_waveform(records_nv, _tmp_events, self.to_pe)
-        strax.compute_center_time_widths(_tmp_events)
+        strax.compute_properties(_tmp_events)
 
         strax.copy_to_buffer(_tmp_events, events_waveform, "_temp_nv_evts_cpy")
         events_waveform["range_50p_area"] = _tmp_events["width"][:, 5]
