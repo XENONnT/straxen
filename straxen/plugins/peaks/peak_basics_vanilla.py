@@ -1,5 +1,6 @@
 import numpy as np
 import strax
+import straxen
 
 
 export, __all__ = strax.exporter()
@@ -16,6 +17,18 @@ class PeakBasicsVanilla(strax.Plugin):
     __version__ = "0.1.5"
     depends_on = "peaks"
     provides = "peak_basics"
+
+    check_peak_sum_area_rtol = straxen.URLConfig(
+        default=None,
+        track=False,
+        infer_type=False,
+        help=(
+            "Check if the sum area and the sum of area per "
+            "channel are the same. If None, don't do the "
+            "check. To perform the check, set to the desired "
+            " rtol value used e.g. '1e-4' (see np.isclose)."
+        ),
+    )
 
     def infer_dtype(self):
         dtype = strax.time_fields + [
