@@ -539,9 +539,9 @@ def peak_saturation_correction(
         records,
         rlinks,
         to_pe,
-        n_top_channels,
-        store_data_top,
-        store_data_start,
+        n_top_channels=n_top_channels,
+        store_data_top=store_data_top,
+        store_data_start=store_data_start,
         select_peaks_indices=peak_list,
     )
     return peak_list
