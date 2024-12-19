@@ -458,6 +458,8 @@ def peak_saturation_correction(
         samples
     :param use_classification: Option of using classification to pick only S2
     :param n_top_channels: Number of top array channels.
+    :param store_data_top: Boolean which indicates whether to store the top array waveform in the
+        peak.
     :param store_data_start: Boolean which indicates whether to store the first samples of the
         waveform in the peak.
 
