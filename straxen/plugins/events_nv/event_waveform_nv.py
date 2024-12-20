@@ -19,7 +19,16 @@ class nVETOEventWaveform(strax.Plugin):
     compressor = "zstd"
 
     gain_model_nv = straxen.URLConfig(
-        default="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id",
+        default=(
+            "list-to-array://"
+            "xedocs://pmt_area_to_pes"
+            "?as_list=True"
+            "&sort=pmt"
+            "&detector=neutron_veto"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+            "&attr=value"
+        ),
         infer_type=False,
         help="PMT gain model. Specify as (model_type, model_config, nT = True)",
     )
