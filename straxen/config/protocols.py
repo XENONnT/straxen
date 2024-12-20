@@ -114,7 +114,7 @@ def open_neural_net(model_path: str, custom_objects=None, **kwargs):
     with tempfile.TemporaryDirectory() as tmpdirname:
         tar = tarfile.open(model_path, mode="r:gz")
         tar.extractall(path=tmpdirname)
-        return tf.keras.models.load_model(tmpdirname, custom_objects=custom_objects)
+        return tf.saved_model.load(tmpdirname)
 
 
 @URLConfig.register("itp_dict")
