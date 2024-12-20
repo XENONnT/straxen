@@ -39,7 +39,7 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
-    __version__ = "1.2.0"
+    __version__ = "1.2.1"
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False, help="No hits for this many ns triggers a new peak"

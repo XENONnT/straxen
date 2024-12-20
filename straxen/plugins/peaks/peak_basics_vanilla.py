@@ -14,7 +14,7 @@ class PeakBasicsVanilla(strax.Plugin):
 
     """
 
-    __version__ = "0.1.5"
+    __version__ = "0.1.6"
     depends_on = "peaks"
     provides = "peak_basics"
 

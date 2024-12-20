@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 class PeakletClassificationVanilla(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
 
-    __version__ = "3.0.3"
+    __version__ = "3.0.4"
 
     depends_on = "peaklets"
     provides: Union[str, tuple] = "peaklet_classification"
