@@ -12,7 +12,7 @@ class EventTopBottomParams(strax.Plugin):
 
     depends_on = ("event_info", "event_waveform")
     provides = "event_top_bottom_params"
-    __version__ = "0.0.0"
+    __version__ = "0.0.1"
 
     def infer_dtype(self):
         # Populating data type information

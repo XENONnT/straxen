@@ -11,7 +11,7 @@ class nVETOEventWaveform(strax.Plugin):
     """Plugin which computes the summed waveform as well as some shape properties of the NV
     events."""
 
-    __version__ = "0.0.1"
+    __version__ = "0.0.2"
 
     depends_on = "events_nv", "records_nv"
     provides = "event_waveform_nv"

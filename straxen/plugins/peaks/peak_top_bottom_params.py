@@ -11,7 +11,7 @@ class PeakTopBottomParams(strax.Plugin):
 
     depends_on = ("peaks", "peak_basics")
     provides = "peak_top_bottom_params"
-    __version__ = "0.0.0"
+    __version__ = "0.0.1"
 
     def infer_dtype(self):
         dtype = []
