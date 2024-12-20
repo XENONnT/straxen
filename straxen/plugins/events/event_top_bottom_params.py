@@ -129,15 +129,13 @@ class EventTopBottomParams(strax.Plugin):
                 result[f"{type_}_center_time_{arr_}"][mask] += recalc_ctime[mask].astype(int)
                 # computing widths ##
                 # zero or undefined area peaks should have nans
-                strax.compute_properties(fpeaks_)
+                _, width, area_decile_from_midpoint = strax.compute_widths(fpeaks_)
                 result[f"{type_}_rise_time_{arr_}"][:] = np.nan
-                result[f"{type_}_rise_time_{arr_}"][mask] = -fpeaks_["area_decile_from_midpoint"][
-                    mask
-                ][:, 1]
+                result[f"{type_}_rise_time_{arr_}"][mask] = -area_decile_from_midpoint[mask][:, 1]
                 result[f"{type_}_range_50p_area_{arr_}"][:] = np.nan
-                result[f"{type_}_range_50p_area_{arr_}"][mask] = fpeaks_["width"][mask][:, 5]
+                result[f"{type_}_range_50p_area_{arr_}"][mask] = width[mask][:, 5]
                 result[f"{type_}_range_90p_area_{arr_}"][:] = np.nan
-                result[f"{type_}_range_90p_area_{arr_}"][mask] = fpeaks_["width"][mask][:, 9]
+                result[f"{type_}_range_90p_area_{arr_}"][mask] = width[mask][:, 9]
             # Difference between center times of top and bottom arrays
             result[f"{type_}_center_time_diff_top_bot"] = (
                 result[f"{type_}_center_time_top"] - result[f"{type_}_center_time_bot"]
