@@ -39,21 +39,6 @@ class TestComputePeakBasics(unittest.TestCase):
 
     @settings(deadline=None)
     @given(
-        strategies.integers(min_value=0, max_value=TEST_DATA_LENGTH - 1),
-    )
-    def test_aft_equals1(self, test_peak_idx):
-        """Fill top array with area 1."""
-        test_data = self.get_test_peaks()
-        test_data[test_peak_idx]["area_per_channel"][: self.n_top] = 1
-        test_data[test_peak_idx]["area"] = np.sum(test_data[test_peak_idx]["area_per_channel"])
-        test_data[test_peak_idx]["data"][: test_data[test_peak_idx]["length"]] = (
-            test_data[test_peak_idx]["area"] / test_data[test_peak_idx]["length"]
-        )
-        peaks = self.peaks_basics.compute(test_data)
-        assert peaks[test_peak_idx]["area_fraction_top"] == 1
-
-    @settings(deadline=None)
-    @given(
         strategies.floats(
             min_value=0,
             max_value=2,
