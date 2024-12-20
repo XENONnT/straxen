@@ -114,7 +114,8 @@ class EventBasicsVanilla(strax.Plugin):
         # Properties to store for each peak (main and alternate S1 and S2)
         self.peak_properties = (
             ("time", np.int64, "start time since unix epoch [ns]"),
-            ("center_time", np.int64, "weighted center time since unix epoch [ns]"),
+            ("center_time", np.int64, "weighted average center time since unix epoch [ns]"),
+            ("median_time", np.float32, "weighted relative median time of the peak [ns]"),
             ("endtime", np.int64, "end time since unix epoch [ns]"),
             ("area", np.float32, "area, uncorrected [PE]"),
             ("n_channels", np.int16, "count of contributing PMTs"),
