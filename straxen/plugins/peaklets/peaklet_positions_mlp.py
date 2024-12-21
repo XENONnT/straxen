@@ -18,7 +18,7 @@ class PeakletPositionsMLP(PeakletPositionsBase):
 
     tf_model_mlp = straxen.URLConfig(
         default=(
-            "tf://"
+            "keras3://"
             "resource://"
             f"cmt://{algorithm}_model"
             "?version=ONLINE"
@@ -26,7 +26,7 @@ class PeakletPositionsMLP(PeakletPositionsBase):
             "&fmt=abs_path"
         ),
         help=(
-            'MLP model. Should be opened using the "tf" descriptor. '
+            'MLP model. Should be opened using the "keras3" descriptor. '
             'Set to "None" to skip computation'
         ),
         cache=3,
