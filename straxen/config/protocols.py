@@ -310,6 +310,7 @@ def open_jax_model(model_path: str, **kwargs):
     # Deserialize the JAX object and return its callable function
     return export.deserialize(serialized_jax_object).call
 
+
 @URLConfig.register("keras3")
 def open_neural_net(model_path: str, custom_objects=None, **kwargs):
     """Load a Keras model from a Keras file."""
