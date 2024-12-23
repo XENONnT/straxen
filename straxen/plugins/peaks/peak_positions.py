@@ -34,7 +34,7 @@ class PeakPositions(strax.MergeOnlyPlugin):
     )
 
     def infer_dtype(self):
-        dtype = strax.merged_dtype([self.deps[d].dtype_for(d) for d in self.depends_on])
+        dtype = strax.merged_dtype([self.deps[d].dtype_for(d) for d in sorted(self.depends_on)])
         dtype += [
             ("x", np.float32, "Reconstructed S2 X position (cm), uncorrected"),
             ("y", np.float32, "Reconstructed S2 Y position (cm), uncorrected"),
