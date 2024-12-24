@@ -35,6 +35,7 @@ class PulseProcessing(strax.Plugin):
     parallel = "process"
     rechunk_on_save = immutabledict(records=False, veto_regions=True, pulse_counts=True)
     compressor = "zstd"
+    clean_chunk_after_compute = False
 
     depends_on = "raw_records"
 
