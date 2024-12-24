@@ -25,7 +25,3 @@ class EventBasicsSOM(EventBasicsVanilla):
             ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
         ]
         self.peak_properties = tuple(self.peak_properties)
-
-    def compute(self, events, peaks):
-        result = super().compute(events, peaks)
-        return result
