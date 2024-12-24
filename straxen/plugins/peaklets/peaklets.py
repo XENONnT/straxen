@@ -245,6 +245,8 @@ class Peaklets(strax.Plugin):
         # including the left and right extension.
         # (We are not going to use the actual hitlet data_type here.)
         hitlets = hits
+        # This line will not clean the memory, but only prevent misinterpretation
+        # only if sys.getrefcount(hits) - 1 is 1, we can clean the memory
         del hits
 
         # Extend hits into hitlets and clip at chunk boundaries:
