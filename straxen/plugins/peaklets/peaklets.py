@@ -120,7 +120,7 @@ class Peaklets(strax.Plugin):
     )
 
     store_data_start = straxen.URLConfig(
-        default=True, type=bool, help="Save the start time of the waveform with 10 ns dt"
+        default=True, type=bool, help="Save the start time of the waveform with minimum dt"
     )
 
     saturation_correction_on = straxen.URLConfig(
@@ -250,6 +250,7 @@ class Peaklets(strax.Plugin):
         # including the left and right extension.
         # (We are not going to use the actual hitlet data_type here.)
         hitlets = hits
+        # This line will not celan the memory, but only prevent misinterpretation
         del hits
 
         # Extend hits into hitlets and clip at chunk boundaries:
