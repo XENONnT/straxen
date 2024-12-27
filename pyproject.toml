@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "straxen"
-version = "3.0.0"
+version = "3.0.1"
 description = "Streaming analysis for XENON"
 readme = "README.md"
 authors = [
@@ -30,7 +30,7 @@ straxer = "straxen.scripts.straxer:main"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
-strax = ">=2.0.1"
+strax = ">=2.0.3"
 bokeh = "*"
 commentjson = "*"
 gitpython = "*"
