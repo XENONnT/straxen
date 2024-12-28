@@ -1,7 +1,6 @@
 import strax
-import numpy as np
-
 from straxen.plugins.events.event_basics_vanilla import EventBasicsVanilla
+from straxen.plugins.peaklets.peaklet_classification_som import som_additional_fields
 
 export, __all__ = strax.exporter()
 
@@ -17,11 +16,4 @@ class EventBasicsSOM(EventBasicsVanilla):
         # Properties to store for each peak (main and alternate S1 and S2)
         # Add here SOM types:
         super()._set_dtype_requirements()
-        self.peak_properties = list(self.peak_properties)
-        self.peak_properties += [
-            ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
-            ("old_type", np.int8, "Old type of the peak(let)"),
-            ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
-            ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
-        ]
-        self.peak_properties = tuple(self.peak_properties)
+        self.peak_properties += tuple(som_additional_fields)
