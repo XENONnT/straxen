@@ -34,7 +34,7 @@ class PeaksSOM(PeaksVanilla):
         _is_merged_s2 = np.isin(result["time"], merged_s2s["time"]) & np.isin(
             strax.endtime(result), strax.endtime(merged_s2s)
         )
-        result["old_type"][_is_merged_s2] = -1
+        result["vanilla_type"][_is_merged_s2] = -1
         result["som_sub_type"][_is_merged_s2] = -1
 
         return result
