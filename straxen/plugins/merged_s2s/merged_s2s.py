@@ -115,10 +115,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
         # Max gap and area should be set by the gap thresholds
         # to avoid contradictions
         # The gap is defined as the 90% to 10% area decile distance of the adjacent peaks
-        median_time = peaklets["median_time"] + peaklets["time"]
+        left = (peaklets["area_decile_from_midpoint"][:, 1] + peaklets["median_time"]).astype(int)
+        right = (peaklets["area_decile_from_midpoint"][:, 9] + peaklets["median_time"]).astype(int)
         start_merge_at, end_merge_at = self.get_merge_instructions(
-            peaklets["area_decile_from_midpoint"][:, 1] + median_time,
-            peaklets["area_decile_from_midpoint"][:, 9] + median_time,
+            left + peaklets["time"],
+            right + peaklets["time"],
             areas=peaklets["area"],
             types=peaklets["type"],
             gap_thresholds=gap_thresholds,
@@ -134,7 +135,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             peaklets,
             start_merge_at,
             end_merge_at,
-            max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
+            max_buffer=int(2 * self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
         )
         merged_s2s["type"] = 2
 
