@@ -11,8 +11,11 @@ export, __all__ = strax.exporter()
 
 @export
 class MergedS2s(strax.OverlapWindowPlugin):
-    """Merge together peaklets if peak finding favours that they would form a single peak
-    instead."""
+    """Merge together peaklets if peak finding favours that they would form a single peak instead.
+
+    Reference: xenon:xenonnt:analysis:s2_merging_time_position
+
+    """
 
     __version__ = "1.2.0"
 
