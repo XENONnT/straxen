@@ -14,7 +14,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.1.1"
+    __version__ = "1.2.0"
 
     depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
     data_kind = "merged_s2s"
@@ -31,7 +31,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     s2_merge_gap_thresholds = straxen.URLConfig(
-        default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.0)),
+        default=((1.84, 2.85e4), (4.51, 1.12e4), (4.84, 0.0)),
         infer_type=False,
         help=(
             "Points to define maximum separation between peaklets to allow "
@@ -111,9 +111,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         # Max gap and area should be set by the gap thresholds
         # to avoid contradictions
+        # The gap is defined as the 90% to 10% area decile distance of the adjacent peaks
+        median_time = peaklets["median_time"] + peaklets["time"]
         start_merge_at, end_merge_at = self.get_merge_instructions(
-            peaklets["time"],
-            strax.endtime(peaklets),
+            peaklets["area_decile_from_midpoint"][:, 1] + median_time,
+            peaklets["area_decile_from_midpoint"][:, 9] + median_time,
             areas=peaklets["area"],
             types=peaklets["type"],
             gap_thresholds=gap_thresholds,
