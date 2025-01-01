@@ -11,10 +11,13 @@ export, __all__ = strax.exporter()
 
 @export
 class MergedS2s(strax.OverlapWindowPlugin):
-    """Merge together peaklets if peak finding favours that they would form a single peak
-    instead."""
+    """Merge together peaklets if peak finding favours that they would form a single peak instead.
 
-    __version__ = "1.1.1"
+    Reference: xenon:xenonnt:analysis:s2_merging_time_position
+
+    """
+
+    __version__ = "1.2.0"
 
     depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
     data_kind = "merged_s2s"
@@ -31,7 +34,18 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     s2_merge_gap_thresholds = straxen.URLConfig(
-        default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.0)),
+        default=(
+            (1.84, 2.84e04),
+            (2.18, 2.37e04),
+            (2.51, 1.97e04),
+            (2.84, 1.83e04),
+            (3.18, 1.72e04),
+            (3.51, 1.89e04),
+            (3.84, 1.95e04),
+            (4.18, 1.63e04),
+            (4.51, 1.21e04),
+            (4.84, 0.00e00),
+        ),
         infer_type=False,
         help=(
             "Points to define maximum separation between peaklets to allow "
@@ -111,9 +125,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         # Max gap and area should be set by the gap thresholds
         # to avoid contradictions
+        # The gap is defined as the 90% to 10% area decile distance of the adjacent peaks
+        left = (peaklets["area_decile_from_midpoint"][:, 1] + peaklets["median_time"]).astype(int)
+        right = (peaklets["area_decile_from_midpoint"][:, 9] + peaklets["median_time"]).astype(int)
         start_merge_at, end_merge_at = self.get_merge_instructions(
-            peaklets["time"],
-            strax.endtime(peaklets),
+            left + peaklets["time"],
+            right + peaklets["time"],
             areas=peaklets["area"],
             types=peaklets["type"],
             gap_thresholds=gap_thresholds,
@@ -129,7 +146,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             peaklets,
             start_merge_at,
             end_merge_at,
-            max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
+            max_buffer=int(2 * self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
         )
         merged_s2s["type"] = 2
 
