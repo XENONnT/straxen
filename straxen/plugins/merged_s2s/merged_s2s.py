@@ -302,6 +302,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         gap_thresholds=None,
         max_duration=None,
         diagnosing=False,
+        disable=True,
     ):
         """Find the group of peaklets to merge.
 
@@ -311,6 +312,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         """
         n_peaks = len(peaks)
+
+        if n_peaks == 0:
+            raise ValueError("No peaklets to merge")
 
         start_index = np.arange(n_peaks)
         # exclusive end index
@@ -342,7 +346,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             p_values = []
 
         argsort = np.argsort(peaks["area"], kind="mergesort")
-        for i in tqdm(argsort[::-1], disable=not diagnosing):
+        for i in tqdm(argsort[::-1], disable=disable):
             if not unexamined[i]:
                 continue
             p = [1.0, 1.0]
@@ -440,7 +444,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                             merged[indices[1]] = False
                             merge = False
                     else:
-                        raise RuntimeError
+                        raise RuntimeError("Can not decide to merge or not")
                     if merge:
                         merge_peak = strax.merge_peaks(
                             peaks[sl],
@@ -464,9 +468,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     right_bounds[sl] = right_bounds[end_idx - 1]
         n_peaklets = end_index - start_index
         need_merging = n_peaklets > 1
+        assert np.all(np.diff(start_index) >= 0)
+        assert np.all(np.diff(end_index) >= 0)
         start_index = np.unique(start_index[need_merging])
         end_index = np.unique(end_index[need_merging])
-        merged = merged[need_merging]
         if diagnosing:
             return start_index, end_index, merged, merged_area, p_values
         return start_index, end_index, merged
@@ -563,7 +568,7 @@ def get_p_value(
 
     p = np.sum(ps * pmf[non_zero])
     if np.isnan(p):
-        raise RuntimeError
+        raise RuntimeError("p-value is NaN")
     return p
 
 
@@ -639,8 +644,8 @@ def get_posterior(
     log_pdf += maxexp
     pdf = np.exp(log_pdf)
     pmf = pdf / pdf.sum()
-    if np.any(np.isnan(pdf)):
-        raise RuntimeError
+    if np.any(np.isnan(pmf)):
+        raise RuntimeError("pmf is NaN")
     return pmf
 
 
