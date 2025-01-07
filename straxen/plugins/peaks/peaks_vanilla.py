@@ -32,15 +32,6 @@ class PeaksVanilla(strax.Plugin):
         help="Enable runtime checks for sorting and disjointness",
     )
 
-    merge_without_s1 = straxen.URLConfig(
-        default=True,
-        infer_type=False,
-        help=(
-            "If true, S1s will be igored during the merging. "
-            "It's now possible for a S1 to be inside a S2 post merging"
-        ),
-    )
-
     def infer_dtype(self):
         return self.deps["peaklets"].dtype_for("peaklets")
 
@@ -48,19 +39,13 @@ class PeaksVanilla(strax.Plugin):
         # Remove fake merged S2s from dirty hack, see above
         merged_s2s = merged_s2s[merged_s2s["type"] != FAKE_MERGED_S2_TYPE]
 
-        if self.merge_without_s1:
-            is_s1 = peaklets["type"] == 1
-            peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s)
-            peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1], peaks]))
-        else:
-            peaks = strax.replace_merged(peaklets, merged_s2s)
+        is_s1 = peaklets["type"] == 1
+        peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s)
+        peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1], peaks]))
 
         if self.diagnose_sorting:
             assert np.all(np.diff(peaks["time"]) >= 0), "Peaks not sorted"
-            if self.merge_without_s1:
-                to_check = peaks["type"] != 1
-            else:
-                to_check = peaks["type"] != FAKE_MERGED_S2_TYPE
+            to_check = peaks["type"] != 1
 
             assert np.all(
                 peaks["time"][to_check][1:] >= strax.endtime(peaks)[to_check][:-1]

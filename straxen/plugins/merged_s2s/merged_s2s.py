@@ -1,8 +1,11 @@
 from typing import Tuple
 import numpy as np
+from tqdm import tqdm
+from scipy.stats import norm, poisson
 import numba
 import strax
 import straxen
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 from straxen.plugins.peaklets.peaklets import drop_data_field
 
 
@@ -11,12 +14,20 @@ export, __all__ = strax.exporter()
 
 @export
 class MergedS2s(strax.OverlapWindowPlugin):
-    """Merge together peaklets if peak finding favours that they would form a single peak
-    instead."""
+    """Merge together peaklets if peak finding favours that they would form a single peak instead.
 
-    __version__ = "1.1.1"
+    Reference: xenon:xenonnt:analysis:s2_merging_time_position
 
-    depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
+    """
+
+    __version__ = "2.0.0"
+
+    depends_on: Tuple[str, ...] = (
+        "peaklets",
+        f"peaklet_positions_{DEFAULT_POSREC_ALGO}",
+        "peaklet_classification",
+        "lone_hits",
+    )
     data_kind = "merged_s2s"
     provides = "merged_s2s"
 
@@ -24,14 +35,29 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
 
-    s2_merge_max_duration = straxen.URLConfig(
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
+
+    max_duration = straxen.URLConfig(
         default=50_000,
         infer_type=False,
         help="Do not merge peaklets at all if the result would be a peak longer than this [ns]",
     )
 
     s2_merge_gap_thresholds = straxen.URLConfig(
-        default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.0)),
+        default=(
+            (1.84, 2.84e04),
+            (2.18, 2.37e04),
+            (2.51, 1.97e04),
+            (2.84, 1.83e04),
+            (3.18, 1.72e04),
+            (3.51, 1.89e04),
+            (3.84, 1.95e04),
+            (4.18, 1.63e04),
+            (4.51, 1.21e04),
+            (4.84, 0.00e00),
+        ),
         infer_type=False,
         help=(
             "Points to define maximum separation between peaklets to allow "
@@ -47,13 +73,83 @@ class MergedS2s(strax.OverlapWindowPlugin):
         help="PMT gain model. Specify as (str(model_config), str(version), nT-->boolean",
     )
 
-    merge_without_s1 = straxen.URLConfig(
-        default=True,
-        infer_type=False,
+    rough_seg = straxen.URLConfig(
+        default=30, type=(int, float), track=True, help="Rough single electron gain [PE/e]"
+    )
+
+    sigma_seg = straxen.URLConfig(
+        default=6.5,
+        type=(int, float),
+        track=True,
+        help="Standard deviation of the single electron gain [PE/e]",
+    )
+
+    rough_min_sigma = straxen.URLConfig(
+        default=1e2, type=(int, float), track=True, help="Minimum sigma for the merged peaks"
+    )
+
+    rough_max_sigma = straxen.URLConfig(
+        default=2e4, type=(int, float), track=True, help="Maximum sigma for the merged peaks"
+    )
+
+    rough_sigma_bins = straxen.URLConfig(
+        default=10, type=int, track=True, help="Number of bins for sigma of merged peaks"
+    )
+
+    rough_mu_bins = straxen.URLConfig(
+        default=10, type=int, track=True, help="Number of bins for mu of merged peaks"
+    )
+
+    poisson_max_mu = straxen.URLConfig(
+        default=25, type=int, track=True, help="When to switch from Poisson to normal distribution"
+    )
+
+    poisson_survival_ratio = straxen.URLConfig(
+        default=1e-4,
+        type=float,
+        track=True,
         help=(
-            "If true, S1s will be igored during the merging. "
-            "It's now possible for a S1 to be inside a S2 post merging"
+            "Survival ratio for Poisson distribution. The PMF smaller than this will be ignored."
         ),
+    )
+
+    normal_max_sigma = straxen.URLConfig(
+        default=7,
+        type=(int, float),
+        track=True,
+        help="Maximum sigma for the normal distribution CDF panel",
+    )
+
+    normal_n_bins = straxen.URLConfig(
+        default=501,
+        type=int,
+        track=True,
+        help="Number of bins for the normal distribution CDF panel",
+    )
+
+    maxexp = straxen.URLConfig(
+        default=10,
+        type=int,
+        track=True,
+        help="Maximum exponent for the posterior to keep numerical stability",
+    )
+
+    p_threshold = straxen.URLConfig(
+        default=2e-2,
+        type=float,
+        track=True,
+        help="Threshold for the p-value of time-density merging",
+    )
+
+    dr_threshold = straxen.URLConfig(
+        default=14,
+        type=float,
+        track=True,
+        help="Threshold for the weighted mean deviation of the peaklets from the main cluster [cm]",
+    )
+
+    use_bayesian_merging = straxen.URLConfig(
+        default=True, type=bool, track=True, help="Use Bayesian merging"
     )
 
     merged_s2s_get_window_size_factor = straxen.URLConfig(
@@ -62,6 +158,23 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     def setup(self):
         self.to_pe = self.gain_model
+        self.gap_thresholds = np.array(self.s2_merge_gap_thresholds).T
+        # Max gap and area should be set by the gap thresholds to avoid contradictions
+        self.max_gap = self.gap_thresholds[1, 0]
+        self.max_area = 10 ** self.gap_thresholds[0, -1]
+
+        self.poisson_max_k = np.ceil(
+            poisson.isf(q=self.poisson_survival_ratio, mu=self.poisson_max_mu)
+        ).astype(int)
+        self.factorial_panel = np.array(
+            [np.prod(np.arange(1, k + 1, dtype=float)) for k in range(self.poisson_max_k + 1)]
+        )
+        assert np.all(self.factorial_panel > 0)
+        x = np.linspace(-self.normal_max_sigma, self.normal_max_sigma, self.normal_n_bins)
+        self.normal_panel = np.vstack([x, norm.cdf(x)])
+
+        self.sigma = np.linspace(self.rough_min_sigma, self.rough_max_sigma, self.rough_sigma_bins)
+        self.sigma_panel = np.repeat(self.sigma[None, :], self.rough_mu_bins, axis=0).flatten()
 
     def _have_data(self, field):
         return field in self.deps["peaklets"].dtype_for("peaklets").names
@@ -80,23 +193,20 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
-            int(self.s2_merge_gap_thresholds[0][1]) + self.s2_merge_max_duration
+            int(self.s2_merge_gap_thresholds[0][1]) + self.max_duration
         )
 
     def compute(self, peaklets, lone_hits):
-        if self.merge_without_s1:
-            peaklets = peaklets[peaklets["type"] != 1]
+        peaklets = peaklets[peaklets["type"] != 1]
 
         if len(peaklets) <= 1:
             return self.empty_result()
 
-        gap_thresholds = self.s2_merge_gap_thresholds
-        max_gap = gap_thresholds[0][1]
-        max_area = 10 ** gap_thresholds[-1][0]
-
-        if max_gap < 0:
+        if self.max_gap < 0:
             # Do not merge at all
             return self.empty_result()
+
+        max_buffer = int(2 * self.max_duration // np.gcd.reduce(peaklets["dt"]))
 
         if not (self._have_data("data_top") and self._have_data("data_start")):
             peaklets_w_field = np.zeros(
@@ -109,29 +219,32 @@ class MergedS2s(strax.OverlapWindowPlugin):
             del peaklets
             peaklets = peaklets_w_field
 
-        # Max gap and area should be set by the gap thresholds
-        # to avoid contradictions
-        start_merge_at, end_merge_at = self.get_merge_instructions(
-            peaklets["time"],
-            strax.endtime(peaklets),
-            areas=peaklets["area"],
-            types=peaklets["type"],
-            gap_thresholds=gap_thresholds,
-            max_duration=self.s2_merge_max_duration,
-            max_gap=max_gap,
-            max_area=max_area,
+        start_merge_at, end_merge_at, merged = self.get_merge_instructions(
+            peaklets.copy(),
+            self.max_gap,
+            self.sigma,
+            self.rough_seg,
+            self.sigma_seg,
+            self.rough_mu_bins,
+            self.poisson_max_mu,
+            self.poisson_survival_ratio,
+            self.normal_panel,
+            self.factorial_panel,
+            self.sigma_panel,
+            self.maxexp,
+            self.n_top_pmts,
+            max_buffer,
+            self.p_threshold,
+            self.dr_threshold,
+            self.use_bayesian_merging,
+            self.gap_thresholds,
+            self.max_duration,
         )
 
         assert "data_top" in peaklets.dtype.names
         assert "data_start" in peaklets.dtype.names
 
-        merged_s2s = strax.merge_peaks(
-            peaklets,
-            start_merge_at,
-            end_merge_at,
-            max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
-        )
-        merged_s2s["type"] = 2
+        merged_s2s = self.merge_peaklets(peaklets, start_merge_at, end_merge_at, merged, max_buffer)
 
         # Updated time and length of lone_hits and sort again:
         lh = np.copy(lone_hits)
@@ -160,87 +273,298 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return merged_s2s
 
     @staticmethod
-    @numba.njit(cache=True, nogil=True)
+    def get_left_right(peaklets):
+        """Get the left and right boundaries of the peaklets."""
+        # The gap is defined as the 90% to 10% area decile distance of the adjacent peaks
+        left = (peaklets["area_decile_from_midpoint"][1] + peaklets["median_time"]).astype(int)
+        right = (peaklets["area_decile_from_midpoint"][9] + peaklets["median_time"]).astype(int)
+        return left, right
+
+    @staticmethod
     def get_merge_instructions(
-        peaklet_starts,
-        peaklet_ends,
-        areas,
-        types,
-        gap_thresholds,
-        max_duration,
+        peaks,
         max_gap,
-        max_area,
+        sigma,
+        rough_seg,
+        sigma_seg,
+        rough_mu_bins,
+        poisson_max_mu,
+        poisson_survival_ratio,
+        normal_panel,
+        factorial_panel,
+        sigma_panel,
+        maxexp,
+        n_top_pmts,
+        max_buffer,
+        p_threshold,
+        dr_threshold,
+        bayesian=True,
+        gap_thresholds=None,
+        max_duration=None,
+        diagnosing=False,
     ):
+        """Find the group of peaklets to merge.
+
+        There are two ways to merge peaklets:
+        1. Bayesian merging: merge peaklets based on the p-value of the time-density merging
+        2. Normal merging: merge peaklets based on the gap between the peaklets
+
         """
-        Finding the group of peaklets to merge. To do this start with the
-        smallest gaps and keep merging until the new, merged S2 has such a
-        large area or gap to adjacent peaks that merging is not required
-        anymore.
-        see https://github.com/XENONnT/straxen/pull/548
-        and https://github.com/XENONnT/straxen/pull/568
+        n_peaks = len(peaks)
 
-        :return: list of the first index of peaklet to be merged and
-        list of the exclusive last index of peaklet to be merged
-        """
+        start_index = np.arange(n_peaks)
+        # exclusive end index
+        end_index = np.arange(n_peaks) + 1
 
-        peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
-        peaklet_start_index = np.arange(len(peaklet_starts))
-        peaklet_end_index = np.arange(len(peaklet_starts))
+        # mask to help keep track of the peaklets that have been examined
+        unexamined = np.full(n_peaks, True)
+        # mask to help keep track of the peaklets that should not be merged because
+        # of too high standard deviation from the main cluster in (x, y) of the peaklets
+        merged = np.full(n_peaks, True)
 
-        for gap_i in strax.stable_argsort(peaklet_gaps):
-            start_idx = peaklet_start_index[gap_i]
-            inclusive_end_idx = peaklet_end_index[gap_i + 1]
-            sum_area = np.sum(areas[start_idx : inclusive_end_idx + 1])
-            this_gap = peaklet_gaps[gap_i]
+        # approximation of the integration boundaries
+        core_bounds = np.int64((peaks["time"][1:] + strax.endtime(peaks)[:-1]) / 2)
+        left_bounds = np.hstack([peaks["time"][0], core_bounds])
+        right_bounds = np.hstack([core_bounds, strax.endtime(peaks[-1])])
+        assert np.all(np.diff(left_bounds) > 0)
+        assert np.all(np.diff(right_bounds) > 0)
 
-            if inclusive_end_idx < start_idx:
-                raise ValueError("Something went wrong, left is bigger then right?!")
+        # (x, y) positions of the peaklets
+        positions = np.vstack(
+            [peaks[f"x_{DEFAULT_POSREC_ALGO}"], peaks[f"y_{DEFAULT_POSREC_ALGO}"]]
+        ).T
 
-            if this_gap > max_gap:
-                break
-            if sum_area > max_area:
-                # For very large S2s, we assume that natural breaks is taking care
+        # weights of the peaklets when calculating the weighted mean deviation in (x, y)
+        peaklets_area = peaks["area"].copy()
+
+        if diagnosing:
+            merged_area = []
+            p_values = []
+
+        argsort = np.argsort(peaks["area"], kind="mergesort")
+        for i in tqdm(argsort[::-1], disable=not diagnosing):
+            if not unexamined[i]:
                 continue
-            if (sum_area > 0) and (
-                this_gap > merge_s2_threshold(np.log10(sum_area), gap_thresholds)
-            ):
-                # The merged peak would be too large
-                continue
+            p = [1.0, 1.0]
+            while max(p) >= p_threshold and unexamined[i]:
+                indices = []
+                if (
+                    i - 1 >= 0
+                    and unexamined[i - 1]
+                    and 2 * (peaks["time"][i] - left_bounds[i]) < max_gap
+                    and start_index[i] - 1 >= 0
+                ):
+                    indices.append(start_index[i] - 1)
+                else:
+                    indices.append(None)
+                if (
+                    i + 1 < n_peaks
+                    and unexamined[i + 1]
+                    and 2 * (right_bounds[i] - strax.endtime(peaks[i])) < max_gap
+                    and end_index[i] < n_peaks
+                ):
+                    indices.append(end_index[i])
+                else:
+                    indices.append(None)
+                p = []
+                # get p-values
+                for j in indices:
+                    if j is None:
+                        p.append(-1.0)
+                        continue
+                    if bayesian:
+                        p_ = get_p_value(
+                            peaks[i],
+                            peaks[j],
+                            left_bounds[i],
+                            right_bounds[i],
+                            left_bounds[j],
+                            right_bounds[j],
+                            sigma,
+                            rough_seg,
+                            sigma_seg,
+                            rough_mu_bins,
+                            poisson_max_mu,
+                            poisson_survival_ratio,
+                            normal_panel,
+                            factorial_panel,
+                            sigma_panel,
+                            maxexp,
+                        )
+                    else:
+                        y_left, y_right = MergedS2s.get_left_right(peaks[i])
+                        x_left, x_right = MergedS2s.get_left_right(peaks[j])
+                        dt = peaks["time"][j] - peaks["time"][i]
+                        boundaries = np.sort([y_left, y_right, x_left + dt, x_right + dt])
+                        this_gap = boundaries[2] - boundaries[1]
+                        gap_threshold = merge_s2_threshold(
+                            np.log10(peaks["area"][i] + peaks["area"][j]),
+                            gap_thresholds,
+                        )
+                        # gap of 90-10% area decile distance should not be larger than the threshold
+                        mask = this_gap < gap_threshold
+                        # the merged peak should not be longer than the max duration
+                        mask &= (
+                            max(strax.endtime(peaks[i]), strax.endtime(peaks[j]))
+                            - min(peaks["time"][i], peaks["time"][j])
+                        ) < max_duration
+                        if mask:
+                            p_ = 1.0
+                        else:
+                            p_ = -1.0
+                    p.append(p_)
+                tested = slice(start_index[i], end_index[i])
+                if diagnosing:
+                    merged_area.append(peaklets_area[tested][merged[tested]].sum())
+                    p_values.append(max(p))
+                if max(p) < p_threshold:
+                    # this will not allow merging of the already examined peaklets
+                    unexamined[tested] = False
+                else:
+                    # calculate weighted averaged deviation of peaklets from the main cluster
+                    dr = weighted_averaged_dr(
+                        positions[tested, 0][merged[tested]],
+                        positions[tested, 0][merged[tested]],
+                        peaklets_area[tested][merged[tested]] / rough_seg,
+                    )
+                    merge = True
+                    if p[0] >= p_threshold and p[0] > p[1]:
+                        # slice to conduct the merging
+                        sl = slice(indices[0], indices[0] + 2)
+                        if dr > dr_threshold:
+                            merged[indices[0]] = False
+                            merge = False
+                    elif p[1] >= p_threshold and p[1] >= p[0]:
+                        sl = slice(indices[1] - 1, indices[1] + 1)
+                        if dr > dr_threshold:
+                            merged[indices[1]] = False
+                            merge = False
+                    else:
+                        raise RuntimeError
+                    if merge:
+                        merge_peak = strax.merge_peaks(
+                            peaks[sl],
+                            [0],
+                            [2],
+                            max_buffer=max_buffer,
+                        )
+                        strax.compute_properties(merge_peak, n_top_channels=n_top_pmts)
+                    else:
+                        merge_peak = peaks[i].copy()
 
-            peak_duration = peaklet_ends[inclusive_end_idx] - peaklet_starts[start_idx]
-            if peak_duration >= max_duration:
-                continue
+                    # update merging peaks and boundaries
+                    start_idx = start_index[sl.start]
+                    end_idx = end_index[sl.stop - 1]
+                    sl = slice(start_idx, end_idx)
+                    if merge:
+                        peaks[sl] = merge_peak[0]
+                    start_index[sl] = start_index[start_idx]
+                    end_index[sl] = end_index[end_idx - 1]
+                    left_bounds[sl] = left_bounds[start_idx]
+                    right_bounds[sl] = right_bounds[end_idx - 1]
+        n_peaklets = end_index - start_index
+        need_merging = n_peaklets > 1
+        start_index = np.unique(start_index[need_merging])
+        end_index = np.unique(end_index[need_merging])
+        merged = merged[need_merging]
+        if diagnosing:
+            return start_index, end_index, merged, merged_area, p_values
+        return start_index, end_index, merged
 
-            # Merge gap in other words this means p @ gap_i and p @gap_i + 1 share the same
-            # start, end and area:
-            peaklet_start_index[start_idx : inclusive_end_idx + 1] = peaklet_start_index[start_idx]
-            peaklet_end_index[start_idx : inclusive_end_idx + 1] = peaklet_end_index[
-                inclusive_end_idx
-            ]
-
-        start_merge_at = np.unique(peaklet_start_index)
-        end_merge_at = np.unique(peaklet_end_index)
-        if not len(start_merge_at) == len(end_merge_at):
-            raise ValueError("inconsistent start and end merge instructions")
-
-        merge_start, merge_stop_exclusive = _filter_s1_starts(start_merge_at, types, end_merge_at)
-
-        return merge_start, merge_stop_exclusive
+    @staticmethod
+    def merge_peaklets(peaklets, start_merge_at, end_merge_at, merged, max_buffer):
+        # mark the peaklets can be merged by time-density but not by position-density as type 20
+        _merged_s2s = peaklets[~merged].copy()
+        _merged_s2s["type"] = 20
+        # mark the peaklets can be merged by time-density and position-density as type 2
+        merged_s2s = strax.merge_peaks(
+            peaklets,
+            start_merge_at,
+            end_merge_at,
+            merged=merged,
+            max_buffer=max_buffer,
+        )
+        merged_s2s["type"] = 2
+        merged_s2s = strax.sort_by_time(np.concatenate([_merged_s2s, merged_s2s]))
+        return merged_s2s
 
 
 @numba.njit(cache=True, nogil=True)
-def _filter_s1_starts(start_merge_at, types, end_merge_at):
-    for start_merge_idx, _ in enumerate(start_merge_at):
-        while types[start_merge_at[start_merge_idx]] != 2:
-            if end_merge_at[start_merge_idx] - start_merge_at[start_merge_idx] <= 1:
-                break
-            start_merge_at[start_merge_idx] += 1
+def get_p_value(
+    y,
+    x,
+    ly,
+    ry,
+    lx,
+    rx,
+    sigma,
+    rough_seg,
+    sigma_seg,
+    rough_mu_bins,
+    poisson_max_mu,
+    poisson_survival_ratio,
+    normal_panel,
+    factorial_panel,
+    sigma_panel,
+    maxexp,
+):
+    y_time = y["time"]
+    x_time = x["time"]
+    y_median_time = y["median_time"]
+    x_median_time = x["median_time"]
+    y_data = y["data"]
+    y_dt = y["dt"]
+    t0 = y["time"]
 
-    start_merge_with_s2 = types[start_merge_at] == 2
-    merges_at_least_two_peaks = end_merge_at - start_merge_at >= 1
+    # better constraint the mu in boundaries of waveform
+    # because the number of bins is not high enough comprising for computation efficiency
+    mu = rough_mu(y, x, rough_mu_bins)
 
-    keep_merges = start_merge_with_s2 & merges_at_least_two_peaks
-    return start_merge_at[keep_merges], end_merge_at[keep_merges] + 1
+    y_integrated = normal_cdf(((ry - t0) - mu[:, None]) / sigma, normal_panel)
+    y_integrated -= normal_cdf(((ly - t0) - mu[:, None]) / sigma, normal_panel)
+    x_integrated = normal_cdf(((rx - t0) - mu[:, None]) / sigma, normal_panel)
+    x_integrated -= normal_cdf(((lx - t0) - mu[:, None]) / sigma, normal_panel)
+    # keep numerical stability
+    eps = 2.220446049250313e-16  # np.finfo(float).eps
+    y_integrated += eps
+    x_integrated += eps
+
+    pmf = get_posterior(
+        mu,
+        sigma,
+        y_dt,
+        y_data,
+        y_integrated,
+        y_time,
+        y_median_time,
+        x_time,
+        x_median_time,
+        rough_seg,
+        maxexp,
+    ).flatten()
+
+    non_zero = pmf > 0
+    if not np.any(non_zero):
+        return 0.0
+    # the mask non_zero here is also implicit flatten
+    ps = p_values(
+        sigma_panel[non_zero],
+        y["area"],
+        y_integrated.flatten()[non_zero],
+        x["area"],
+        x_integrated.flatten()[non_zero],
+        rough_seg,
+        sigma_seg,
+        poisson_max_mu,
+        poisson_survival_ratio,
+        normal_panel,
+        factorial_panel,
+    )
+
+    p = np.sum(ps * pmf[non_zero])
+    if np.isnan(p):
+        raise RuntimeError
+    return p
 
 
 @numba.njit(cache=True, nogil=True)
@@ -252,10 +576,116 @@ def merge_s2_threshold(log_area, gap_thresholds):
     :param gap_thresholds: tuple (n, 2) of fix points for interpolation.
 
     """
-    for i, (a1, g1) in enumerate(gap_thresholds):
-        if log_area < a1:
-            if i == 0:
-                return g1
-            a0, g0 = gap_thresholds[i - 1]
-            return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
-    return gap_thresholds[-1][1]
+    if log_area < gap_thresholds[0, 0]:
+        return gap_thresholds[1, 0]
+    if log_area > gap_thresholds[0, -1]:
+        return gap_thresholds[1, -1]
+    return np.interp(log_area, gap_thresholds[0], gap_thresholds[1])
+
+
+@numba.njit(cache=True, nogil=True)
+def rough_mu(y, x, rough_mu_bins):
+    """Get rough bins for mu as the integration space."""
+    mu = np.linspace(
+        min(y["time"], x["time"]) - y["time"],
+        max(strax.endtime(y), strax.endtime(x)) - y["time"],
+        rough_mu_bins,
+    )
+    return mu
+
+
+@numba.njit(cache=True, nogil=True)
+def poisson_pmf(k, mu, factorial_panel):
+    """Probability mass function of Poisson distribution, numba decorated."""
+    return mu**k / np.exp(mu) / factorial_panel[k]
+
+
+@numba.njit(cache=True, nogil=True)
+def normal_cdf(x, normal_panel):
+    """Cumulative density function of standard normal distribution, numba decorated."""
+    return np.interp(x, normal_panel[0], normal_panel[1])
+
+
+@numba.njit(cache=True, nogil=True)
+def get_posterior(
+    mu,
+    sigma,
+    y_dt,
+    y_data,
+    y_integrated,
+    y_time,
+    y_median_time,
+    x_time,
+    x_median_time,
+    rough_seg,
+    maxexp,
+):
+    """Get the posterior of (mu, sigma) based on the waveform y."""
+    # production of normal PDF
+    y_t = np.arange(y_data.size) * y_dt
+    sigma2 = 2 * sigma**2
+    log_pdf = -((y_t - mu[:, None]) ** 2 * y_data).sum(axis=1)[:, None] / (rough_seg * sigma2)
+    log_sigma = np.log(sigma)
+    y_nse = y_data.sum() / rough_seg
+    log_pdf -= log_sigma * y_nse
+    # account for the bounded sampling of y
+    log_pdf -= np.log(y_integrated) * y_nse
+    # add log prior
+    # dt is median between median time of two peaklets
+    dt = np.abs((y_time - x_time) + (y_median_time - x_median_time))
+    log_pdf -= dt**2 / 4 / sigma2 + 2 * log_sigma
+    # to prevent numerical overflow
+    log_pdf -= log_pdf.max()
+    log_pdf += maxexp
+    pdf = np.exp(log_pdf)
+    pmf = pdf / pdf.sum()
+    if np.any(np.isnan(pdf)):
+        raise RuntimeError
+    return pmf
+
+
+@numba.njit(cache=True, nogil=True)
+def p_values(
+    sigma,
+    y_area,
+    y_integrated,
+    x_area,
+    x_integrated,
+    rough_seg,
+    sigma_seg,
+    poisson_max_mu,
+    poisson_survival_ratio,
+    normal_panel,
+    factorial_panel,
+):
+    """The p-value if observe the x_area given the y_area, numba decorated."""
+    # distribution of allowed area
+    expected_nse = x_integrated * y_area / y_integrated / rough_seg
+    ps = []
+    for mu in expected_nse:
+        # the number of electron follows Poisson distribution
+        if mu > poisson_max_mu:
+            ps.append(1 - normal_cdf((x_area / rough_seg - mu) / np.sqrt(mu), normal_panel))
+        else:
+            cdf = poisson_pmf(0, mu, factorial_panel)
+            k = 1
+            p = 0
+            while cdf < 1 - poisson_survival_ratio:
+                pmf = poisson_pmf(k, mu, factorial_panel)
+                cdf += pmf
+                p += pmf * (
+                    1 - normal_cdf((x_area - k * rough_seg) / (k**0.5 * sigma_seg), normal_panel)
+                )
+                k += 1
+            ps.append(p)
+    ps = np.array(ps)
+    return ps
+
+
+@numba.njit(cache=True, nogil=True)
+def weighted_averaged_dr(x, y, weights):
+    x_avg = np.average(x, weights=weights)
+    y_avg = np.average(y, weights=weights)
+    dr = np.sqrt((x - x_avg) ** 2 + (y - y_avg) ** 2)
+    dr_avg = np.average(dr, weights=weights)
+    return dr_avg
