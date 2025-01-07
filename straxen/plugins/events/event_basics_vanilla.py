@@ -216,19 +216,18 @@ class EventBasicsVanilla(strax.Plugin):
         result["endtime"] = events["endtime"]
         result["event_number"] = events["event_number"]
 
-        self.fill_events(result, events, split_peaks)
+        self.fill_events(result, split_peaks)
         return result
 
     # If copy_largest_peaks_into_event is ever numbafied, also numbafy this function
-    def fill_events(self, result_buffer, events, split_peaks):
+    def fill_events(self, result_buffer, split_peaks):
         """Loop over the events and peaks within that event."""
-        for event_i, _ in enumerate(events):
-            peaks_in_event_i = split_peaks[event_i]
+        for event_i, peaks_in_event_i in enumerate(split_peaks):
             n_peaks = len(peaks_in_event_i)
             result_buffer[event_i]["n_peaks"] = n_peaks
 
             if not n_peaks:
-                raise ValueError(f"No peaks within event?\n{events[event_i]}")
+                raise ValueError(f"No peaks within event {event_i}?")
 
             self.fill_result_i(result_buffer[event_i], peaks_in_event_i)
 
