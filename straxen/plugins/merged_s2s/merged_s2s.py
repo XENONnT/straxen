@@ -39,8 +39,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
 
-    max_duration = straxen.URLConfig(
+    s2_max_duration = straxen.URLConfig(
         default=50_000,
+        type=int,
         infer_type=False,
         help="Do not merge peaklets at all if the result would be a peak longer than this [ns]",
     )
@@ -160,8 +161,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.to_pe = self.gain_model
         self.gap_thresholds = np.array(self.s2_merge_gap_thresholds).T
         # Max gap and area should be set by the gap thresholds to avoid contradictions
+        if np.argmax(self.gap_thresholds[1]) != 0:
+            raise ValueError("The first point should be the maximum gap to allow merging")
         self.max_gap = self.gap_thresholds[1, 0]
         self.max_area = 10 ** self.gap_thresholds[0, -1]
+        self.max_duration = self.s2_max_duration
 
         self.poisson_max_k = np.ceil(
             poisson.isf(q=self.poisson_survival_ratio, mu=self.poisson_max_mu)
@@ -169,7 +173,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.factorial_panel = np.array(
             [np.prod(np.arange(1, k + 1, dtype=float)) for k in range(self.poisson_max_k + 1)]
         )
-        assert np.all(self.factorial_panel > 0)
+        if np.any(self.factorial_panel < 0):
+            raise ValueError("Factorial panel has negative values, this might because of overflow")
         x = np.linspace(-self.normal_max_sigma, self.normal_max_sigma, self.normal_n_bins)
         self.normal_panel = np.vstack([x, norm.cdf(x)])
 
@@ -193,7 +198,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
-            int(self.s2_merge_gap_thresholds[0][1]) + self.max_duration
+            int(self.s2_merge_gap_thresholds[0][1]) + self.s2_max_duration
         )
 
     def compute(self, peaklets, lone_hits):
@@ -206,7 +211,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # Do not merge at all
             return self.empty_result()
 
-        max_buffer = int(2 * self.max_duration // np.gcd.reduce(peaklets["dt"]))
+        max_buffer = int(self.max_duration // strax.gcd_of_array(peaklets["dt"]))
 
         if not (self._have_data("data_top") and self._have_data("data_start")):
             peaklets_w_field = np.zeros(
@@ -222,6 +227,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         start_merge_at, end_merge_at, merged = self.get_merge_instructions(
             peaklets.copy(),
             self.max_gap,
+            self.max_duration,
             self.sigma,
             self.rough_seg,
             self.sigma_seg,
@@ -233,18 +239,19 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.sigma_panel,
             self.maxexp,
             self.n_top_pmts,
-            max_buffer,
             self.p_threshold,
             self.dr_threshold,
             self.use_bayesian_merging,
             self.gap_thresholds,
-            self.max_duration,
         )
 
-        assert "data_top" in peaklets.dtype.names
-        assert "data_start" in peaklets.dtype.names
+        if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
+            raise ValueError("data_top or data_start is not in the peaklets dtype")
 
         merged_s2s = self.merge_peaklets(peaklets, start_merge_at, end_merge_at, merged, max_buffer)
+        is_s2 = merged_s2s["type"] == 2
+        if np.max((strax.endtime(merged_s2s) - merged_s2s["time"])[is_s2]) >= self.max_duration:
+            raise ValueError("Merged S2 is too long")
 
         # Updated time and length of lone_hits and sort again:
         lh = np.copy(lone_hits)
@@ -281,9 +288,25 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return left, right
 
     @staticmethod
+    def get_gap(y, x):
+        """Get the gap between two peaklets."""
+        y_left, y_right = MergedS2s.get_left_right(y)
+        x_left, x_right = MergedS2s.get_left_right(x)
+        dt = x["time"] - y["time"]
+        boundaries = np.sort([y_left, y_right, x_left + dt, x_right + dt])
+        this_gap = boundaries[2] - boundaries[1]
+        return this_gap
+
+    @staticmethod
+    def get_duration(y, x):
+        """Get the duration of the merged peaklets."""
+        return max(strax.endtime(y), strax.endtime(x)) - min(y["time"], x["time"])
+
+    @staticmethod
     def get_merge_instructions(
         peaks,
         max_gap,
+        max_duration,
         sigma,
         rough_seg,
         sigma_seg,
@@ -295,12 +318,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
         sigma_panel,
         maxexp,
         n_top_pmts,
-        max_buffer,
         p_threshold,
         dr_threshold,
         bayesian=True,
         gap_thresholds=None,
-        max_duration=None,
         diagnosing=False,
         disable=True,
     ):
@@ -311,8 +332,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
         2. Normal merging: merge peaklets based on the gap between the peaklets
 
         """
-        n_peaks = len(peaks)
+        max_buffer = int(max_duration // strax.gcd_of_array(peaks["dt"]))
 
+        n_peaks = len(peaks)
         if n_peaks == 0:
             raise ValueError("No peaklets to merge")
 
@@ -327,11 +349,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged = np.full(n_peaks, True)
 
         # approximation of the integration boundaries
-        core_bounds = np.int64((peaks["time"][1:] + strax.endtime(peaks)[:-1]) / 2)
+        core_bounds = (peaks["time"][1:] + strax.endtime(peaks)[:-1]) // 2
         left_bounds = np.hstack([peaks["time"][0], core_bounds])
         right_bounds = np.hstack([core_bounds, strax.endtime(peaks[-1])])
-        assert np.all(np.diff(left_bounds) > 0)
-        assert np.all(np.diff(right_bounds) > 0)
+        if np.any(np.diff(left_bounds) < 0) or np.any(np.diff(right_bounds) < 0):
+            raise ValueError("Peaks not disjoint, why?")
 
         # (x, y) positions of the peaklets
         positions = np.vstack(
@@ -352,11 +374,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
             p = [1.0, 1.0]
             while max(p) >= p_threshold and unexamined[i]:
                 indices = []
+                # please mind here that the definition of gaps should
+                # be consistent with in the merging algorithm
+                # and the merged peak should not be longer than the max duration
                 if (
                     i - 1 >= 0
                     and unexamined[i - 1]
-                    and 2 * (peaks["time"][i] - left_bounds[i]) < max_gap
                     and start_index[i] - 1 >= 0
+                    and MergedS2s.get_gap(peaks[i], peaks[start_index[i] - 1]) < max_gap
+                    and MergedS2s.get_duration(peaks[i], peaks[start_index[i] - 1]) <= max_duration
                 ):
                     indices.append(start_index[i] - 1)
                 else:
@@ -364,8 +390,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 if (
                     i + 1 < n_peaks
                     and unexamined[i + 1]
-                    and 2 * (right_bounds[i] - strax.endtime(peaks[i])) < max_gap
                     and end_index[i] < n_peaks
+                    and MergedS2s.get_gap(peaks[i], peaks[end_index[i]]) < max_gap
+                    and MergedS2s.get_duration(peaks[i], peaks[end_index[i]]) <= max_duration
                 ):
                     indices.append(end_index[i])
                 else:
@@ -396,23 +423,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
                             maxexp,
                         )
                     else:
-                        y_left, y_right = MergedS2s.get_left_right(peaks[i])
-                        x_left, x_right = MergedS2s.get_left_right(peaks[j])
-                        dt = peaks["time"][j] - peaks["time"][i]
-                        boundaries = np.sort([y_left, y_right, x_left + dt, x_right + dt])
-                        this_gap = boundaries[2] - boundaries[1]
+                        this_gap = MergedS2s.get_gap(peaks[i], peaks[j])
                         gap_threshold = merge_s2_threshold(
                             np.log10(peaks["area"][i] + peaks["area"][j]),
                             gap_thresholds,
                         )
                         # gap of 90-10% area decile distance should not be larger than the threshold
-                        mask = this_gap < gap_threshold
-                        # the merged peak should not be longer than the max duration
-                        mask &= (
-                            max(strax.endtime(peaks[i]), strax.endtime(peaks[j]))
-                            - min(peaks["time"][i], peaks["time"][j])
-                        ) < max_duration
-                        if mask:
+                        if this_gap < gap_threshold:
                             p_ = 1.0
                         else:
                             p_ = -1.0
@@ -452,6 +469,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
                             [2],
                             max_buffer=max_buffer,
                         )
+                        # this step is necessary to update the properties of the merged peak
+                        # but the properties will be calculated again after merging
+                        # to keep numerical stability
                         strax.compute_properties(merge_peak, n_top_channels=n_top_pmts)
                     else:
                         merge_peak = peaks[i].copy()
@@ -468,8 +488,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     right_bounds[sl] = right_bounds[end_idx - 1]
         n_peaklets = end_index - start_index
         need_merging = n_peaklets > 1
-        assert np.all(np.diff(start_index) >= 0)
-        assert np.all(np.diff(end_index) >= 0)
+        if np.any(np.diff(start_index) < 0) or np.any(np.diff(end_index) < 0):
+            raise ValueError("Indices are not sorted!")
         start_index = np.unique(start_index[need_merging])
         end_index = np.unique(end_index[need_merging])
         if diagnosing:

@@ -40,8 +40,9 @@ class PeaksVanilla(strax.Plugin):
         merged_s2s = merged_s2s[merged_s2s["type"] != FAKE_MERGED_S2_TYPE]
 
         is_s1 = peaklets["type"] == 1
-        peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s)
-        peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1], peaks]))
+        is_20 = merged_s2s["type"] == 20
+        peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s[~is_20])
+        peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1], peaks, merged_s2s[is_20]]))
 
         if self.diagnose_sorting:
             assert np.all(np.diff(peaks["time"]) >= 0), "Peaks not sorted"
