@@ -75,40 +75,38 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     rough_seg = straxen.URLConfig(
-        default=30, type=(int, float), track=True, help="Rough single electron gain [PE/e]"
+        default=30, type=(int, float), help="Rough single electron gain [PE/e]"
     )
 
     sigma_seg = straxen.URLConfig(
         default=6.5,
         type=(int, float),
-        track=True,
         help="Standard deviation of the single electron gain [PE/e]",
     )
 
     rough_min_sigma = straxen.URLConfig(
-        default=1e2, type=(int, float), track=True, help="Minimum sigma for the merged peaks"
+        default=1e2, type=(int, float), help="Minimum sigma for the merged peaks"
     )
 
     rough_max_sigma = straxen.URLConfig(
-        default=2e4, type=(int, float), track=True, help="Maximum sigma for the merged peaks"
+        default=2e4, type=(int, float), help="Maximum sigma for the merged peaks"
     )
 
     rough_sigma_bins = straxen.URLConfig(
-        default=10, type=int, track=True, help="Number of bins for sigma of merged peaks"
+        default=10, type=int, help="Number of bins for sigma of merged peaks"
     )
 
     rough_mu_bins = straxen.URLConfig(
-        default=10, type=int, track=True, help="Number of bins for mu of merged peaks"
+        default=10, type=int, help="Number of bins for mu of merged peaks"
     )
 
     poisson_max_mu = straxen.URLConfig(
-        default=25, type=int, track=True, help="When to switch from Poisson to normal distribution"
+        default=25, type=int, help="When to switch from Poisson to normal distribution"
     )
 
     poisson_survival_ratio = straxen.URLConfig(
         default=1e-4,
         type=float,
-        track=True,
         help=(
             "Survival ratio for Poisson distribution. The PMF smaller than this will be ignored."
         ),
@@ -117,41 +115,34 @@ class MergedS2s(strax.OverlapWindowPlugin):
     normal_max_sigma = straxen.URLConfig(
         default=7,
         type=(int, float),
-        track=True,
         help="Maximum sigma for the normal distribution CDF panel",
     )
 
     normal_n_bins = straxen.URLConfig(
         default=501,
         type=int,
-        track=True,
         help="Number of bins for the normal distribution CDF panel",
     )
 
     maxexp = straxen.URLConfig(
         default=10,
-        type=int,
-        track=True,
+        type=(int, float),
         help="Maximum exponent for the posterior to keep numerical stability",
     )
 
     p_threshold = straxen.URLConfig(
         default=2e-2,
-        type=float,
-        track=True,
+        type=(int, float),
         help="Threshold for the p-value of time-density merging",
     )
 
     dr_threshold = straxen.URLConfig(
-        default=14,
-        type=float,
-        track=True,
+        default=14.0,
+        type=(int, float),
         help="Threshold for the weighted mean deviation of the peaklets from the main cluster [cm]",
     )
 
-    use_bayesian_merging = straxen.URLConfig(
-        default=True, type=bool, track=True, help="Use Bayesian merging"
-    )
+    use_bayesian_merging = straxen.URLConfig(default=True, type=bool, help="Use Bayesian merging")
 
     merged_s2s_get_window_size_factor = straxen.URLConfig(
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
