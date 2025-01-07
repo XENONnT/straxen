@@ -39,7 +39,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
 
-    s2_max_duration = straxen.URLConfig(
+    s2_merge_max_duration = straxen.URLConfig(
         default=50_000,
         type=int,
         infer_type=False,
@@ -131,7 +131,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     p_threshold = straxen.URLConfig(
-        default=2e-2,
+        default=1e-2,
         type=(int, float),
         help="Threshold for the p-value of time-density merging",
     )
@@ -156,7 +156,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             raise ValueError("The first point should be the maximum gap to allow merging")
         self.max_gap = self.gap_thresholds[1, 0]
         self.max_area = 10 ** self.gap_thresholds[0, -1]
-        self.max_duration = self.s2_max_duration
+        self.max_duration = self.s2_merge_max_duration
 
         self.poisson_max_k = np.ceil(
             poisson.isf(q=self.poisson_survival_ratio, mu=self.poisson_max_mu)
@@ -189,7 +189,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
-            int(self.s2_merge_gap_thresholds[0][1]) + self.s2_max_duration
+            int(self.s2_merge_gap_thresholds[0][1]) + self.s2_merge_max_duration
         )
 
     def compute(self, peaklets, lone_hits):
@@ -265,8 +265,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         strax.compute_properties(merged_s2s, n_top_channels=self.n_top_pmts)
 
-        if (not _store_data_top) or (not _store_data_start):
-            merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
+        # remove position fields
+        merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
 
         return merged_s2s
 
@@ -353,6 +353,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
         peaklets_area = peaks["area"].copy()
+        peaklets_area_top = peaklets_area * peaks["area_fraction_top"]
 
         if diagnosing:
             merged_area = []
@@ -437,7 +438,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     dr = weighted_averaged_dr(
                         positions[tested, 0][merged[tested]],
                         positions[tested, 0][merged[tested]],
-                        peaklets_area[tested][merged[tested]] / rough_seg,
+                        peaklets_area_top[tested][merged[tested]] / rough_seg,
                     )
                     merge = True
                     if p[0] >= p_threshold and p[0] > p[1]:
