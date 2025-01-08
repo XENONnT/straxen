@@ -309,3 +309,10 @@ def open_jax_model(model_path: str, **kwargs):
         serialized_jax_object = file_obj.read()
     # Deserialize the JAX object and return its callable function
     return export.deserialize(serialized_jax_object).call
+
+
+@URLConfig.register("load_numpy")
+def get_resource(name: str):
+    """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+    passed directly to straxen.get_resource."""
+    return np.load(name)
