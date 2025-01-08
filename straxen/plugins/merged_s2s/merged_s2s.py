@@ -352,8 +352,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         ).T
 
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
-        peaklets_area = peaks["area"].copy()
-        peaklets_area_top = peaklets_area * peaks["area_fraction_top"]
+        area = peaks["area"].copy()
+        area_top = area * peaks["area_fraction_top"]
 
         if diagnosing:
             merged_area = []
@@ -428,28 +428,28 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     p.append(p_)
                 tested = slice(start_index[i], end_index[i])
                 if diagnosing:
-                    merged_area.append(peaklets_area[tested][merged[tested]].sum())
+                    merged_area.append(area[tested][merged[tested]].sum())
                     p_values.append(max(p))
                 if max(p) < p_threshold:
                     # this will not allow merging of the already examined peaklets
                     unexamined[tested] = False
                 else:
                     # calculate weighted averaged deviation of peaklets from the main cluster
-                    dr = weighted_averaged_dr(
+                    dr_avg = weighted_averaged_dr(
                         positions[tested, 0][merged[tested]],
                         positions[tested, 0][merged[tested]],
-                        peaklets_area_top[tested][merged[tested]] / rough_seg,
+                        area_top[tested][merged[tested]],
                     )
                     merge = True
                     if p[0] >= p_threshold and p[0] > p[1]:
                         # slice to conduct the merging
                         sl = slice(indices[0], indices[0] + 2)
-                        if dr > dr_threshold:
+                        if dr_avg > dr_threshold:
                             merged[indices[0]] = False
                             merge = False
                     elif p[1] >= p_threshold and p[1] >= p[0]:
                         sl = slice(indices[1] - 1, indices[1] + 1)
-                        if dr > dr_threshold:
+                        if dr_avg > dr_threshold:
                             merged[indices[1]] = False
                             merge = False
                     else:
@@ -701,8 +701,14 @@ def p_values(
 
 @numba.njit(cache=True, nogil=True)
 def weighted_averaged_dr(x, y, weights):
-    x_avg = np.average(x, weights=weights)
-    y_avg = np.average(y, weights=weights)
+    """Weighted average deviation from weighted average (x, y)"""
+    mask = weights > 0
+    mask &= ~np.isnan(x)
+    mask &= ~np.isnan(x)
+    if not np.any(mask):
+        return np.nan
+    x_avg = np.average(x[mask], weights=weights[mask])
+    y_avg = np.average(y[mask], weights=weights[mask])
     dr = np.sqrt((x - x_avg) ** 2 + (y - y_avg) ** 2)
-    dr_avg = np.average(dr, weights=weights)
+    dr_avg = np.average(dr[mask], weights=weights[mask])
     return dr_avg
