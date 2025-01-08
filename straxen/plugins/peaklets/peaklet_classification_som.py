@@ -88,7 +88,11 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
         peaklets_w_type = peaklets_w_type[_is_s1_or_s2]
 
         som_sub_type, x_som, y_som = recall_populations(
-            peaklets_w_type, self.som_weight_cube, self.som_img, self.som_norm_factors, self.som_data
+            peaklets_w_type,
+            self.som_weight_cube,
+            self.som_img,
+            self.som_norm_factors,
+            self.som_data,
         )
         strax_type = som_type_to_type(
             som_sub_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
@@ -133,7 +137,7 @@ def recall_populations(dataset, weight_cube, som_cls_img, norm_factors, som_data
     decile_transform_check = data_to_log_decile_log_area_aft(dataset, norm_factors)
     if "reduce_decile" in som_data.keys():
         if som_data["reduce_decile"]:
-            decile_transform_check = decile_transform_check[:,1:]
+            decile_transform_check = decile_transform_check[:, 1:]
     # preform a recall of the dataset with the weight cube
     # assign each population color a number (can do from previous function)
     ref_map = generate_color_ref_map(som_cls_img, unique_colors, xdim, ydim)
