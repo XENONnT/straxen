@@ -312,7 +312,8 @@ def open_jax_model(model_path: str, **kwargs):
 
 
 @URLConfig.register("load_numpy")
-def get_resource(name: str):
+def load_numpy(name: str):
     """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
     passed directly to straxen.get_resource."""
+    
     return np.load(name)
