@@ -3,7 +3,7 @@ import numpy as np
 import strax
 import straxen
 
-from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE
+from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE, WIDE_XYPOS_S2_TYPE
 
 export, __all__ = strax.exporter()
 
@@ -39,10 +39,7 @@ class PeaksVanilla(strax.Plugin):
         # Remove fake merged S2s from dirty hack, see above
         merged_s2s = merged_s2s[merged_s2s["type"] != FAKE_MERGED_S2_TYPE]
 
-        is_s1 = peaklets["type"] == 1
-        is_20 = merged_s2s["type"] == 20
-        peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s[~is_20])
-        peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1], peaks, merged_s2s[is_20]]))
+        peaks = self.replace_merged(peaklets, merged_s2s)
 
         if self.diagnose_sorting:
             assert np.all(np.diff(peaks["time"]) >= 0), "Peaks not sorted"
@@ -55,3 +52,18 @@ class PeaksVanilla(strax.Plugin):
         result = np.zeros(len(peaks), dtype=self.dtype)
         strax.copy_to_buffer(peaks, result, f"_copy_requested_{self.provides[0]}_fields")
         return result
+
+    @staticmethod
+    def replace_merged(peaklets, merged_s2s):
+        peaklets_is_s1 = peaklets["type"] == 1
+        merged_s2s_is_20 = merged_s2s["type"] == WIDE_XYPOS_S2_TYPE
+        windows = strax.touching_windows(peaklets, merged_s2s[merged_s2s_is_20])
+        if np.any(np.diff(windows, axis=1) != 1):
+            raise ValueError("Type 20 S2s overlap with more than one peaks")
+        peaklets_is_20 = np.isin(peaklets["time"], merged_s2s[merged_s2s_is_20]["time"])
+        # pick out type 20 because they might overlap with other merged S2s
+        peaks = strax.replace_merged(peaklets[~peaklets_is_20], merged_s2s[~merged_s2s_is_20])
+        peaks = strax.sort_by_time(
+            np.concatenate([peaklets[peaklets_is_s1], peaklets[peaklets_is_20], peaks])
+        )
+        return peaks

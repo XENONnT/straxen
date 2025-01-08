@@ -5,7 +5,7 @@ from scipy.stats import norm, poisson
 import numba
 import strax
 import straxen
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, WIDE_XYPOS_S2_TYPE
 from straxen.plugins.peaklets.peaklets import drop_data_field
 
 
@@ -501,7 +501,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     def merge_peaklets(peaklets, start_merge_at, end_merge_at, merged, max_buffer):
         # mark the peaklets can be merged by time-density but not by position-density as type 20
         _merged_s2s = peaklets[~merged].copy()
-        _merged_s2s["type"] = 20
+        _merged_s2s["type"] = WIDE_XYPOS_S2_TYPE
         # mark the peaklets can be merged by time-density and position-density as type 2
         merged_s2s = strax.merge_peaks(
             peaklets,
