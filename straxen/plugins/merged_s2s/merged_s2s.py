@@ -239,9 +239,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
             raise ValueError("data_top or data_start is not in the peaklets dtype")
 
+        # have to redo the merging to prevent numerical instability
         merged_s2s = self.merge_peaklets(peaklets, start_merge_at, end_merge_at, merged, max_buffer)
         is_s2 = merged_s2s["type"] == 2
-        if np.max((strax.endtime(merged_s2s) - merged_s2s["time"])[is_s2]) >= self.max_duration:
+        if np.max((strax.endtime(merged_s2s) - merged_s2s["time"])[is_s2]) > self.max_duration:
             raise ValueError("Merged S2 is too long")
 
         # Updated time and length of lone_hits and sort again:
@@ -364,15 +365,17 @@ class MergedS2s(strax.OverlapWindowPlugin):
             if not unexamined[i]:
                 continue
             p = [1.0, 1.0]
+            # in the while loops, the peaklets will be merged until the p-value
+            # is smaller than the threshold or the peaklets can not be merged anymore
+            # i will NOT be updated in the while loop
             while max(p) >= p_threshold and unexamined[i]:
                 indices = []
                 # please mind here that the definition of gaps should
                 # be consistent with in the merging algorithm
                 # and the merged peak should not be longer than the max duration
                 if (
-                    i - 1 >= 0
-                    and unexamined[i - 1]
-                    and start_index[i] - 1 >= 0
+                    start_index[i] - 1 >= 0
+                    and unexamined[start_index[i] - 1]
                     and MergedS2s.get_gap(peaks[i], peaks[start_index[i] - 1]) < max_gap
                     and MergedS2s.get_duration(peaks[i], peaks[start_index[i] - 1]) <= max_duration
                 ):
@@ -380,9 +383,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 else:
                     indices.append(None)
                 if (
-                    i + 1 < n_peaks
-                    and unexamined[i + 1]
-                    and end_index[i] < n_peaks
+                    end_index[i] < n_peaks
+                    and unexamined[end_index[i]]
                     and MergedS2s.get_gap(peaks[i], peaks[end_index[i]]) < max_gap
                     and MergedS2s.get_duration(peaks[i], peaks[end_index[i]]) <= max_duration
                 ):
@@ -426,37 +428,41 @@ class MergedS2s(strax.OverlapWindowPlugin):
                         else:
                             p_ = -1.0
                     p.append(p_)
-                tested = slice(start_index[i], end_index[i])
+                examined = slice(start_index[i], end_index[i])
                 if diagnosing:
-                    merged_area.append(area[tested][merged[tested]].sum())
+                    merged_area.append(area[examined][merged[examined]].sum())
                     p_values.append(max(p))
+
                 if max(p) < p_threshold:
                     # this will not allow merging of the already examined peaklets
-                    unexamined[tested] = False
+                    unexamined[examined] = False
                 else:
-                    # calculate weighted averaged deviation of peaklets from the main cluster
-                    dr_avg = weighted_averaged_dr(
-                        positions[tested, 0][merged[tested]],
-                        positions[tested, 0][merged[tested]],
-                        area_top[tested][merged[tested]],
-                    )
-                    merge = True
+                    # slice indicating the direction of merging
                     if p[0] >= p_threshold and p[0] > p[1]:
-                        # slice to conduct the merging
-                        sl = slice(indices[0], indices[0] + 2)
-                        if dr_avg > dr_threshold:
-                            merged[indices[0]] = False
-                            merge = False
+                        direction = slice(indices[0], indices[0] + 2)
+                        index = indices[0]
                     elif p[1] >= p_threshold and p[1] >= p[0]:
-                        sl = slice(indices[1] - 1, indices[1] + 1)
-                        if dr_avg > dr_threshold:
-                            merged[indices[1]] = False
-                            merge = False
+                        direction = slice(indices[1] - 1, indices[1] + 1)
+                        index = indices[1]
                     else:
                         raise RuntimeError("Can not decide to merge or not")
+                    # slice indicating the peaklets to be merged
+                    start_idx = start_index[direction.start]
+                    end_idx = end_index[direction.stop - 1]
+                    merging = slice(start_idx, end_idx)
+
+                    # calculate weighted averaged deviation of peaklets from the main cluster
+                    dr_avg = weighted_averaged_dr(
+                        positions[merging, 0][merged[merging]],
+                        positions[merging, 1][merged[merging]],
+                        area_top[merging][merged[merging]],
+                    )
+                    # do we really merge the peaklets?
+                    merge = dr_avg < dr_threshold
+
                     if merge:
-                        merge_peak = strax.merge_peaks(
-                            peaks[sl],
+                        merged_peak = strax.merge_peaks(
+                            peaks[direction],
                             [0],
                             [2],
                             max_buffer=max_buffer,
@@ -464,20 +470,23 @@ class MergedS2s(strax.OverlapWindowPlugin):
                         # this step is necessary to update the properties of the merged peak
                         # but the properties will be calculated again after merging
                         # to keep numerical stability
-                        strax.compute_properties(merge_peak, n_top_channels=n_top_pmts)
+                        strax.compute_properties(merged_peak, n_top_channels=n_top_pmts)
+                        merged_peak = merged_peak[0]
+                        # check if the merged peak is too long
+                        if strax.endtime(merged_peak) - merged_peak["time"] > max_duration:
+                            raise ValueError("Merged S2 is too long")
                     else:
-                        merge_peak = peaks[i].copy()
+                        merged[index] = False
+                        merged_peak = peaks[i]
 
                     # update merging peaks and boundaries
-                    start_idx = start_index[sl.start]
-                    end_idx = end_index[sl.stop - 1]
-                    sl = slice(start_idx, end_idx)
-                    if merge:
-                        peaks[sl] = merge_peak[0]
-                    start_index[sl] = start_index[start_idx]
-                    end_index[sl] = end_index[end_idx - 1]
-                    left_bounds[sl] = left_bounds[start_idx]
-                    right_bounds[sl] = right_bounds[end_idx - 1]
+                    # update ALL peaks in the slice, this is only temporarily needed
+                    # because we can not foresee in which order the peaks will be merged
+                    peaks[merging] = merged_peak
+                    start_index[merging] = start_index[merging.start]
+                    end_index[merging] = end_index[merging.stop - 1]
+                    left_bounds[merging] = left_bounds[merging.start]
+                    right_bounds[merging] = right_bounds[merging.stop - 1]
         n_peaklets = end_index - start_index
         need_merging = n_peaklets > 1
         if np.any(np.diff(start_index) < 0) or np.any(np.diff(end_index) < 0):
