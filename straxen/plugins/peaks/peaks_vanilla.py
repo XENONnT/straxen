@@ -62,7 +62,9 @@ class PeaksVanilla(strax.Plugin):
             raise ValueError("Type 20 S2s overlap with more than one peaks")
         peaklets_is_20 = np.isin(peaklets["time"], merged_s2s[merged_s2s_is_20]["time"])
         # pick out type 20 because they might overlap with other merged S2s
-        peaks = strax.replace_merged(peaklets[~peaklets_is_20], merged_s2s[~merged_s2s_is_20])
+        peaks = strax.replace_merged(
+            peaklets[~peaklets_is_20 & ~peaklets_is_s1], merged_s2s[~merged_s2s_is_20]
+        )
         peaks = strax.sort_by_time(
             np.concatenate([peaklets[peaklets_is_s1], peaklets[peaklets_is_20], peaks])
         )
