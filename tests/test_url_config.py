@@ -118,7 +118,7 @@ class TestURLConfig(unittest.TestCase):
         self.assertTrue(abs(p.test_config - 219203.49884000001) < 1e-2)
 
     def test_json_protocol(self):
-        self.st.set_config({"test_config": "json://[1,2,3]"})
+        self.st.set_config({"test_config": "json://{'a':[1,2,3]}?take=a"})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, [1, 2, 3])
 
@@ -137,7 +137,7 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(p.test_config, 999)
 
     def test_take_nested(self):
-        self.st.set_config({"test_config": 'take://json://{"a":[1,2,3]}?take=a&take=0'})
+        self.st.set_config({"test_config": "take://json://{'a':[1,2,3]}?take=a&take=0"})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, 1)
 
@@ -431,7 +431,11 @@ class TestURLConfig(unittest.TestCase):
         """Test that pad_array works as expected."""
 
         self.st.set_config(
-            {"test_config": "pad-array://json://[1,2,3]?pad_left=2&pad_right=3&pad_value=0"}
+            {
+                "test_config": (
+                    "pad-array://json://{'a':[1,2,3]}?take=a&pad_left=2&pad_right=3&pad_value=0"
+                )
+            }
         )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(len(p.test_config), 8)
