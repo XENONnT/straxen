@@ -65,6 +65,8 @@ def read_json(content: str, **kwargs):
 @URLConfig.register("take")
 def get_key(container: Container, take=None, **kwargs):
     """Return a single element of a container."""
+    if not isinstance(container, dict):
+        raise ValueError(f"Container is not a dict but a {type(container)}")
     if take is None:
         return container
     if not isinstance(take, list):

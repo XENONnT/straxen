@@ -136,11 +136,6 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, 999)
 
-    def test_chained(self):
-        self.st.set_config({"test_config": "take://json://[1,2,3]?take=0"})
-        p = self.st.get_single_plugin(nt_test_run_id, "test_data")
-        self.assertEqual(p.test_config, 1)
-
     def test_take_nested(self):
         self.st.set_config({"test_config": 'take://json://{"a":[1,2,3]}?take=a&take=0'})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
