@@ -265,15 +265,16 @@ class Events(strax.OverlapWindowPlugin):
     def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
         _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
+        mask_good = peaks["cut_position_shadow_peak"]
+        mask_good &= peaks["se_score"] < 0.1
         if self.exclude_s1_as_triggering_peaks:
             _is_triggering &= peaks["type"] == 2
         else:
             is_not_s1 = peaks["type"] != 1
             has_tc_large_enough = peaks["tight_coincidence"] >= self.event_s1_min_coincidence
             _is_triggering &= is_not_s1 | has_tc_large_enough
-            mask_good = peaks["cut_position_shadow_peak"]
-            mask_good &= peaks["se_score"] > 0.1
-            _is_triggering & mask_good
+        # additionally require that the peak is tagged by the shadow cut etc.
+        _is_triggering = _is_triggering & mask_good
         return _is_triggering
 
     def compute(self, peaks, start, end):

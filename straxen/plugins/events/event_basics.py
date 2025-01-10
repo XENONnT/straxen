@@ -509,8 +509,7 @@ class EventBasics(strax.Plugin):
             s_mask &= peaks["tight_coincidence"] >= s1_min_coincidence
         if s_i == 2:
             s_mask &= peaks["cut_position_shadow_peak"]
-            s_mask &= peaks["se_score"] > 0.1
-
+            s_mask &= peaks["se_score"] < 0.1
         selected_peaks = peaks[s_mask]
         s_index = np.arange(len(peaks))[s_mask]
         largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:][::-1]
