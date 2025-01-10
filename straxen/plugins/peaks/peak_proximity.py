@@ -220,7 +220,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
         n_tot = n_left.copy()
         areas = peaks["area"]
         mask_good = peaks["cut_position_shadow_peak"]
-        mask_good &= peaks["se_score"] > 0.1
+        mask_good &= peaks["se_score"] < 0.1
 
         for i, peak in enumerate(peaks):
             left_i, right_i = windows[i]
