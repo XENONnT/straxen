@@ -25,6 +25,12 @@ def generate_random(_):
     return random.random()
 
 
+@straxen.URLConfig.register("range")
+def generate_range(length):
+    length = int(length)
+    return np.arange(length)
+
+
 @straxen.URLConfig.register("unpicklable")
 def return_lamba(_):
     return lambda x: x
@@ -118,9 +124,9 @@ class TestURLConfig(unittest.TestCase):
         self.assertTrue(abs(p.test_config - 219203.49884000001) < 1e-2)
 
     def test_json_protocol(self):
-        self.st.set_config({"test_config": "json://{'a':[1,2,3]}?take=a"})
+        self.st.set_config({"test_config": 'json://{"a":0}'})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
-        self.assertEqual(p.test_config, [1, 2, 3])
+        self.assertEqual(p.test_config, {"a": 0})
 
     def test_format_protocol(self):
         self.st.set_config({"test_config": "format://{run_id}?run_id=plugin.run_id"})
@@ -137,9 +143,15 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(p.test_config, 999)
 
     def test_take_nested(self):
-        self.st.set_config({"test_config": "take://json://{'a':[1,2,3]}?take=a&take=0"})
+        self.st.set_config(
+            {
+                "test_config": (
+                    'take://json://{"a":{"aa":0,"ab":1},"b":{"ba":2,"bb":3}}?take=b&take=ba'
+                )
+            }
+        )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
-        self.assertEqual(p.test_config, 1)
+        self.assertEqual(p.test_config, 2)
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_bodedga_get(self):
@@ -338,6 +350,10 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(p.test_config, {i: i + 1 for i in range(n)})
 
     def test_list_to_array(self):
+        import pdb
+
+        pdb.set_trace()
+        print("HERE")
         n = 3
         self.st.set_config({"test_config": f"list-to-array://object-list://{n}"})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
@@ -429,13 +445,9 @@ class TestURLConfig(unittest.TestCase):
 
     def test_pad_array(self):
         """Test that pad_array works as expected."""
-
+        n = 3
         self.st.set_config(
-            {
-                "test_config": (
-                    "pad-array://json://{'a':[1,2,3]}?take=a&pad_left=2&pad_right=3&pad_value=0"
-                )
-            }
+            {"test_config": f"pad-array://range://{n}?pad_left=2&pad_right=3&pad_value=0"}
         )
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(len(p.test_config), 8)
