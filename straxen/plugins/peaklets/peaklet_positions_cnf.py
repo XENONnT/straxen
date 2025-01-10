@@ -22,7 +22,7 @@ class PeakletPositionsCNF(PeakletPositionsBase):
     - sig: Confidence level of the contour
     - log_area_scale: Scaling parameter for log area
     - n_top_pmts: Number of top PMTs
-    - pred_function: Path to the compiled JAX function for predictions
+    - cnf_pred_function: Path to the compiled JAX function for predictions
 
     """
 
@@ -55,7 +55,7 @@ class PeakletPositionsCNF(PeakletPositionsBase):
         help="Scaling parameter for log area",
     )
 
-    pred_function = straxen.URLConfig(
+    cnf_pred_function = straxen.URLConfig(
         default=(
             "jax://resource://xedocs://posrec_models"
             "?kind=cnf"
@@ -145,7 +145,7 @@ class PeakletPositionsCNF(PeakletPositionsBase):
         else:
             inputs = np.zeros((self.N_chunk_max, self.n_top_pmts + 1))
             inputs[:N_entries] = flow_condition
-            xy, contour = self.pred_function(inputs)
+            xy, contour = self.cnf_pred_function(inputs)
             return xy[:N_entries], contour[:N_entries]
 
     def prediction_loop(self, flow_condition):
