@@ -421,45 +421,41 @@ def dtype_afterpulses():
     - The afterpulse datatype
 
     """
-    dtype_ap = [
-        (("Channel/PMT number", "channel"), "<i2"),
-        (("Time resolution in ns", "dt"), "<i2"),
-        (("Start time of the interval (ns since unix epoch)", "time"), "<i8"),
-        (("Length of the interval in samples", "length"), "<i4"),
-        (("Integral in ADC x samples", "area"), "<i4"),
-        (("Pulse area in PE", "area_pe"), "<f4"),
-        (("Sample index in which hit starts", "left"), "<i2"),
+    dtype_ap = strax.interval_dtype + [
+        (("Integral in ADC x samples", "area"), np.int32),
+        (("Pulse area in PE", "area_pe"), np.float32),
+        (("Sample index in which hit starts", "left"), np.int16),
         (
             (
                 "Sample index in which hit area succeeds 10% of total area",
                 "sample_10pc_area",
             ),
-            "<i2",
+            np.int16,
         ),
         (
             (
                 "Sample index in which hit area succeeds 50% of total area",
                 "sample_50pc_area",
             ),
-            "<i2",
+            np.int16,
         ),
-        (("Sample index of hit maximum", "max"), "<i2"),
+        (("Sample index of hit maximum", "max"), np.int16),
         (
             (
                 "Index of first sample in record just beyond hit (exclusive bound)",
                 "right",
             ),
-            "<i2",
+            np.int16,
         ),
-        (("Height of hit in ADC counts", "height"), "<i4"),
-        (("Height of hit in PE", "height_pe"), "<f4"),
-        (("Delay of hit w.r.t. LED hit in same WF, in samples", "tdelay"), "<i2"),
+        (("Height of hit in ADC counts", "height"), np.int32),
+        (("Height of hit in PE", "height_pe"), np.float32),
+        (("Delay of hit w.r.t. LED hit in same WF, in samples", "tdelay"), np.int16),
         (
             (
                 "Internal (temporary) index of fragment in which hit was found",
                 "record_i",
             ),
-            "<i4",
+            np.int32,
         ),
         (
             ("Index of sample in record where integration starts", "left_integration"),

@@ -14,11 +14,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.1.0"
+    __version__ = "1.1.1"
 
     depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
     data_kind = "merged_s2s"
     provides = "merged_s2s"
+
+    n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
+
+    n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
 
     s2_merge_max_duration = straxen.URLConfig(
         default=50_000,
@@ -51,10 +55,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             "It's now possible for a S1 to be inside a S2 post merging"
         ),
     )
-
-    n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
-
-    n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
 
     merged_s2s_get_window_size_factor = straxen.URLConfig(
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
@@ -141,19 +141,20 @@ class MergedS2s(strax.OverlapWindowPlugin):
         lh["length"] = lh["right_integration"] - lh["left_integration"]
         lh = strax.sort_by_time(lh)
 
-        _n_top_pmts = self.n_top_pmts if "data_top" in self.dtype.names else -1
+        _store_data_top = "data_top" in self.dtype.names
         _store_data_start = "data_start" in self.dtype.names
         strax.add_lone_hits(
             merged_s2s,
             lh,
             self.to_pe,
-            n_top_channels=_n_top_pmts,
+            n_top_channels=self.n_top_pmts,
+            store_data_top=_store_data_top,
             store_data_start=_store_data_start,
         )
 
-        strax.compute_widths(merged_s2s)
+        strax.compute_properties(merged_s2s, n_top_channels=self.n_top_pmts)
 
-        if (_n_top_pmts <= 0) or (not _store_data_start):
+        if (not _store_data_top) or (not _store_data_start):
             merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
 
         return merged_s2s
