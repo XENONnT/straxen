@@ -350,10 +350,6 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(p.test_config, {i: i + 1 for i in range(n)})
 
     def test_list_to_array(self):
-        import pdb
-
-        pdb.set_trace()
-        print("HERE")
         n = 3
         self.st.set_config({"test_config": f"list-to-array://object-list://{n}"})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
