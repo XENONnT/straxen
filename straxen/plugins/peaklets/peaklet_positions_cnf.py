@@ -58,7 +58,7 @@ class PeakletPositionsCNF(PeakletPositionsBase):
     pred_function = straxen.URLConfig(
         default=(
             "jax://resource://xedocs://posrec_models"
-            "?kind=flow"
+            "?kind=cnf"
             "&version=ONLINE"
             "&run_id=plugin.run_id"
             "n_poly=plugin.n_poly&sig=plugin.sig&fmt=abs_path"
