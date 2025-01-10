@@ -46,7 +46,7 @@ docutils = "==0.18.1"
 mistune = "==0.8.4"
 pymongo = "*"
 requests = "*"
-urllib = "<2.3.0"
+urllib3 = "<2.3.0"
 utilix = ">=0.11.0"
 xedocs = "*"
 commonmark = { version = "0.9.1", optional = true }
