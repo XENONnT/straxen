@@ -105,7 +105,7 @@ def load_value(name: str, bodega_version=None):
 
 
 @URLConfig.register("tf")
-def open_neural_net(model_path: str, custom_objects=None, **kwargs):
+def open_tf_neural_net(model_path: str, custom_objects=None, **kwargs):
     """Open a tensorflow file and return a keras model."""
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
@@ -117,6 +117,19 @@ def open_neural_net(model_path: str, custom_objects=None, **kwargs):
         tar = tarfile.open(model_path, mode="r:gz")
         tar.extractall(path=tmpdirname)
         return tf.keras.models.load_model(tmpdirname, custom_objects=custom_objects)
+
+
+@URLConfig.register("keras3")
+def open_keras_neural_net(model_path: str, custom_objects=None, **kwargs):
+    """Load a Keras model from a Keras file."""
+    # Nested import to reduce loading time of import straxen and it not
+    # base requirement
+    import tensorflow as tf
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"No file at {model_path}")
+
+    return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
 
 
 @URLConfig.register("itp_dict")
@@ -311,16 +324,3 @@ def open_jax_model(model_path: str, **kwargs):
         serialized_jax_object = file_obj.read()
     # Deserialize the JAX object and return its callable function
     return export.deserialize(serialized_jax_object).call
-
-
-@URLConfig.register("keras3")
-def open_neural_net(model_path: str, custom_objects=None, **kwargs):
-    """Load a Keras model from a Keras file."""
-    # Nested import to reduce loading time of import straxen and it not
-    # base requirement
-    import tensorflow as tf
-
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"No file at {model_path}")
-
-    return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
