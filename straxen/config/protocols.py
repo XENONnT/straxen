@@ -120,7 +120,7 @@ def open_tf_neural_net(model_path: str, custom_objects=None, **kwargs):
 
 
 @URLConfig.register("keras3")
-def open_keras_neural_net(model_path: str, custom_objects=None, **kwargs):
+def open_keras_neural_net(model_path: str, **kwargs):
     """Load a Keras model from a Keras file."""
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
@@ -129,7 +129,7 @@ def open_keras_neural_net(model_path: str, custom_objects=None, **kwargs):
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"No file at {model_path}")
 
-    return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+    return tf.saved_model.load(model_path)
 
 
 @URLConfig.register("itp_dict")
