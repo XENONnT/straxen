@@ -19,7 +19,11 @@ class PeaksVanilla(strax.Plugin):
 
     __version__ = "0.1.2"
 
-    depends_on: Union[Tuple[str, ...], str] = ("peaklets", "peaklet_classification", "merged_s2s")
+    depends_on: Union[Tuple[str, ...], str] = (
+        "peaklets",
+        "enhanced_peaklet_classification",
+        "merged_s2s",
+    )
     data_kind = "peaks"
     provides = "peaks"
     compressor = "zstd"
@@ -56,16 +60,10 @@ class PeaksVanilla(strax.Plugin):
     @staticmethod
     def replace_merged(peaklets, merged_s2s):
         peaklets_is_s1 = peaklets["type"] == 1
-        merged_s2s_is_20 = merged_s2s["type"] == WIDE_XYPOS_S2_TYPE
-        windows = strax.touching_windows(peaklets, merged_s2s[merged_s2s_is_20])
-        if np.any(np.diff(windows, axis=1) != 1):
-            raise ValueError("Type 20 S2s overlap with more than one peaks")
-        peaklets_is_20 = np.isin(peaklets["time"], merged_s2s[merged_s2s_is_20]["time"])
-        # pick out type 20 because they might overlap with other merged S2s
-        peaks = strax.replace_merged(
-            peaklets[~peaklets_is_20 & ~peaklets_is_s1], merged_s2s[~merged_s2s_is_20]
-        )
+        peaklets_is_wi = peaklets["type"] == WIDE_XYPOS_S2_TYPE
+        # pick out type WIDE_XYPOS_S2_TYPE because they might overlap with other merged S2s
+        peaks = strax.replace_merged(peaklets[~peaklets_is_wi & ~peaklets_is_s1], merged_s2s)
         peaks = strax.sort_by_time(
-            np.concatenate([peaklets[peaklets_is_s1], peaklets[peaklets_is_20], peaks])
+            np.concatenate([peaklets[peaklets_is_s1 | peaklets_is_wi], peaks])
         )
         return peaks

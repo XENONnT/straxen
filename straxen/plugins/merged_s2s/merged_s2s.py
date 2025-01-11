@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Dict, Union
 import numpy as np
 from tqdm import tqdm
 from scipy.stats import norm, poisson
@@ -28,8 +28,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
         "peaklet_classification",
         "lone_hits",
     )
-    data_kind = "merged_s2s"
-    provides = "merged_s2s"
+    provides: Union[Tuple[str, ...], str] = ("merged_s2s", "enhanced_peaklet_classification")
+    data_kind: Union[Dict[str, str], str] = dict(
+        merged_s2s="merged_s2s", enhanced_peaklet_classification="peaklets"
+    )
 
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
 
@@ -148,6 +150,27 @@ class MergedS2s(strax.OverlapWindowPlugin):
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
     )
 
+    def _have_data(self, field):
+        return field in self.deps["peaklets"].dtype_for("peaklets").names
+
+    def infer_dtype(self):
+        peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
+            "peaklet_classification"
+        )
+        peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
+        # The merged dtype is argument position dependent!
+        # It must be first classification then peaklet
+        # Otherwise strax will raise an error
+        # when checking for the returned dtype!
+        merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
+        enhanced_peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
+            "peaklet_classification"
+        )
+        return dict(
+            merged_s2s=merged_s2s_dtype,
+            enhanced_peaklet_classification=enhanced_peaklet_classification_dtype,
+        )
+
     def setup(self):
         self.to_pe = self.gain_model
         self.gap_thresholds = np.array(self.s2_merge_gap_thresholds).T
@@ -172,28 +195,23 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.sigma = np.linspace(self.rough_min_sigma, self.rough_max_sigma, self.rough_sigma_bins)
         self.sigma_panel = np.repeat(self.sigma[None, :], self.rough_mu_bins, axis=0).flatten()
 
-    def _have_data(self, field):
-        return field in self.deps["peaklets"].dtype_for("peaklets").names
-
-    def infer_dtype(self):
-        peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
-            "peaklet_classification"
-        )
-        peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
-        # The merged dtype is argument position dependent!
-        # It must be first classification then peaklet
-        # Otherwise strax will raise an error
-        # when checking for the returned dtype!
-        merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
-        return merged_s2s_dtype
-
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
             int(self.s2_merge_gap_thresholds[0][1]) + self.s2_merge_max_duration
         )
 
     def compute(self, peaklets, lone_hits):
-        peaklets = peaklets[peaklets["type"] != 1]
+        # initialize enhanced_peaklet_classification
+        enhanced_peaklet_classification = np.zeros(
+            len(peaklets), dtype=self.dtype["enhanced_peaklet_classification"]
+        )
+        for d in enhanced_peaklet_classification.dtype.names:
+            enhanced_peaklet_classification[d] = peaklets[d]
+        _type = np.zeros_like(enhanced_peaklet_classification["type"])
+
+        # only keep S1 peaklets for merging
+        peaklets_is_s1 = peaklets["type"] == 1
+        peaklets = peaklets[~peaklets_is_s1]
 
         if len(peaklets) <= 1:
             return self.empty_result()
@@ -239,6 +257,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
             raise ValueError("data_top or data_start is not in the peaklets dtype")
 
+        # mark the peaklets can be merged by time-density but not
+        # by position-density as type WIDE_XYPOS_S2_TYPE
+        _type[peaklets_is_s1] = 1
+        _type[~peaklets_is_s1] = 2
+        _merged = np.zeros(len(_type), dtype=bool)
+        _merged[~peaklets_is_s1] = merged
+        _type[~peaklets_is_s1 & ~_merged] = WIDE_XYPOS_S2_TYPE
+        enhanced_peaklet_classification["type"] = _type
+
         # have to redo the merging to prevent numerical instability
         merged_s2s = self.merge_peaklets(peaklets, start_merge_at, end_merge_at, merged, max_buffer)
         is_s2 = merged_s2s["type"] == 2
@@ -253,8 +280,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         lh["length"] = lh["right_integration"] - lh["left_integration"]
         lh = strax.sort_by_time(lh)
 
-        _store_data_top = "data_top" in self.dtype.names
-        _store_data_start = "data_start" in self.dtype.names
+        _store_data_top = "data_top" in self.dtype["merged_s2s"].names
+        _store_data_start = "data_start" in self.dtype["merged_s2s"].names
         strax.add_lone_hits(
             merged_s2s,
             lh,
@@ -267,9 +294,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         strax.compute_properties(merged_s2s, n_top_channels=self.n_top_pmts)
 
         # remove position fields
-        merged_s2s = drop_data_field(merged_s2s, self.dtype, "_drop_data_field_merged_s2s")
+        merged_s2s = drop_data_field(
+            merged_s2s, self.dtype["merged_s2s"], "_drop_data_field_merged_s2s"
+        )
 
-        return merged_s2s
+        return dict(
+            merged_s2s=merged_s2s, enhanced_peaklet_classification=enhanced_peaklet_classification
+        )
 
     @staticmethod
     def get_left_right(peaklets):
@@ -498,10 +529,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return start_index, end_index, merged
 
     @staticmethod
-    def merge_peaklets(peaklets, start_merge_at, end_merge_at, merged, max_buffer):
-        # mark the peaklets can be merged by time-density but not by position-density as type 20
-        _merged_s2s = peaklets[~merged].copy()
-        _merged_s2s["type"] = WIDE_XYPOS_S2_TYPE
+    def merge_peaklets(
+        peaklets, start_merge_at, end_merge_at, merged, max_buffer, merged_all=False
+    ):
+        if merged_all:
+            # execute earlier to prevent peaklets from being overwritten
+            # mark the peaklets can be merged by time-density but not
+            # by position-density as type WIDE_XYPOS_S2_TYPE
+            _merged_s2s = peaklets[~merged].copy()
+            _merged_s2s["type"] = WIDE_XYPOS_S2_TYPE
         # mark the peaklets can be merged by time-density and position-density as type 2
         merged_s2s = strax.merge_peaks(
             peaklets,
@@ -511,7 +547,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
             max_buffer=max_buffer,
         )
         merged_s2s["type"] = 2
-        merged_s2s = strax.sort_by_time(np.concatenate([_merged_s2s, merged_s2s]))
+        if merged_all:
+            merged_s2s = strax.sort_by_time(np.concatenate([_merged_s2s, merged_s2s]))
         return merged_s2s
 
 
