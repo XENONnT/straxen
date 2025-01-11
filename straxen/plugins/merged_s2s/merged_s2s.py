@@ -487,10 +487,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     end_index[merging] = end_index[merging.stop - 1]
                     left_bounds[merging] = left_bounds[merging.start]
                     right_bounds[merging] = right_bounds[merging.stop - 1]
-        n_peaklets = end_index - start_index
-        need_merging = n_peaklets > 1
         if np.any(np.diff(start_index) < 0) or np.any(np.diff(end_index) < 0):
             raise ValueError("Indices are not sorted!")
+        n_peaklets = end_index - start_index
+        need_merging = n_peaklets > 1
         start_index = np.unique(start_index[need_merging])
         end_index = np.unique(end_index[need_merging])
         if diagnosing:
