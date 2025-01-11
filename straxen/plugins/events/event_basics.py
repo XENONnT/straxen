@@ -8,23 +8,66 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PositionShadow(strax.CutPlugin):
-    """This cut reject events within large position correlation to previous peak casting shadow. It
-    is mainly against isolated S2.
+class EventBasics(strax.Plugin):
+    """Computes the basic properties of the main/alternative S1/S2 within an event.
 
-    References:
-        * v0.3.7: xenon:xenonnt:ac:prediction:shadow_ambience
-        * v0.3.8: xenon:xenonnt:ac:ybe_suppress
+    The main S1 and alternative S1 are given by the largest two S1-Peaks within the event. The main
+    S2 is given by the largest S2-Peak within the event, while alternative S2 is selected as the
+    largest S2 other than main S2 in the time window [main S1 time, main S1 time + max drift time].
 
     """
 
-    depends_on = ("event_basics", "event_shadow")
-    provides = "cut_position_shadow"
-    cut_name = "cut_position_shadow"
-    cut_description = (
-        "Position shadow cut to reject events with strong position correlation with previous S2"
+    __version__ = "1.3.3"
+
+    depends_on = (
+        "events",
+        "peak_basics",
+        "peak_positions",
+        "peak_proximity",
+        "peak_shadow",
+        "peak_se_score",
     )
-    __version__ = "0.3.9"
+    provides = "event_basics"
+    data_kind = "events"
+
+    electron_drift_velocity = straxen.URLConfig(
+        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        cache=True,
+        help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
+    )
+
+    allow_posts2_s1s = straxen.URLConfig(
+        default=False,
+        infer_type=False,
+        help="Allow S1s past the main S2 to become the main S1 and S2",
+    )
+
+    force_main_before_alt = straxen.URLConfig(
+        default=False,
+        infer_type=False,
+        help="Make the alternate S1 (and likewise S2) the main S1 if occurs before the main S1.",
+    )
+
+    force_alt_s2_in_max_drift_time = straxen.URLConfig(
+        default=True,
+        infer_type=False,
+        help="Make sure alt_s2 is in max drift time starting from main S1",
+    )
+
+    event_s1_min_coincidence = straxen.URLConfig(
+        default=2,
+        infer_type=False,
+        help=(
+            "Event level S1 min coincidence. Should be >= s1_min_coincidence "
+            "in the peaklet classification"
+        ),
+    )
+
+    max_drift_length = straxen.URLConfig(
+        default=straxen.tpc_z,
+        infer_type=False,
+        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
+    )
 
     position_shadow_s2_area_limit = straxen.URLConfig(
         default=5e4,
@@ -68,144 +111,6 @@ class PositionShadow(strax.CutPlugin):
     run_mode = straxen.URLConfig(
         default="run_mode://plugin.run_id",
         help="Run mode to be used for the cut. It can affect the parameters of the cut.",
-    )
-
-    def setup(self):
-        self.s2_area_limit = self.position_shadow_s2_area_limit
-        self.ellipse_parameters = self.position_shadow_ellipse_parameters_mode[self.run_mode]
-        self.straight_parameters = self.position_shadow_straight_parameters_mode[self.run_mode]
-
-    @staticmethod
-    @np.errstate(invalid="ignore")
-    def prob_cut_line(log10_pdf, x0, y0, a, b, rlimit, pstraight):
-        top = 0
-        # The top line in 2D histogram
-        topline = np.full(len(log10_pdf), top)
-
-        # Draw a half ellipse
-        halfellipse = np.where(
-            np.abs(log10_pdf - x0) < a * rlimit,
-            y0 - np.sqrt(b**2 * (rlimit**2 - (log10_pdf - x0) ** 2 / a**2)),
-            top,
-        )
-
-        # A horizontal tangent line at the bottom of ellipse
-        botline = np.where(log10_pdf > x0, y0 - b * rlimit, top)
-
-        # A straight line with slope
-        straight = np.polyval(pstraight, log10_pdf)
-
-        # The lowest of 4 lines
-        line = np.min(np.vstack([topline, halfellipse, botline, straight]), axis=0)
-        return line
-
-    @np.errstate(divide="ignore")
-    def cut_by(self, events):
-        log10_time_shadow = np.log10(
-            events["s2_shadow_s2_position_shadow"] / events["s2_pdf_s2_position_shadow"]
-        )
-        log10_pdf = np.log10(events["s2_pdf_s2_position_shadow"])
-        mask = ~(
-            log10_time_shadow
-            > self.prob_cut_line(log10_pdf, *self.ellipse_parameters, self.straight_parameters)
-        )
-        mask |= events["s2_area"] > self.s2_area_limit
-        return mask
-
-
-@export
-class PeakPositionShadowCut(PositionShadow):
-    """A peak-level cut This cut is defined in the position shadow space.
-
-    It is only against S2 peaks.
-
-    """
-
-    depends_on = ("peak_basics", "peak_shadow")
-    provides = "cut_position_shadow_peak"
-    cut_name = "cut_position_shadow_peak"
-    data_kind = "peaks"
-    cut_description = "peak-level position shadow cut"
-    __version__ = "0.0.0"
-
-    def cut_by(self, peaks):
-        events = np.zeros(
-            len(peaks),
-            dtype=[
-                ("s2_area", np.float32),
-                ("s2_shadow_s2_position_shadow", np.float32),
-                ("s2_pdf_s2_position_shadow", np.float32),
-            ],
-        )
-        events["s2_area"] = peaks["area"]
-        events["s2_shadow_s2_position_shadow"] = peaks["shadow_s2_position_shadow"]
-        events["s2_pdf_s2_position_shadow"] = peaks["pdf_s2_position_shadow"]
-        mask = super().cut_by(events)
-        mask |= peaks["type"] != 2
-        return mask
-
-
-@export
-class EventBasics(strax.Plugin):
-    """Computes the basic properties of the main/alternative S1/S2 within an event.
-
-    The main S1 and alternative S1 are given by the largest two S1-Peaks within the event. The main
-    S2 is given by the largest S2-Peak within the event, while alternative S2 is selected as the
-    largest S2 other than main S2 in the time window [main S1 time, main S1 time + max drift time].
-
-    """
-
-    __version__ = "1.3.3"
-
-    depends_on = (
-        "events",
-        "peak_basics",
-        "peak_positions",
-        "peak_proximity",
-        "peak_shadow",
-        "peak_se_score",
-        "cut_position_shadow_peak",
-    )
-    provides = "event_basics"
-    data_kind = "events"
-
-    electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
-        cache=True,
-        help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
-    )
-
-    allow_posts2_s1s = straxen.URLConfig(
-        default=False,
-        infer_type=False,
-        help="Allow S1s past the main S2 to become the main S1 and S2",
-    )
-
-    force_main_before_alt = straxen.URLConfig(
-        default=False,
-        infer_type=False,
-        help="Make the alternate S1 (and likewise S2) the main S1 if occurs before the main S1.",
-    )
-
-    force_alt_s2_in_max_drift_time = straxen.URLConfig(
-        default=True,
-        infer_type=False,
-        help="Make sure alt_s2 is in max drift time starting from main S1",
-    )
-
-    event_s1_min_coincidence = straxen.URLConfig(
-        default=2,
-        infer_type=False,
-        help=(
-            "Event level S1 min coincidence. Should be >= s1_min_coincidence "
-            "in the peaklet classification"
-        ),
-    )
-
-    max_drift_length = straxen.URLConfig(
-        default=straxen.tpc_z,
-        infer_type=False,
-        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
     )
 
     def infer_dtype(self):
@@ -280,6 +185,9 @@ class EventBasics(strax.Plugin):
 
     def setup(self):
         self.drift_time_max = int(self.max_drift_length / self.electron_drift_velocity)
+        self.s2_area_limit = self.position_shadow_s2_area_limit
+        self.ellipse_parameters = self.position_shadow_ellipse_parameters_mode[self.run_mode]
+        self.straight_parameters = self.position_shadow_straight_parameters_mode[self.run_mode]
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
@@ -393,7 +301,14 @@ class EventBasics(strax.Plugin):
         """For a single event with the result_buffer."""
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         # number_of_peaks=0 selects all available s2 and sort by area
-        largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2, number_of_peaks=0)
+        mask_removed_peaks = self.compute_position_shadow_cut(peaks)
+        mask_removed_peaks &= peaks["se_score"] < 0.1
+        largest_s2s, s2_idx = self.get_largest_sx_peaks(
+            peaks=peaks,
+            mask_removed_peaks=mask_removed_peaks,
+            s_i=2,
+            number_of_peaks=0,
+        )
 
         if not self.allow_posts2_s1s and len(largest_s2s):
             s1_latest_time = largest_s2s[0]["time"]
@@ -402,6 +317,7 @@ class EventBasics(strax.Plugin):
 
         largest_s1s, s1_idx = self.get_largest_sx_peaks(
             peaks,
+            mask_removed_peaks=mask_removed_peaks,
             s_i=1,
             s1_before_time=s1_latest_time,
             s1_min_coincidence=self.event_s1_min_coincidence,
@@ -495,7 +411,12 @@ class EventBasics(strax.Plugin):
     @staticmethod
     # @numba.njit <- works but slows if fill_events is not numbafied
     def get_largest_sx_peaks(
-        peaks, s_i, s1_before_time=np.inf, s1_min_coincidence=0, number_of_peaks=2
+        peaks,
+        mask_removed_peaks,
+        s_i,
+        s1_before_time=np.inf,
+        s1_min_coincidence=0,
+        number_of_peaks=2,
     ):
         """Get the largest S1/S2.
 
@@ -508,8 +429,7 @@ class EventBasics(strax.Plugin):
             s_mask &= peaks["time"] < s1_before_time
             s_mask &= peaks["tight_coincidence"] >= s1_min_coincidence
         if s_i == 2:
-            s_mask &= peaks["cut_position_shadow_peak"]
-            s_mask &= peaks["se_score"] < 0.1
+            s_mask &= mask_removed_peaks
         selected_peaks = peaks[s_mask]
         s_index = np.arange(len(peaks))[s_mask]
         largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:][::-1]
@@ -551,3 +471,41 @@ class EventBasics(strax.Plugin):
             res["s2_index"] = s2_idx[0]
             if len(s2_idx) > 1:
                 res["alt_s2_index"] = s2_idx[1]
+
+    @staticmethod
+    @np.errstate(invalid="ignore")
+    def prob_cut_line(log10_pdf, x0, y0, a, b, rlimit, pstraight):
+        top = 0
+        # The top line in 2D histogram
+        topline = np.full(len(log10_pdf), top)
+
+        # Draw a half ellipse
+        halfellipse = np.where(
+            np.abs(log10_pdf - x0) < a * rlimit,
+            y0 - np.sqrt(b**2 * (rlimit**2 - (log10_pdf - x0) ** 2 / a**2)),
+            top,
+        )
+
+        # A horizontal tangent line at the bottom of ellipse
+        botline = np.where(log10_pdf > x0, y0 - b * rlimit, top)
+
+        # A straight line with slope
+        straight = np.polyval(pstraight, log10_pdf)
+
+        # The lowest of 4 lines
+        line = np.min(np.vstack([topline, halfellipse, botline, straight]), axis=0)
+        return line
+
+    @np.errstate(divide="ignore")
+    def compute_position_shadow_cut(self, peaks):
+        log10_time_shadow = np.log10(
+            peaks["shadow_s2_position_shadow"] / peaks["pdf_s2_position_shadow"]
+        )
+        log10_pdf = np.log10(peaks["pdf_s2_position_shadow"])
+        mask = ~(
+            log10_time_shadow
+            > self.prob_cut_line(log10_pdf, *self.ellipse_parameters, self.straight_parameters)
+        )
+        mask |= peaks["area"] > self.s2_area_limit
+        mask |= peaks["type"] != 2
+        return mask
