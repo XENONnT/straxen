@@ -380,6 +380,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if np.any(peaks["time"][1:] < strax.endtime(peaks)[:-1]):
             raise ValueError("Peaks not disjoint, why?")
         core_bounds = (peaks["time"][1:] + strax.endtime(peaks)[:-1]) // 2
+        # here the constraint on boundaries is also to make sure get_window_size covers the gaps
         left_bounds = np.maximum(np.hstack([start, core_bounds]), peaks["time"] - int(max_gap / 2))
         right_bounds = np.minimum(
             np.hstack([core_bounds, end]), strax.endtime(peaks) + int(max_gap / 2)
