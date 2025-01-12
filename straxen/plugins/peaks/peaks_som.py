@@ -17,8 +17,8 @@ class PeaksSOM(PeaksVanilla):
     child_plugin = True
 
     def infer_dtype(self):
-        peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
-            "peaklet_classification"
+        peaklet_classification_dtype = self.deps["enhanced_peaklet_classification"].dtype_for(
+            "enhanced_peaklet_classification"
         )
         peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
         # The merged dtype is argument position dependent!
