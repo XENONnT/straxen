@@ -200,7 +200,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             int(self.s2_merge_gap_thresholds[0][1]) + self.s2_merge_max_duration
         )
 
-    def compute(self, peaklets, lone_hits):
+    def compute(self, peaklets, lone_hits, start, end):
         # initialize enhanced_peaklet_classification
         enhanced_peaklet_classification = np.zeros(
             len(peaklets), dtype=self.dtype["enhanced_peaklet_classification"]
@@ -234,7 +234,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
             peaklets = peaklets_w_field
 
         start_merge_at, end_merge_at, merged = self.get_merge_instructions(
-            peaklets.copy(),
+            np.copy(peaklets),
+            start,
+            end,
             self.max_gap,
             self.max_duration,
             self.sigma,
@@ -268,11 +270,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         # have to redo the merging to prevent numerical instability
         merged_s2s = self.merge_peaklets(peaklets, start_merge_at, end_merge_at, merged, max_buffer)
-        is_s2 = merged_s2s["type"] == 2
-        if np.max((strax.endtime(merged_s2s) - merged_s2s["time"])[is_s2]) > self.max_duration:
+        if np.max((strax.endtime(merged_s2s) - merged_s2s["time"])) > self.max_duration:
             raise ValueError("Merged S2 is too long")
 
         # Updated time and length of lone_hits and sort again:
+        # this is an OverlapWindowPlugin, some lone_hits will be reused in the next iteration
+        # so do not overwirte the lone_hits
         lh = np.copy(lone_hits)
         del lone_hits
         lh_time_shift = (lh["left"] - lh["left_integration"]) * lh["dt"]
@@ -328,6 +331,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
     @staticmethod
     def get_merge_instructions(
         peaks,
+        start,
+        end,
         max_gap,
         max_duration,
         sigma,
@@ -372,11 +377,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged = np.full(n_peaks, True)
 
         # approximation of the integration boundaries
-        core_bounds = (peaks["time"][1:] + strax.endtime(peaks)[:-1]) // 2
-        left_bounds = np.hstack([peaks["time"][0], core_bounds])
-        right_bounds = np.hstack([core_bounds, strax.endtime(peaks[-1])])
-        if np.any(np.diff(left_bounds) < 0) or np.any(np.diff(right_bounds) < 0):
+        if np.any(peaks["time"][1:] < strax.endtime(peaks)[:-1]):
             raise ValueError("Peaks not disjoint, why?")
+        core_bounds = (peaks["time"][1:] + strax.endtime(peaks)[:-1]) // 2
+        left_bounds = np.maximum(np.hstack([start, core_bounds]), peaks["time"] - int(max_gap / 2))
+        right_bounds = np.minimum(
+            np.hstack([core_bounds, end]), strax.endtime(peaks) + int(max_gap / 2)
+        )
 
         # (x, y) positions of the peaklets
         positions = np.vstack(
@@ -384,7 +391,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         ).T
 
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
-        area = peaks["area"].copy()
+        area = np.copy(peaks["area"])
         area_top = area * peaks["area_fraction_top"]
 
         if diagnosing:
@@ -536,7 +543,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # execute earlier to prevent peaklets from being overwritten
             # mark the peaklets can be merged by time-density but not
             # by position-density as type WIDE_XYPOS_S2_TYPE
-            _merged_s2s = peaklets[~merged].copy()
+            _merged_s2s = np.copy(peaklets[~merged])
             _merged_s2s["type"] = WIDE_XYPOS_S2_TYPE
         # mark the peaklets can be merged by time-density and position-density as type 2
         merged_s2s = strax.merge_peaks(
