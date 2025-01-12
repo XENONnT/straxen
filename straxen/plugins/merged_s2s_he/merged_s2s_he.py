@@ -24,8 +24,8 @@ class MergedS2sHighEnergy(MergedS2s):
     def infer_dtype(self):
         return strax.unpack_dtype(self.deps["peaklets_he"].dtype_for("peaklets_he"))
 
-    def compute(self, peaklets_he):
+    def compute(self, peaklets_he, start, end):
         # There are not any lone hits for the high energy channel,
         # so create a dummy for the compute method.
         lone_hits = np.zeros(0, dtype=strax.hit_dtype)
-        return super().compute(peaklets_he, lone_hits)
+        return super().compute(peaklets_he, lone_hits, start, end)
