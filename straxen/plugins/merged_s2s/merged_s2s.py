@@ -414,6 +414,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 # and the merged peak should not be longer than the max duration
                 if (
                     start_index[i] - 1 >= 0
+                    and area[start_index[i] - 1] > 0
                     and unexamined[start_index[i] - 1]
                     and MergedS2s.get_gap(peaks[i], peaks[start_index[i] - 1]) < max_gap
                     and MergedS2s.get_duration(peaks[i], peaks[start_index[i] - 1]) <= max_duration
@@ -423,6 +424,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     indices.append(None)
                 if (
                     end_index[i] < n_peaks
+                    and area[end_index[i]] > 0
                     and unexamined[end_index[i]]
                     and MergedS2s.get_gap(peaks[i], peaks[end_index[i]]) < max_gap
                     and MergedS2s.get_duration(peaks[i], peaks[end_index[i]]) <= max_duration
