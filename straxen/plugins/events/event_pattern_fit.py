@@ -2,8 +2,9 @@ import strax
 import straxen
 import numpy as np
 import numba
-from straxen.numbafied_scipy import numba_gammaln, numba_betainc
 from scipy.special import loggamma
+from straxen.numbafied_scipy import numba_gammaln, numba_betainc
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 export, __all__ = strax.exporter()
 
@@ -15,6 +16,10 @@ class EventPatternFit(strax.Plugin):
     depends_on = ("event_area_per_channel", "event_basics", "event_positions")
     provides = "event_pattern_fit"
     __version__ = "0.1.3"
+
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
 
     # Getting S1 AFT maps
     s1_aft_map = straxen.URLConfig(
