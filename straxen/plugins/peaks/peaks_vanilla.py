@@ -1,3 +1,4 @@
+from typing import Tuple, Union
 import numpy as np
 import strax
 import straxen
@@ -8,7 +9,7 @@ export, __all__ = strax.exporter()
 
 
 @export
-class Peaks(strax.Plugin):
+class PeaksVanilla(strax.Plugin):
     """Merge peaklets and merged S2s such that we obtain our peaks (replacing all peaklets that were
     later re-merged as S2s).
 
@@ -18,10 +19,9 @@ class Peaks(strax.Plugin):
 
     __version__ = "0.1.2"
 
-    depends_on = ("peaklets", "peaklet_classification", "merged_s2s")
+    depends_on: Union[Tuple[str, ...], str] = ("peaklets", "peaklet_classification", "merged_s2s")
     data_kind = "peaks"
     provides = "peaks"
-    parallel = True
     compressor = "zstd"
     save_when = strax.SaveWhen.EXPLICIT
 
@@ -66,6 +66,6 @@ class Peaks(strax.Plugin):
                 peaks["time"][to_check][1:] >= strax.endtime(peaks)[to_check][:-1]
             ), "Peaks not disjoint"
 
-        result = np.zeros(len(peaks), self.dtype)
-        strax.copy_to_buffer(peaks, result, "_copy_requested_peak_fields")
+        result = np.zeros(len(peaks), dtype=self.dtype)
+        strax.copy_to_buffer(peaks, result, f"_copy_requested_{self.provides[0]}_fields")
         return result

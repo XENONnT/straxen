@@ -17,11 +17,10 @@ class EventS2PositionBase(strax.Plugin):
 
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True
 
     min_reconstruction_area = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this",
-        default=10,
+        default=0,
         infer_type=False,
     )
     n_top_pmts = straxen.URLConfig(

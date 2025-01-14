@@ -1,12 +1,12 @@
 import strax
 import numpy as np
-from straxen.plugins.peaks.peaks import Peaks
+from straxen.plugins.peaks.peaks_vanilla import PeaksVanilla
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeaksSOM(Peaks):
+class PeaksSOM(PeaksVanilla):
     """Same as Peaks but include in addition SOM type field to be propagated to event_basics.
 
     Thus, only change dtype.
@@ -30,11 +30,11 @@ class PeaksSOM(Peaks):
     def compute(self, peaklets, merged_s2s):
         result = super().compute(peaklets, merged_s2s)
 
-        # For merged S2s SOM and straxen type are undefined:
+        # For merged_s2s SOM and straxen type are undefined:
         _is_merged_s2 = np.isin(result["time"], merged_s2s["time"]) & np.isin(
             strax.endtime(result), strax.endtime(merged_s2s)
         )
-        result["old_type"][_is_merged_s2] = -1
+        result["vanilla_type"][_is_merged_s2] = -1
         result["som_sub_type"][_is_merged_s2] = -1
 
         return result

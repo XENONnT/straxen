@@ -1,19 +1,22 @@
 import strax
 import straxen
-from straxen.plugins.events._event_s2_positions_base import EventS2PositionBase
+from ._peaklet_positions_base import PeakletPositionsBase
 
 
 export, __all__ = strax.exporter()
 
 
 @export
-class EventS2PositionGCN(EventS2PositionBase):
-    """GCN net for position S2 reconstruction at event level."""
+class PeakletPositionsMLP(PeakletPositionsBase):
+    """Multilayer Perceptron (MLP) neural net for position reconstruction."""
 
-    algorithm = "gcn"
-    provides = "event_s2_positions_gcn"
+    __version__ = "0.0.0"
+    child_plugin = True
+    algorithm = "mlp"
+    provides = "peaklet_positions_mlp"
+    gc_collect_after_compute = True
 
-    tf_event_model_gcn = straxen.URLConfig(
+    tf_model_mlp = straxen.URLConfig(
         default=(
             "tf://"
             "resource://"

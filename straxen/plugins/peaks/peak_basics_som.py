@@ -1,12 +1,12 @@
-import numpy as np
 import strax
-from straxen.plugins.peaks.peak_basics import PeakBasics
+from straxen.plugins.peaklets.peaklet_classification_som import som_additional_fields
+from straxen.plugins.peaks.peak_basics_vanilla import PeakBasicsVanilla
 
 export, __all__ = strax.exporter()
 
 
 @export
-class PeakBasicsSOM(PeakBasics):
+class PeakBasicsSOM(PeakBasicsVanilla):
     """Adds SOM fields to peak basics to be propgated to event basics."""
 
     __version__ = "0.0.1"
@@ -14,17 +14,10 @@ class PeakBasicsSOM(PeakBasics):
 
     def infer_dtype(self):
         dtype = super().infer_dtype()
-        additional_fields = [
-            ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
-            ("old_type", np.int8, "Old type of the peak(let)"),
-            ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
-            ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
-        ]
-
-        return dtype + additional_fields
+        return dtype + som_additional_fields
 
     def compute(self, peaks):
         peak_basics = super().compute(peaks)
-        fields_to_copy = ("som_sub_type", "old_type", "loc_x_som", "loc_y_som")
+        fields_to_copy = strax.to_numpy_dtype(som_additional_fields).names
         strax.copy_to_buffer(peaks, peak_basics, "_copy_som_information", fields_to_copy)
         return peak_basics

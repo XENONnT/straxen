@@ -25,7 +25,6 @@ class PeakS1PositionBase(strax.Plugin):
 
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True
 
     min_s1_area_s1_posrec = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this", default=1000, infer_type=False

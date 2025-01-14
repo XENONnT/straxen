@@ -11,7 +11,7 @@ class nVETOEventWaveform(strax.Plugin):
     """Plugin which computes the summed waveform as well as some shape properties of the NV
     events."""
 
-    __version__ = "0.0.1"
+    __version__ = "0.0.2"
 
     depends_on = "events_nv", "records_nv"
     provides = "event_waveform_nv"
@@ -52,7 +52,7 @@ class nVETOEventWaveform(strax.Plugin):
         _tmp_events["length"] = (events_nv["endtime"] - events_nv["time"]) // 2
         _tmp_events["dt"] = 2
         strax.simple_summed_waveform(records_nv, _tmp_events, self.to_pe)
-        strax.compute_widths(_tmp_events)
+        strax.compute_properties(_tmp_events)
 
         strax.copy_to_buffer(_tmp_events, events_waveform, "_temp_nv_evts_cpy")
         events_waveform["range_50p_area"] = _tmp_events["width"][:, 5]
@@ -66,9 +66,7 @@ class nVETOEventWaveform(strax.Plugin):
 def veto_event_waveform_dtype(
     n_samples_wf: int = 200,
 ) -> list:
-    dtype = []
-    dtype += strax.time_dt_fields  # because mutable
-    dtype += [
+    dtype = strax.time_dt_fields + [
         (("Waveform data in PE/sample (not PE/ns!)", "data"), np.float32, n_samples_wf),
         (("Width (in ns) of the central 50% area of the peak", "range_50p_area"), np.float32),
         (("Width (in ns) of the central 90% area of the peak", "range_90p_area"), np.float32),
@@ -100,6 +98,8 @@ def _temp_event_data_type(n_samples_wf: int = 150, n_widths: int = 11) -> list:
             np.float32,
             n_samples_wf,
         ),
+        (("Weighted average center time of the peak [ns]", "center_time"), np.int64),
+        (("Weighted relative median time of the peak [ns]", "median_time"), np.float32),
         (("Peak widths in range of central area fraction [ns]", "width"), np.float32, n_widths),
         (
             ("Peak widths: time between nth and 5th area decile [ns]", "area_decile_from_midpoint"),

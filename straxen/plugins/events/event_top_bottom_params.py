@@ -12,7 +12,7 @@ class EventTopBottomParams(strax.Plugin):
 
     depends_on = ("event_info", "event_waveform")
     provides = "event_top_bottom_params"
-    __version__ = "0.0.0"
+    __version__ = "0.0.1"
 
     def infer_dtype(self):
         # Populating data type information
@@ -91,6 +91,9 @@ class EventTopBottomParams(strax.Plugin):
 
     def compute(self, events):
         result = np.zeros(events.shape, dtype=self.dtype)
+        if not len(events):
+            return result
+
         result["time"], result["endtime"] = events["time"], strax.endtime(events)
         peak_dtype = strax.peak_dtype(n_channels=straxen.n_tpc_pmts, store_data_top=False)
         for type_ in self.ptypes:
@@ -129,15 +132,13 @@ class EventTopBottomParams(strax.Plugin):
                 result[f"{type_}_center_time_{arr_}"][mask] += recalc_ctime[mask].astype(int)
                 # computing widths ##
                 # zero or undefined area peaks should have nans
-                strax.compute_widths(fpeaks_)
+                _, width, area_decile_from_midpoint = strax.compute_widths(fpeaks_)
                 result[f"{type_}_rise_time_{arr_}"][:] = np.nan
-                result[f"{type_}_rise_time_{arr_}"][mask] = -fpeaks_["area_decile_from_midpoint"][
-                    mask
-                ][:, 1]
+                result[f"{type_}_rise_time_{arr_}"][mask] = -area_decile_from_midpoint[mask][:, 1]
                 result[f"{type_}_range_50p_area_{arr_}"][:] = np.nan
-                result[f"{type_}_range_50p_area_{arr_}"][mask] = fpeaks_["width"][mask][:, 5]
+                result[f"{type_}_range_50p_area_{arr_}"][mask] = width[mask][:, 5]
                 result[f"{type_}_range_90p_area_{arr_}"][:] = np.nan
-                result[f"{type_}_range_90p_area_{arr_}"][mask] = fpeaks_["width"][mask][:, 9]
+                result[f"{type_}_range_90p_area_{arr_}"][mask] = width[mask][:, 9]
             # Difference between center times of top and bottom arrays
             result[f"{type_}_center_time_diff_top_bot"] = (
                 result[f"{type_}_center_time_top"] - result[f"{type_}_center_time_bot"]

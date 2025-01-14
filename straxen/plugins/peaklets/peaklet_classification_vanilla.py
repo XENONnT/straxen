@@ -9,14 +9,13 @@ export, __all__ = strax.exporter()
 
 
 @export
-class PeakletClassification(strax.Plugin):
+class PeakletClassificationVanilla(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
 
-    __version__ = "3.0.3"
+    __version__ = "3.0.4"
 
-    provides: Union[str, tuple] = "peaklet_classification"
     depends_on = "peaklets"
-    parallel = True
+    provides: Union[str, tuple] = "peaklet_classification"
     dtype = strax.peak_interval_dtype + [("type", np.int8, "Classification of the peak(let)")]
 
     s1_risetime_area_parameters = straxen.URLConfig(
@@ -42,8 +41,6 @@ class PeakletClassification(strax.Plugin):
             "Specified values: (AFT boundary, constant rise time)."
         ),
     )
-
-    n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int, help="Number of top PMTs")
 
     s1_max_rise_time_post100 = straxen.URLConfig(
         default=200, type=(int, float), help="Maximum S1 rise time for > 100 PE [ns]"
@@ -76,10 +73,6 @@ class PeakletClassification(strax.Plugin):
         # Properties needed for classification:
         rise_time = -peaklets["area_decile_from_midpoint"][:, 1]
         n_channels = (peaklets["area_per_channel"] > 0).sum(axis=1)
-        n_top = self.n_top_pmts
-        area_top = peaklets["area_per_channel"][:, :n_top].sum(axis=1)
-        area_total = peaklets["area_per_channel"].sum(axis=1)
-        area_fraction_top = area_top / area_total
 
         is_large_s1 = peaklets["area"] >= 100
         is_large_s1 &= rise_time <= self.s1_max_rise_time_post100
@@ -92,7 +85,7 @@ class PeakletClassification(strax.Plugin):
         )
 
         is_small_s1 &= rise_time < self.upper_rise_time_aft_boundary(
-            area_fraction_top,
+            peaklets["area_fraction_top"],
             *self.s1_risetime_aft_parameters,
             *self.s1_flatten_threshold_aft,
         )
