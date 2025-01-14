@@ -74,3 +74,6 @@ docs/source/reference/data_kinds*
 docs/source/reference/release_notes.rst
 
 test_dict.json
+
+*.pkl
+*.pkl.gz

@@ -15,11 +15,13 @@ from urllib.parse import urlparse, parse_qs
 export, __all__ = strax.exporter()
 
 corrections_w_file = [
-    "mlp_model",
+    "mlp_model",  # there is no cnf_model because CNF is using another jax protocol
     "s2_xy_map_mlp",
-    "s2_xy_map",
+    "s2_xy_map_cnf",
     "s1_xyz_map_mlp",
+    "s1_xyz_map_cnf",
     "fdc_map_mlp",
+    "fdc_map_cnf",
     "s1_aft_xyz_map",
 ]
 
@@ -168,7 +170,15 @@ class CorrectionsManagementServices:
                             df = self.interface.interpolate(df, when)
                         values.append(df.loc[df.index == when, version].values[0])
             else:
-                df = self.interface.read_at(correction, when)
+                # TODO: remove this hack when fdc_map_cnf is available
+                if correction == "fdc_map_cnf":
+                    df = self.interface.read_at("fdc_map_mlp", when)
+                elif correction == "s1_xyz_map_cnf":
+                    df = self.interface.read_at("s1_xyz_map_mlp", when)
+                elif correction == "s2_xy_map_cnf":
+                    df = self.interface.read_at("s2_xy_map_mlp", when)
+                else:
+                    df = self.interface.read_at(correction, when)
                 if df[version].isnull().values.any():
                     raise CMTnanValueError(
                         f"For {correction} there are NaN values, this means no correction available"
@@ -419,7 +429,7 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
         # this could be either a CMT tuple or a URLConfig
         value = option_info["strax_option"]
 
-        # might need to modify correction name to include position reconstruction algo
+        # might need to modify correction name to include position reconstruction alg
         # this is a bit of a mess, but posrec configs are treated differently in the tuples
         # URL configs should already include the posrec suffix
         # (it's real mess -- we should drop tuple configs)

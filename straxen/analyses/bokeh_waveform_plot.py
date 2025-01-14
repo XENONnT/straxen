@@ -101,7 +101,7 @@ def event_display_interactive(
         raise ValueError("Found an event without peaks this should not had have happened.")
 
     # Select main/alt S1/S2s based on time and endtime in event:
-    m_other_peaks = np.ones(len(peaks), dtype=np.bool_)  # To select non-event peaks
+    m_other_peaks = np.ones(len(peaks), dtype=bool)  # To select non-event peaks
     endtime = strax.endtime(peaks)
 
     signal = {}
@@ -570,7 +570,7 @@ def plot_pmt_array(
     # Plotting PMTs:
     pmts = straxen.pmt_positions()
     if plot_all_pmts:
-        mask_pmts = np.zeros(len(pmts), dtype=np.bool_)
+        mask_pmts = np.zeros(len(pmts), dtype=bool)
     else:
         mask_pmts = to_pe == 0
     pmts_on = pmts[~mask_pmts]

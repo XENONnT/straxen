@@ -1,3 +1,51 @@
+3.0.2 / 2025-01-13
+-------------------
+* Collect SOM dtype at one place by @dachengx in https://github.com/XENONnT/straxen/pull/1511
+* Stop support for list of "take" protocol by @dachengx in https://github.com/XENONnT/straxen/pull/1517
+* Add `stage` flag for `RucioRemoteBackend` by @dachengx in https://github.com/XENONnT/straxen/pull/1520
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.1...v3.0.2
+
+
+3.0.1 / 2024-12-27
+-------------------
+* Fix run_doc for led plugin by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1462
+* Check RSE in `_find` method of `RucioRemoteFrontend` by @dachengx in https://github.com/XENONnT/straxen/pull/1464
+* Garbage collection after calculated each chunk in `peak_positions_mlp` by @dachengx in https://github.com/XENONnT/straxen/pull/1467
+* Enforce stable sorting in `np.sort` and `np.argsort` by @dachengx in https://github.com/XENONnT/straxen/pull/1468
+* Clean `deprecate_kwarg` by @dachengx in https://github.com/XENONnT/straxen/pull/1470
+* Update strax version to v2.0.1 by @dachengx in https://github.com/XENONnT/straxen/pull/1473
+* Remove expedients plugins because SOM will be default by @dachengx in https://github.com/XENONnT/straxen/pull/1472
+* Remove 1T related codes by @dachengx in https://github.com/XENONnT/straxen/pull/1476
+* Use SOM peaklets classification by default by @dachengx in https://github.com/XENONnT/straxen/pull/1471
+* Fix theta uncertainty bug by @napoliion in https://github.com/XENONnT/straxen/pull/1466
+* Remove URLConfig warning about sorting by @dachengx in https://github.com/XENONnT/straxen/pull/1477
+* Merge branch 'sr1_leftovers' into master by @dachengx in https://github.com/XENONnT/straxen/pull/1478
+* Fix small bug in CNF by @dachengx in https://github.com/XENONnT/straxen/pull/1479
+* Remove GCN & CNN S2 pos-rec by @dachengx in https://github.com/XENONnT/straxen/pull/1484
+* Set CNF as the default S2 (x, y) position-reconstruction by @dachengx in https://github.com/XENONnT/straxen/pull/1486
+* Prototype of peaklets-level (x, y) S2 position reconstruction by @dachengx in https://github.com/XENONnT/straxen/pull/1482
+* Rename old `PeakletClassification` as `PeakletClassificationVanilla` by @dachengx in https://github.com/XENONnT/straxen/pull/1487
+* Remove Bayes models by @dachengx in https://github.com/XENONnT/straxen/pull/1488
+* Rename `defualt_run_comments` -> `default_run_comments` by @dachengx in https://github.com/XENONnT/straxen/pull/1489
+* Accelerate Euclidean distance by numba by @dachengx in https://github.com/XENONnT/straxen/pull/1493
+* Move `set_nan_defaults` to be a stand-alone function by @dachengx in https://github.com/XENONnT/straxen/pull/1497
+* Set CNF as the default S2 (x, y) position-reconstruction by @dachengx in https://github.com/XENONnT/straxen/pull/1494
+* Back to fixed window in LED calibration by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1499
+* Move `compute_center_times` from straxen to strax by @dachengx in https://github.com/XENONnT/straxen/pull/1501
+* Use numpy and strax native dtypes, not `"<i8"` or `"<f4"` by @dachengx in https://github.com/XENONnT/straxen/pull/1502
+* Inherit `area_fraction_top`, `center_time` and `median_time` from peaklets by @dachengx in https://github.com/XENONnT/straxen/pull/1503
+* Bump version of changed plugins in #1503 by @dachengx in https://github.com/XENONnT/straxen/pull/1504
+* Clean unnecessary codes by @dachengx in https://github.com/XENONnT/straxen/pull/1507
+* Clean chunk after computing `records` by @dachengx in https://github.com/XENONnT/straxen/pull/1508
+* Add a line of comment about memory optimization by @dachengx in https://github.com/XENONnT/straxen/pull/1509
+
+New Contributors
+* @napoliion made their first contribution in https://github.com/XENONnT/straxen/pull/1466
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.0...v3.0.1
+
+
 3.0.0 / 2024-10-24
 -------------------
 * Inherit `DEFAULT_CHUNK_SPLIT_NS` from strax by @dachengx in https://github.com/XENONnT/straxen/pull/1405

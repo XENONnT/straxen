@@ -8,6 +8,16 @@ import straxen
 
 export, __all__ = strax.exporter()
 
+__all__.extend(["som_additional_fields"])
+
+
+som_additional_fields = [
+    ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
+    ("vanilla_type", np.int8, "Vanilla type of the peak(let)"),
+    ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
+    ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
+]
+
 
 @export
 class PeakletClassificationSOM(PeakletClassificationVanilla):
@@ -30,14 +40,13 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
     __version__ = "0.2.0"
     child_plugin = True
 
-    dtype = strax.peak_interval_dtype + [
-        ("type", np.int8, "Classification of the peak(let)"),
-        ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
-        ("old_type", np.int8, "Old type of the peak(let)"),
-        ("som_type", np.int8, "SOM type of the peak(let)"),
-        ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
-        ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
-    ]
+    dtype = (
+        strax.peak_interval_dtype
+        + [
+            ("type", np.int8, "Classification of the peak(let)"),
+        ]
+        + som_additional_fields
+    )
 
     som_files = straxen.URLConfig(
         default="resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy"
@@ -67,7 +76,7 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
 
         peaklet_with_som = np.zeros(len(peaklets_classifcation), dtype=self.dtype)
         strax.copy_to_buffer(peaklets_classifcation, peaklet_with_som, "_copy_peaklets_information")
-        peaklet_with_som["old_type"] = peaklets_classifcation["type"]
+        peaklet_with_som["vanilla_type"] = peaklets_classifcation["type"]
         del peaklets_classifcation
 
         # SOM classification
@@ -86,11 +95,10 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
         peaklet_with_som["som_sub_type"][_is_s1_or_s2] = som_sub_type
         peaklet_with_som["loc_x_som"][_is_s1_or_s2] = x_som
         peaklet_with_som["loc_y_som"][_is_s1_or_s2] = y_som
-        peaklet_with_som["som_type"][_is_s1_or_s2] = strax_type
         if self.use_som_as_default:
             peaklet_with_som["type"][_is_s1_or_s2] = strax_type
         else:
-            peaklet_with_som["type"] = peaklet_with_som["old_type"]
+            peaklet_with_som["type"] = peaklet_with_som["vanilla_type"]
 
         return peaklet_with_som
 
