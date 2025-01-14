@@ -429,7 +429,7 @@ def apply_cmt_version(context: strax.Context, cmt_global_version: str) -> None:
         # this could be either a CMT tuple or a URLConfig
         value = option_info["strax_option"]
 
-        # might need to modify correction name to include position reconstruction algo
+        # might need to modify correction name to include position reconstruction alg
         # this is a bit of a mess, but posrec configs are treated differently in the tuples
         # URL configs should already include the posrec suffix
         # (it's real mess -- we should drop tuple configs)
