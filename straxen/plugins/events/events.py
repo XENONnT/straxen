@@ -151,6 +151,34 @@ class Events(strax.OverlapWindowPlugin):
         help="Run mode to be used for the cut. It can affect the parameters of the cut.",
     )
 
+    # max_drift_length = straxen.URLConfig(
+    #     default=straxen.tpc_z,
+    #     type=(int, float),
+    #     help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
+    # )
+
+    # shadow_threshold = straxen.URLConfig(
+    #     default={"s1_time_shadow": 1e3, "s2_time_shadow": 1e4, "s2_position_shadow": 1e4},
+    #     type=dict,
+    #     track=True,
+    #     help="Only take S1/S2s larger than this into account when calculating Shadow [PE]",
+    # )
+
+    # electron_drift_velocity = straxen.URLConfig(
+    #     default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+    #     cache=True,
+    #     help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
+    # )
+
+    # n_drift_time = straxen.URLConfig(
+    #     default={"sr0": 1, "sr1": 2}, help="Number of drift time to veto"
+    # )
+
+    # sr = straxen.URLConfig(
+    #     default="science_run://plugin.run_id?&phase=False",
+    #     help="Science run to be used for the cut. It can affect the parameters of the cut.",
+    # )
+
     def setup(self):
         if self.s1_min_coincidence > self.event_s1_min_coincidence:
             raise ValueError(
@@ -166,6 +194,9 @@ class Events(strax.OverlapWindowPlugin):
         self.s2_area_limit = self.position_shadow_s2_area_limit
         self.ellipse_parameters = self.position_shadow_ellipse_parameters_mode[self.run_mode]
         self.straight_parameters = self.position_shadow_straight_parameters_mode[self.run_mode]
+        # self.veto_window = (
+        #     self.max_drift_length / self.electron_drift_velocity * self.n_drift_time[self.sr]
+        # )
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails
@@ -258,4 +289,12 @@ class Events(strax.OverlapWindowPlugin):
         )
         mask |= peaks["area"] > self.s2_area_limit
         mask |= peaks["type"] != 2
+        return mask
+
+    def compute_peak_time_veto(self, peaks):
+        mask = np.full(len(peaks), True)
+        for casting_peak in ["_s1", "_s2"]:
+            mask &= (peaks[f"nearest_dt{casting_peak}"] > self.veto_window) | (
+                peaks[f"nearest_dt{casting_peak}"] < 0
+            )
         return mask
