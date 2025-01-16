@@ -276,7 +276,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.dr_threshold,
             self.use_bayesian_merging,
             self.gap_thresholds,
-            self.use_uncertainty_weights
+            self.use_uncertainty_weights,
         )
 
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
@@ -522,6 +522,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                         weights = np.nan_to_num(1 / contour_areas, nan=np.finfo("float32").tiny)
                     else:
                         weights = area_top[merging][merged[merging]]
+                    weights = area_top[merging][merged[merging]]
                     dr_avg = weighted_averaged_dr(
                         positions[merging, 0][merged[merging]],
                         positions[merging, 1][merged[merging]],
