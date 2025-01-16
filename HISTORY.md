@@ -1,3 +1,12 @@
+3.0.2 / 2025-01-13
+-------------------
+* Collect SOM dtype at one place by @dachengx in https://github.com/XENONnT/straxen/pull/1511
+* Stop support for list of "take" protocol by @dachengx in https://github.com/XENONnT/straxen/pull/1517
+* Add `stage` flag for `RucioRemoteBackend` by @dachengx in https://github.com/XENONnT/straxen/pull/1520
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.1...v3.0.2
+
+
 3.0.1 / 2024-12-27
 -------------------
 * Fix run_doc for led plugin by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1462

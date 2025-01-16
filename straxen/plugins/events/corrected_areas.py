@@ -39,16 +39,16 @@ class CorrectedAreas(strax.Plugin):
     s1_xyz_map = straxen.URLConfig(
         default=(
             "itp_map://resource://cmt://format://"
-            "s1_xyz_map_{algo}?version=ONLINE&run_id=plugin.run_id"
-            "&fmt=json&algo=plugin.default_reconstruction_algorithm"
+            "s1_xyz_map_{alg}?version=ONLINE&run_id=plugin.run_id"
+            "&fmt=json&alg=plugin.default_reconstruction_algorithm"
         ),
         cache=True,
     )
     s2_xy_map = straxen.URLConfig(
         default=(
             "itp_map://resource://cmt://format://"
-            "s2_xy_map_{algo}?version=ONLINE&run_id=plugin.run_id"
-            "&fmt=json&algo=plugin.default_reconstruction_algorithm"
+            "s2_xy_map_{alg}?version=ONLINE&run_id=plugin.run_id"
+            "&fmt=json&alg=plugin.default_reconstruction_algorithm"
         ),
         cache=True,
     )
