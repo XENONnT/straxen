@@ -418,7 +418,8 @@ class Peaklets(strax.Plugin):
         """Create hits timing features."""
         split_hits = strax.split_by_containment(hitlets, peaklets)
         for peaklet, _hitlets in zip(peaklets, split_hits):
-            sorted_hitlets = strax.stable_sort(_hitlets, by="max_time")
+            argsort = strax.stable_argsort(_hitlets["max_time"])
+            sorted_hitlets = _hitlets[argsort]
             time_diff = np.diff(sorted_hitlets["max_time"])
             if len(time_diff) > 0:
                 peaklet["max_diff"] = time_diff.max()
