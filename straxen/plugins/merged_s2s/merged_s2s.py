@@ -147,10 +147,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
     use_bayesian_merging = straxen.URLConfig(default=True, type=bool, help="Use Bayesian merging")
 
     use_uncertainty_weights = straxen.URLConfig(
-        default=True, 
-        type=bool, 
-        help="Use uncertainty from probabilistic posrec to derive weights"
-        )
+        default=True, type=bool, help="Use uncertainty from probabilistic posrec to derive weights"
+    )
 
     merged_s2s_get_window_size_factor = straxen.URLConfig(
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
@@ -517,12 +515,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     # calculate weighted averaged deviation of peaklets from the main cluster
                     if use_uncertainty_weights:
                         contour_areas = polygon_area(
-                            peaks[f'position_contour_{DEFAULT_POSREC_ALGO}'][merging][merged[merging]]
-                            )
-                        weights = np.nan_to_num(
-                            1/contour_areas, 
-                            nan=np.finfo('float32').tiny
-                            )
+                            peaks[f"position_contour_{DEFAULT_POSREC_ALGO}"][merging][
+                                merged[merging]
+                            ]
+                        )
+                        weights = np.nan_to_num(1 / contour_areas, nan=np.finfo("float32").tiny)
                     else:
                         weights = area_top[merging][merged[merging]]
                     dr_avg = weighted_averaged_dr(
@@ -801,18 +798,19 @@ def weighted_averaged_dr(x, y, weights):
     dr_avg = np.average(dr[mask], weights=weights[mask])
     return dr_avg
 
+
 @numba.jit(cache=True)
 def polygon_area(polygon):
-    """
-    Calculate and return the area of a polygon.
+    """Calculate and return the area of a polygon.
 
-    The input is a 3D numpy array where the first dimension represents individual polygons,
-    the second dimension represents vertices of the polygon, 
-    and the third dimension represents x and y coordinates of each vertex.
+    The input is a 3D numpy array where the first dimension represents individual polygons, the
+    second dimension represents vertices of the polygon, and the third dimension represents x and y
+    coordinates of each vertex.
+
     """
     x = polygon[..., 0]
     y = polygon[..., 1]
-    result = np.zeros(polygon.shape[0], dtype='float32')
+    result = np.zeros(polygon.shape[0], dtype="float32")
     for i in range(x.shape[-1]):
-        result +=  (x[..., i]*y[..., i-1]) - (y[..., i]*x[..., i-1])
+        result += (x[..., i] * y[..., i - 1]) - (y[..., i] * x[..., i - 1])
     return 0.5 * np.abs(result)
