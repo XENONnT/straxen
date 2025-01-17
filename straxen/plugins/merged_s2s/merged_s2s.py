@@ -518,7 +518,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                         weights = np.nan_to_num(1 / contour_areas, nan=np.finfo("float32").tiny)
                     else:
                         weights = area_top[merging][merged[merging]]
-                    weights = area_top[merging][merged[merging]]
+
                     dr_avg = weighted_averaged_dr(
                         positions[merging, 0][merged[merging]],
                         positions[merging, 1][merged[merging]],
