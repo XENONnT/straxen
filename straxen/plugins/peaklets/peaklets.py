@@ -39,7 +39,7 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
-    __version__ = "1.2.1"
+    __version__ = "1.2.2"
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False, help="No hits for this many ns triggers a new peak"
@@ -417,14 +417,18 @@ class Peaklets(strax.Plugin):
     def add_hit_features(hitlets, peaklets):
         """Create hits timing features."""
         split_hits = strax.split_by_containment(hitlets, peaklets)
-        for peaklet, h_max in zip(peaklets, split_hits):
-            max_time_diff = np.diff(strax.stable_sort(h_max["max_time"]))
-            if len(max_time_diff) > 0:
-                peaklet["max_diff"] = max_time_diff.max()
-                peaklet["min_diff"] = max_time_diff.min()
+        for peaklet, _hitlets in zip(peaklets, split_hits):
+            argsort = strax.stable_argsort(_hitlets["max_time"])
+            sorted_hitlets = _hitlets[argsort]
+            time_diff = np.diff(sorted_hitlets["max_time"])
+            if len(time_diff) > 0:
+                peaklet["max_diff"] = time_diff.max()
+                peaklet["min_diff"] = time_diff.min()
             else:
                 peaklet["max_diff"] = -1
                 peaklet["min_diff"] = -1
+            peaklet["first_channel"] = sorted_hitlets[0]["channel"]
+            peaklet["last_channel"] = sorted_hitlets[-1]["channel"]
 
 
 def drop_data_field(peaklets, goal_dtype, _name_function="_drop_data_field"):
