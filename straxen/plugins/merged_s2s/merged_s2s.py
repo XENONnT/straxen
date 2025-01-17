@@ -515,7 +515,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     # calculate weighted averaged deviation of peaklets from the main cluster
                     if use_uncertainty_weights:
                         contour_areas = polygon_area(contours[merging][merged[merging]])
-                        weights = np.nan_to_num(1 / contour_areas, nan=np.finfo("float32").tiny)
+                        weights = np.nan_to_num(1 / contour_areas, nan=np.finfo(np.float32).tiny)
                     else:
                         weights = area_top[merging][merged[merging]]
 
@@ -807,7 +807,7 @@ def polygon_area(polygon):
     """
     x = polygon[..., 0]
     y = polygon[..., 1]
-    result = np.zeros(polygon.shape[0], dtype="float32")
+    result = np.zeros(polygon.shape[0], dtype=np.float32)
     for i in range(x.shape[-1]):
         result += (x[..., i] * y[..., i - 1]) - (y[..., i] * x[..., i - 1])
     return 0.5 * np.abs(result)
