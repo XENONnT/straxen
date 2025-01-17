@@ -409,7 +409,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         positions = np.vstack(
             [peaks[f"x_{DEFAULT_POSREC_ALGO}"], peaks[f"y_{DEFAULT_POSREC_ALGO}"]]
         ).T
-
+        contours = np.copy(peaks[f"position_contour_{DEFAULT_POSREC_ALGO}"])
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
         area = np.copy(peaks["area"])
         area_top = area * peaks["area_fraction_top"]
@@ -514,11 +514,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
                     # calculate weighted averaged deviation of peaklets from the main cluster
                     if use_uncertainty_weights:
-                        contour_areas = polygon_area(
-                            peaks[f"position_contour_{DEFAULT_POSREC_ALGO}"][merging][
-                                merged[merging]
-                            ]
-                        )
+                        contour_areas = polygon_area(contours[merging][merged[merging]])
                         weights = np.nan_to_num(1 / contour_areas, nan=np.finfo("float32").tiny)
                     else:
                         weights = area_top[merging][merged[merging]]
