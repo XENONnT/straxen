@@ -173,34 +173,34 @@ class EventBasicsVanilla(strax.Plugin):
         self.pos_rec_labels = list(set(posrec_names))
         self.pos_rec_labels.sort()
 
-        self.posrec_save = [(xy + algo) for xy in ["x_", "y_"] for algo in self.pos_rec_labels]
+        self.posrec_save = [(xy + alg) for xy in ["x_", "y_"] for alg in self.pos_rec_labels]
 
     def _get_posrec_dtypes(self):
         """Get S2 positions for each of the position reconstruction algorithms."""
         posrec_dtpye = []
 
-        for algo in self.pos_rec_labels:
+        for alg in self.pos_rec_labels:
             # S2 positions
             posrec_dtpye += [
                 (
-                    f"s2_x_{algo}",
+                    f"s2_x_{alg}",
                     np.float32,
-                    f"Main S2 {algo}-reconstructed X position, uncorrected [cm]",
+                    f"Main S2 {alg}-reconstructed X position, uncorrected [cm]",
                 ),
                 (
-                    f"s2_y_{algo}",
+                    f"s2_y_{alg}",
                     np.float32,
-                    f"Main S2 {algo}-reconstructed Y position, uncorrected [cm]",
+                    f"Main S2 {alg}-reconstructed Y position, uncorrected [cm]",
                 ),
                 (
-                    f"alt_s2_x_{algo}",
+                    f"alt_s2_x_{alg}",
                     np.float32,
-                    f"Alternate S2 {algo}-reconstructed X position, uncorrected [cm]",
+                    f"Alternate S2 {alg}-reconstructed X position, uncorrected [cm]",
                 ),
                 (
-                    f"alt_s2_y_{algo}",
+                    f"alt_s2_y_{alg}",
                     np.float32,
-                    f"Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]",
+                    f"Alternate S2 {alg}-reconstructed Y position, uncorrected [cm]",
                 ),
             ]
 
