@@ -332,7 +332,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
     """
     nrr = len(raw_records)
-    result = np.zeros(nrr, bool)
+    result = np.zeros(nrr, np.bool_)
 
     last_interval_seen = 0
     for ind, rr in enumerate(raw_records):
