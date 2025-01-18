@@ -5,7 +5,7 @@ from scipy.stats import norm, poisson
 import numba
 import strax
 import straxen
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, WIDE_XYPOS_S2_TYPE
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE
 from straxen.plugins.peaklets.peaklets import drop_data_field
 
 
@@ -156,6 +156,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
         help="Threshold for the weighted mean deviation of the peaklets from the main cluster [cm]",
     )
 
+    de_threshold = straxen.URLConfig(
+        default=(1, 3),
+        type=tuple,
+        help="Max (number, number of sigma_seg) of type 20 peaklets inside a peak",
+    )
+
     use_bayesian_merging = straxen.URLConfig(default=True, type=bool, help="Use Bayesian merging")
 
     use_uncertainty_weights = straxen.URLConfig(
@@ -211,6 +217,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.sigma = np.linspace(self.rough_min_sigma, self.rough_max_sigma, self.rough_sigma_bins)
         self.sigma_panel = np.repeat(self.sigma[None, :], self.rough_mu_bins, axis=0).flatten()
 
+        self.max_n_de = self.de_threshold[0]
+        self.max_area_de = self.rough_seg + self.sigma_seg * self.de_threshold[1]
+
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
             int(self.s2_merge_gap_thresholds[0][1]) + self.s2_merge_max_duration
@@ -241,8 +250,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged_s2s, merged = self.merge(peaklets, lone_hits, start, end)
 
         # mark the peaklets can be merged by time-density but not
-        # by position-density as type WIDE_XYPOS_S2_TYPE
-        enhanced_peaklet_classification["type"][is_s2 & ~merged] = WIDE_XYPOS_S2_TYPE
+        # by position-density as type FAR_XYPOS_S2_TYPE
+        enhanced_peaklet_classification["type"][is_s2 & ~merged] = FAR_XYPOS_S2_TYPE
 
         return dict(
             merged_s2s=merged_s2s, enhanced_peaklet_classification=enhanced_peaklet_classification
@@ -293,6 +302,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.use_bayesian_merging,
             self.use_uncertainty_weights,
             self.gap_thresholds,
+            disable=False,
         )
 
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
@@ -326,10 +336,16 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 _end_merge_at,
                 __merged[argsort],
                 max_buffer,
+                max_de=[self.max_n_de, self.max_area_de],
             )
         else:
             merged_s2s = self.merge_peaklets(
-                peaklets, start_merge_at, end_merge_at, _merged, max_buffer
+                peaklets,
+                start_merge_at,
+                end_merge_at,
+                _merged,
+                max_buffer,
+                max_de=[self.max_n_de, self.max_area_de],
             )
 
         if np.max((strax.endtime(merged_s2s) - merged_s2s["time"])) > self.max_duration:
@@ -612,14 +628,20 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     @staticmethod
     def merge_peaklets(
-        peaklets, start_merge_at, end_merge_at, merged, max_buffer, merged_all=False
+        peaklets,
+        start_merge_at,
+        end_merge_at,
+        merged,
+        max_buffer=int(1e5),
+        max_de=None,
+        merged_all=False,
     ):
         if merged_all:
             # execute earlier to prevent peaklets from being overwritten
             # mark the peaklets can be merged by time-density but not
-            # by position-density as type WIDE_XYPOS_S2_TYPE
+            # by position-density as type FAR_XYPOS_S2_TYPE
             _merged_s2s = np.copy(peaklets[~merged])
-            _merged_s2s["type"] = WIDE_XYPOS_S2_TYPE
+            _merged_s2s["type"] = FAR_XYPOS_S2_TYPE
         # mark the peaklets can be merged by time-density and position-density as type 2
         merged_s2s = strax.merge_peaks(
             peaklets,
@@ -629,6 +651,25 @@ class MergedS2s(strax.OverlapWindowPlugin):
             max_buffer=max_buffer,
         )
         merged_s2s["type"] = 2
+
+        # if the number of type 20 peaklets inside a peak is larger than the threshold
+        # or the area of type 20 peaklets inside a peak is larger than the threshold
+        # mark the peaklets as type WIDE_XYPOS_S2_TYPE
+        if max_de is not None:
+            n_de = []
+            area_de = []
+            for i in range(len(merged_s2s)):
+                sl = slice(start_merge_at[i], end_merge_at[i])
+                n_de.append(np.sum(~merged[sl]))
+                area_de.append(peaklets["area"][sl][~merged[sl]].sum())
+            n_de = np.array(n_de)
+            area_de = np.array(area_de)
+            merged_s2s["type"] = np.where(
+                (n_de <= max_de[0]) & (area_de <= max_de[1]),
+                merged_s2s["type"],
+                WIDE_XYPOS_S2_TYPE,
+            )
+
         if merged_all:
             merged_s2s = strax.sort_by_time(np.concatenate([_merged_s2s, merged_s2s]))
         return merged_s2s

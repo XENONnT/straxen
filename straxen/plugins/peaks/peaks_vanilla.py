@@ -3,7 +3,7 @@ import numpy as np
 import strax
 import straxen
 
-from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE, WIDE_XYPOS_S2_TYPE
+from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE, FAR_XYPOS_S2_TYPE
 
 export, __all__ = strax.exporter()
 
@@ -60,8 +60,8 @@ class PeaksVanilla(strax.Plugin):
     @staticmethod
     def replace_merged(peaklets, merged_s2s):
         peaklets_is_s1 = peaklets["type"] == 1
-        peaklets_is_wi = peaklets["type"] == WIDE_XYPOS_S2_TYPE
-        # pick out type WIDE_XYPOS_S2_TYPE because they might overlap with other merged S2s
+        peaklets_is_wi = peaklets["type"] == FAR_XYPOS_S2_TYPE
+        # pick out type FAR_XYPOS_S2_TYPE because they might overlap with other merged S2s
         peaks = strax.replace_merged(peaklets[~peaklets_is_wi & ~peaklets_is_s1], merged_s2s)
         peaks = strax.sort_by_time(
             np.concatenate([peaklets[peaklets_is_s1 | peaklets_is_wi], peaks])
