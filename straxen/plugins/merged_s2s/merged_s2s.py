@@ -71,6 +71,18 @@ class MergedS2s(strax.OverlapWindowPlugin):
         ),
     )
 
+    merge_lone_hits = straxen.URLConfig(
+        default=True,
+        type=bool,
+        help="Merge lone hits into merged S2s",
+    )
+
+    merge_s0 = straxen.URLConfig(
+        default=True,
+        type=bool,
+        help="Merge S0s into merged S2s",
+    )
+
     gain_model = straxen.URLConfig(
         infer_type=False,
         help="PMT gain model. Specify as (str(model_config), str(version), nT-->boolean",
@@ -238,6 +250,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     def merge(self, peaklets, lone_hits, start, end):
         """Merge into S2s if the peaklets are close enough in time and position."""
+        if self.merge_s0:
+            s0 = np.copy(peaklets[peaklets["type"] == 0])
+
         # only keep S2 peaklets for merging
         is_s2 = peaklets["type"] == 2
         peaklets = peaklets[is_s2]
@@ -274,41 +289,73 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.n_top_pmts,
             self.p_threshold,
             self.dr_threshold,
+            self.default_reconstruction_algorithm,
             self.use_bayesian_merging,
-            self.gap_thresholds,
             self.use_uncertainty_weights,
+            self.gap_thresholds,
         )
 
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
             raise ValueError("data_top or data_start is not in the peaklets dtype")
 
         # have to redo the merging to prevent numerical instability
-        merged_s2s = self.merge_peaklets(
-            peaklets, start_merge_at, end_merge_at, _merged, max_buffer
-        )
+        if self.merge_s0:
+            # build the time interval of merged_s2s, even though they are not merged yet
+            endtime = strax.endtime(peaklets)
+            merged_s2s_window = np.zeros(len(start_merge_at), dtype=strax.time_fields)
+            for i in range(len(start_merge_at)):
+                sl = slice(start_merge_at[i], end_merge_at[i])
+                merged_s2s_window["time"][i] = peaklets["time"][sl][_merged[sl]][0]
+                merged_s2s_window["endtime"][i] = endtime[sl][_merged[sl]][-1]
+            # the S0s that should be merged should fully be contained
+            merged_s0s = strax.split_by_containment(s0, merged_s2s_window)
+            # offsets of indices
+            increments = np.array([len(m) for m in merged_s0s])
+            offsets = np.hstack([0, np.cumsum(increments)])
+            _start_merge_at = start_merge_at + offsets[:-1]
+            _end_merge_at = end_merge_at + offsets[1:]
+            if np.min(_end_merge_at - _start_merge_at) < 2:
+                raise ValueError("You are merging nothing!")
+            # prepare for peaklets including S0s
+            __merged = np.hstack([_merged, np.full(increments.sum(), True)])
+            _peaklets = np.hstack([peaklets, np.hstack(merged_s0s)])
+            argsort = strax.stable_argsort(_peaklets["time"])
+            merged_s2s = self.merge_peaklets(
+                _peaklets[argsort],
+                _start_merge_at,
+                _end_merge_at,
+                __merged[argsort],
+                max_buffer,
+            )
+        else:
+            merged_s2s = self.merge_peaklets(
+                peaklets, start_merge_at, end_merge_at, _merged, max_buffer
+            )
+
         if np.max((strax.endtime(merged_s2s) - merged_s2s["time"])) > self.max_duration:
             raise ValueError("Merged S2 is too long")
 
-        # Updated time and length of lone_hits and sort again:
-        # this is an OverlapWindowPlugin, some lone_hits will be reused in the next iteration
-        # so do not overwirte the lone_hits
-        lh = np.copy(lone_hits)
-        del lone_hits
-        lh_time_shift = (lh["left"] - lh["left_integration"]) * lh["dt"]
-        lh["time"] = lh["time"] - lh_time_shift
-        lh["length"] = lh["right_integration"] - lh["left_integration"]
-        lh = strax.sort_by_time(lh)
+        if self.merge_lone_hits:
+            # Updated time and length of lone_hits and sort again:
+            # this is an OverlapWindowPlugin, some lone_hits will be reused in the next iteration
+            # so do not overwirte the lone_hits
+            lh = np.copy(lone_hits)
+            del lone_hits
+            lh_time_shift = (lh["left"] - lh["left_integration"]) * lh["dt"]
+            lh["time"] = lh["time"] - lh_time_shift
+            lh["length"] = lh["right_integration"] - lh["left_integration"]
+            lh = strax.sort_by_time(lh)
 
-        _store_data_top = "data_top" in self.dtype_for("merged_s2s").names
-        _store_data_start = "data_start" in self.dtype_for("merged_s2s").names
-        strax.add_lone_hits(
-            merged_s2s,
-            lh,
-            self.to_pe,
-            n_top_channels=self.n_top_pmts,
-            store_data_top=_store_data_top,
-            store_data_start=_store_data_start,
-        )
+            _store_data_top = "data_top" in self.dtype_for("merged_s2s").names
+            _store_data_start = "data_start" in self.dtype_for("merged_s2s").names
+            strax.add_lone_hits(
+                merged_s2s,
+                lh,
+                self.to_pe,
+                n_top_channels=self.n_top_pmts,
+                store_data_top=_store_data_top,
+                store_data_start=_store_data_start,
+            )
 
         strax.compute_properties(merged_s2s, n_top_channels=self.n_top_pmts)
 
@@ -366,9 +413,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
         n_top_pmts,
         p_threshold,
         dr_threshold,
+        posrec_algo,
         bayesian=True,
+        uncertainty_weights=True,
         gap_thresholds=None,
-        use_uncertainty_weights=True,
         diagnosing=False,
         disable=True,
     ):
@@ -406,10 +454,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         )
 
         # (x, y) positions of the peaklets
-        positions = np.vstack(
-            [peaks[f"x_{DEFAULT_POSREC_ALGO}"], peaks[f"y_{DEFAULT_POSREC_ALGO}"]]
-        ).T
-        contours = np.copy(peaks[f"position_contour_{DEFAULT_POSREC_ALGO}"])
+        positions = np.vstack([peaks[f"x_{posrec_algo}"], peaks[f"y_{posrec_algo}"]]).T
+        contours = np.copy(peaks[f"position_contour_{posrec_algo}"])
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
         area = np.copy(peaks["area"])
         area_top = area * peaks["area_fraction_top"]
@@ -418,7 +464,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_area = []
             p_values = []
 
-        argsort = np.argsort(peaks["area"], kind="mergesort")
+        argsort = strax.stable_argsort(peaks["area"])
         for i in tqdm(argsort[::-1], disable=disable):
             if not unexamined[i]:
                 continue
@@ -513,7 +559,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     merging = slice(start_idx, end_idx)
 
                     # calculate weighted averaged deviation of peaklets from the main cluster
-                    if use_uncertainty_weights:
+                    if uncertainty_weights:
                         contour_areas = polygon_area(contours[merging][merged[merging]])
                         weights = np.nan_to_num(1 / contour_areas, nan=np.finfo(np.float32).tiny)
                     else:
