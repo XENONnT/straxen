@@ -88,8 +88,8 @@ class VetoIntervals(strax.ExhaustPlugin):
 
         result = result[:vetos_seen]
         result["veto_interval"] = result["endtime"] - result["time"]
-        sort = strax.stable_argsort(result["time"])
-        result = result[sort]
+        argsort = strax.stable_argsort(result["time"])
+        result = result[argsort]
         return result
 
     def handle_starts_and_stops_outside_of_run(
