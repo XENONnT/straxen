@@ -31,6 +31,7 @@ class PeaksSOM(PeaksVanilla):
         result = super().compute(peaklets, merged_s2s)
 
         # For merged_s2s SOM and straxen type are undefined:
+        # have to consider the peaks overlapping
         _is_merged_s2 = np.isin(result["time"], merged_s2s["time"]) & np.isin(
             strax.endtime(result), strax.endtime(merged_s2s)
         )

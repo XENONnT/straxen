@@ -36,6 +36,12 @@ class PeaksVanilla(strax.Plugin):
         help="Enable runtime checks for sorting and disjointness",
     )
 
+    merge_s0 = straxen.URLConfig(
+        default=True,
+        type=bool,
+        help="Merge S0s into merged S2s",
+    )
+
     def infer_dtype(self):
         return self.deps["peaklets"].dtype_for("peaklets")
 
@@ -43,7 +49,7 @@ class PeaksVanilla(strax.Plugin):
         # Remove fake merged S2s from dirty hack, see above
         merged_s2s = merged_s2s[merged_s2s["type"] != FAKE_MERGED_S2_TYPE]
 
-        peaks = self.replace_merged(peaklets, merged_s2s)
+        peaks = self.replace_merged(peaklets, merged_s2s, merge_s0=self.merge_s0)
 
         if self.diagnose_sorting:
             assert np.all(np.diff(peaks["time"]) >= 0), "Peaks not sorted"
@@ -58,12 +64,15 @@ class PeaksVanilla(strax.Plugin):
         return result
 
     @staticmethod
-    def replace_merged(peaklets, merged_s2s):
-        peaklets_is_s1 = peaklets["type"] == 1
-        peaklets_is_wi = peaklets["type"] == FAR_XYPOS_S2_TYPE
+    def replace_merged(peaklets, merged_s2s, merge_s0=True):
         # pick out type FAR_XYPOS_S2_TYPE because they might overlap with other merged S2s
-        peaks = strax.replace_merged(peaklets[~peaklets_is_wi & ~peaklets_is_s1], merged_s2s)
-        peaks = strax.sort_by_time(
-            np.concatenate([peaklets[peaklets_is_s1 | peaklets_is_wi], peaks])
-        )
+        peaklets_unmerged = peaklets["type"] == FAR_XYPOS_S2_TYPE
+        # if not S0 not merged, also pick out type 0
+        if merge_s0:
+            # of course in all cases we will pick out type 1
+            peaklets_unmerged |= peaklets["type"] == 1
+        else:
+            peaklets_unmerged |= np.isin(peaklets["type"], [0, 1])
+        peaks = strax.replace_merged(peaklets[~peaklets_unmerged], merged_s2s)
+        peaks = strax.sort_by_time(np.concatenate([peaklets[peaklets_unmerged], peaks]))
         return peaks

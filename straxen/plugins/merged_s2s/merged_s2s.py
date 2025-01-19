@@ -257,14 +257,19 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s=merged_s2s, enhanced_peaklet_classification=enhanced_peaklet_classification
         )
 
-    def merge(self, peaklets, lone_hits, start, end):
+    def merge(self, _peaklets, lone_hits, start, end):
         """Merge into S2s if the peaklets are close enough in time and position."""
+        # this is an OverlapWindowPlugin, some peaklets will be reused in the next iteration
+        # use _peaklets here to prevent peaklets from being overwritten
+        if np.any(_peaklets["time"][1:] < strax.endtime(_peaklets)[:-1]):
+            raise ValueError("Peaklets not disjoint, why?")
+
         if self.merge_s0:
-            s0 = np.copy(peaklets[peaklets["type"] == 0])
+            s0 = np.copy(_peaklets[_peaklets["type"] == 0])
 
         # only keep S2 peaklets for merging
-        is_s2 = peaklets["type"] == 2
-        peaklets = peaklets[is_s2]
+        is_s2 = _peaklets["type"] == 2
+        peaklets = np.copy(_peaklets[is_s2])
 
         max_buffer = int(self.max_duration // strax.gcd_of_array(peaklets["dt"]))
 
@@ -460,8 +465,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged = np.full(n_peaks, True)
 
         # approximation of the integration boundaries
-        if np.any(peaks["time"][1:] < strax.endtime(peaks)[:-1]):
-            raise ValueError("Peaks not disjoint, why?")
         core_bounds = (peaks["time"][1:] + strax.endtime(peaks)[:-1]) // 2
         # here the constraint on boundaries is also to make sure get_window_size covers the gaps
         left_bounds = np.maximum(np.hstack([start, core_bounds]), peaks["time"] - int(max_gap / 2))
@@ -665,9 +668,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
             n_de = np.array(n_de)
             area_de = np.array(area_de)
             merged_s2s["type"] = np.where(
-                (n_de <= max_de[0]) & (area_de <= max_de[1]),
-                merged_s2s["type"],
+                (n_de > max_de[0]) | (area_de > max_de[1]),
                 WIDE_XYPOS_S2_TYPE,
+                merged_s2s["type"],
             )
 
         if merged_all:
