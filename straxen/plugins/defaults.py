@@ -16,6 +16,5 @@ MV_HIT_DEFAULTS = {
     "hit_min_amplitude_mv": "cmt://hit_thresholds_mv?version=ONLINE&run_id=plugin.run_id",
 }
 
-FAKE_MERGED_S2_TYPE = -42
 FAR_XYPOS_S2_TYPE = 20
 WIDE_XYPOS_S2_TYPE = 22

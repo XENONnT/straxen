@@ -3,7 +3,7 @@ import numpy as np
 import strax
 import straxen
 
-from straxen.plugins.defaults import FAKE_MERGED_S2_TYPE, FAR_XYPOS_S2_TYPE
+from straxen.plugins.defaults import FAR_XYPOS_S2_TYPE
 
 export, __all__ = strax.exporter()
 
@@ -53,9 +53,6 @@ class PeaksVanilla(strax.Plugin):
         return merged_dtype
 
     def compute(self, peaklets, merged_s2s):
-        # Remove fake merged S2s from dirty hack, see above
-        merged_s2s = merged_s2s[merged_s2s["type"] != FAKE_MERGED_S2_TYPE]
-
         _peaks = self.replace_merged(peaklets, merged_s2s, merge_s0=self.merge_s0)
 
         if self.diagnose_sorting:
