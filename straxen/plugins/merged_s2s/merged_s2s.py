@@ -307,7 +307,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.use_bayesian_merging,
             self.use_uncertainty_weights,
             self.gap_thresholds,
-            disable=False,
         )
 
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
