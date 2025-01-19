@@ -12,7 +12,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
     """Look for peaks around a peak to determine how many peaks are in proximity (in time) of a
     peak."""
 
-    __version__ = "0.4.0"
+    __version__ = "0.4.1"
 
     depends_on = "peak_basics"
     dtype = [
