@@ -59,15 +59,25 @@ class PeakBasicsVanilla(strax.Plugin):
                 ("Smallest time difference between apexes of hits inside peak [ns]", "min_diff"),
                 np.int32,
             ),
+            (
+                (
+                    "First channel/PMT number inside peak (sorted by apexes of hits)",
+                    "first_channel",
+                ),
+                np.int16,
+            ),
+            (
+                ("Last channel/PMT number inside peak (sorted by apexes of hits)", "last_channel"),
+                np.int16,
+            ),
         ]
         return dtype
 
     def compute(self, peaks):
         p = peaks
         r = np.zeros(len(p), self.dtype)
-        needed_fields = (
-            "time center_time length dt median_time area area_fraction_top type max_diff min_diff"
-        )
+        needed_fields = "time center_time length dt median_time area area_fraction_top type "
+        needed_fields += "max_diff min_diff first_channel last_channel"
         for q in needed_fields.split():
             r[q] = p[q]
         r["endtime"] = p["time"] + p["dt"] * p["length"]

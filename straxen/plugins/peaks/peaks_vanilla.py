@@ -43,25 +43,32 @@ class PeaksVanilla(strax.Plugin):
     )
 
     def infer_dtype(self):
-        return self.deps["peaklets"].dtype_for("peaklets")
+        # In case enhanced_peaklet_classification has more fields than peaklets,
+        # we need to merge them
+        peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
+        peaklet_classification_dtype = self.deps["enhanced_peaklet_classification"].dtype_for(
+            "enhanced_peaklet_classification"
+        )
+        merged_dtype = strax.merged_dtype((peaklets_dtype, peaklet_classification_dtype))
+        return merged_dtype
 
     def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above
         merged_s2s = merged_s2s[merged_s2s["type"] != FAKE_MERGED_S2_TYPE]
 
-        peaks = self.replace_merged(peaklets, merged_s2s, merge_s0=self.merge_s0)
+        _peaks = self.replace_merged(peaklets, merged_s2s, merge_s0=self.merge_s0)
 
         if self.diagnose_sorting:
-            assert np.all(np.diff(peaks["time"]) >= 0), "Peaks not sorted"
-            to_check = peaks["type"] != 1
+            assert np.all(np.diff(_peaks["time"]) >= 0), "Peaks not sorted"
+            to_check = _peaks["type"] == 2
 
             assert np.all(
-                peaks["time"][to_check][1:] >= strax.endtime(peaks)[to_check][:-1]
+                _peaks["time"][to_check][1:] >= strax.endtime(_peaks)[to_check][:-1]
             ), "Peaks not disjoint"
 
-        result = np.zeros(len(peaks), dtype=self.dtype)
-        strax.copy_to_buffer(peaks, result, f"_copy_requested_{self.provides[0]}_fields")
-        return result
+        peaks = np.zeros(len(_peaks), dtype=self.dtype)
+        strax.copy_to_buffer(_peaks, peaks, f"_copy_requested_{self.provides[0]}_fields")
+        return peaks
 
     @staticmethod
     def replace_merged(peaklets, merged_s2s, merge_s0=True):
