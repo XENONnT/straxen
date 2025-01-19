@@ -106,11 +106,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     rough_sigma_bins = straxen.URLConfig(
-        default=15, type=int, help="Number of bins for sigma of merged peaks"
+        default=10, type=int, help="Number of bins for sigma of merged peaks"
     )
 
     rough_mu_bins = straxen.URLConfig(
-        default=15, type=int, help="Number of bins for mu of merged peaks"
+        default=10, type=int, help="Number of bins for mu of merged peaks"
     )
 
     poisson_max_mu = straxen.URLConfig(
@@ -149,14 +149,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
             (1.51, 1.00e-01),
             (1.84, 1.00e-01),
             (2.18, 1.00e-01),
-            (2.51, 4.63e-02),
-            (2.84, 1.92e-02),
-            (3.18, 1.21e-02),
-            (3.51, 1.43e-02),
-            (3.84, 2.02e-02),
-            (4.18, 4.59e-02),
-            (4.51, 1.00e-01),
-            (4.84, 1.00e-01),
+            (2.51, 6.43e-02),
+            (2.84, 1.96e-02),
+            (3.18, 1.40e-02),
+            (3.51, 7.37e-03),
+            (3.84, 3.58e-03),
+            (4.18, 1.83e-03),
+            (4.51, 2.45e-03),
+            (4.84, 2.79e-02),
             (5.18, 1.00e-01),
             (5.51, 1.00e-01),
             (5.84, 1.00e-01),
