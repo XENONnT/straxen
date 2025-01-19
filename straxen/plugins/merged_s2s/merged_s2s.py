@@ -172,6 +172,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
     )
 
+    disable_progress_bar = straxen.URLConfig(
+        default=True, type=bool, track=False, help="Whether to disable the progress bar"
+    )
+
     def _have_data(self, field):
         return field in self.deps["peaklets"].dtype_for("peaklets").names
 
@@ -307,6 +311,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.use_bayesian_merging,
             self.use_uncertainty_weights,
             self.gap_thresholds,
+            disable=self.disable_progress_bar,
         )
 
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
@@ -473,7 +478,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         # (x, y) positions of the peaklets
         positions = np.vstack([peaks[f"x_{posrec_algo}"], peaks[f"y_{posrec_algo}"]]).T
-        contours = np.copy(peaks[f"position_contour_{posrec_algo}"])
+        if uncertainty_weights:
+            contours = np.copy(peaks[f"position_contour_{posrec_algo}"])
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
         area = np.copy(peaks["area"])
         area_top = area * peaks["area_fraction_top"]
