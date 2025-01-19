@@ -65,8 +65,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         help=(
             "Points to define maximum separation between peaklets to allow "
             "merging [ns] depending on log10 area of the merged peak\n"
-            "where the gap size of the first point is the maximum gap to allow merging"
-            "and the area of the last point is the maximum area to allow merging. "
+            "where the gap size of the first point is the maximum gap to allow merging."
             "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
         ),
     )
@@ -107,11 +106,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     rough_sigma_bins = straxen.URLConfig(
-        default=10, type=int, help="Number of bins for sigma of merged peaks"
+        default=15, type=int, help="Number of bins for sigma of merged peaks"
     )
 
     rough_mu_bins = straxen.URLConfig(
-        default=10, type=int, help="Number of bins for mu of merged peaks"
+        default=15, type=int, help="Number of bins for mu of merged peaks"
     )
 
     poisson_max_mu = straxen.URLConfig(
@@ -144,22 +143,49 @@ class MergedS2s(strax.OverlapWindowPlugin):
         help="Maximum exponent for the posterior to keep numerical stability",
     )
 
-    p_threshold = straxen.URLConfig(
-        default=1e-2,
-        type=(int, float),
-        help="Threshold for the p-value of time-density merging",
+    s2_merge_p_thresholds = straxen.URLConfig(
+        default=(
+            (1.18, 1.00e-01),
+            (1.51, 1.00e-01),
+            (1.84, 1.00e-01),
+            (2.18, 1.00e-01),
+            (2.51, 4.63e-02),
+            (2.84, 1.92e-02),
+            (3.18, 1.21e-02),
+            (3.51, 1.43e-02),
+            (3.84, 2.02e-02),
+            (4.18, 4.59e-02),
+            (4.51, 1.00e-01),
+            (4.84, 1.00e-01),
+            (5.18, 1.00e-01),
+            (5.51, 1.00e-01),
+            (5.84, 1.00e-01),
+            (6.18, 1.00e-01),
+        ),
+        infer_type=False,
+        help=(
+            "Points to define minimum p-value of merging proposal "
+            "depending on log10 area of the merged peak\n"
+            "The format is ((log10(area), p-value), (..., ...), (..., ...))"
+        ),
     )
 
-    dr_threshold = straxen.URLConfig(
+    s2_merge_dr_threshold = straxen.URLConfig(
         default=14.0,
         type=(int, float),
         help="Threshold for the weighted mean deviation of the peaklets from the main cluster [cm]",
     )
 
-    de_threshold = straxen.URLConfig(
+    s2_merge_de_threshold = straxen.URLConfig(
         default=(1, 3),
         type=tuple,
         help="Max (number, number of sigma_seg) of type 20 peaklets inside a peak",
+    )
+
+    p_value_prioritized = straxen.URLConfig(
+        default=False,
+        type=bool,
+        help="Whether to prioritize p-value over area when testing the proposal",
     )
 
     use_bayesian_merging = straxen.URLConfig(default=True, type=bool, help="Use Bayesian merging")
@@ -200,11 +226,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
     def setup(self):
         self.to_pe = self.gain_model
         self.gap_thresholds = np.array(self.s2_merge_gap_thresholds).T
+        self.p_thresholds = np.array(self.s2_merge_p_thresholds).T
         # Max gap and area should be set by the gap thresholds to avoid contradictions
         if np.argmax(self.gap_thresholds[1]) != 0:
             raise ValueError("The first point should be the maximum gap to allow merging")
+        if self.p_thresholds[1].max() > 1 or self.p_thresholds[1].min() < 0:
+            raise ValueError("P-value should be in the range of [0, 1]")
         self.max_gap = self.gap_thresholds[1, 0]
-        self.max_area = 10 ** self.gap_thresholds[0, -1]
         self.max_duration = self.s2_merge_max_duration
 
         self.poisson_max_k = np.ceil(
@@ -221,8 +249,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.sigma = np.linspace(self.rough_min_sigma, self.rough_max_sigma, self.rough_sigma_bins)
         self.sigma_panel = np.repeat(self.sigma[None, :], self.rough_mu_bins, axis=0).flatten()
 
-        self.max_n_de = self.de_threshold[0]
-        self.max_area_de = self.rough_seg + self.sigma_seg * self.de_threshold[1]
+        self.max_n_de = self.s2_merge_de_threshold[0]
+        self.max_area_de = self.rough_seg + self.sigma_seg * self.s2_merge_de_threshold[1]
 
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
@@ -234,6 +262,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return np.sum(is_s2) <= 1 or self.max_gap < 0
 
     def compute(self, peaklets, lone_hits, start, end):
+        if self.use_uncertainty_weights:
+            name = f"position_contour_{self.default_reconstruction_algorithm}"
+            if name not in peaklets.dtype.names:
+                raise ValueError(f"{name} is not in the input peaklets dtype")
+
         # initialize enhanced_peaklet_classification
         enhanced_peaklet_classification = np.zeros(
             len(peaklets), dtype=self.dtype_for("enhanced_peaklet_classification")
@@ -305,11 +338,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.sigma_panel,
             self.maxexp,
             self.n_top_pmts,
-            self.p_threshold,
-            self.dr_threshold,
+            self.p_thresholds,
+            self.s2_merge_dr_threshold,
             self.default_reconstruction_algorithm,
             self.use_bayesian_merging,
             self.use_uncertainty_weights,
+            self.p_value_prioritized,
             self.gap_thresholds,
             disable=self.disable_progress_bar,
         )
@@ -436,11 +470,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
         sigma_panel,
         maxexp,
         n_top_pmts,
-        p_threshold,
+        p_thresholds,
         dr_threshold,
         posrec_algo,
         bayesian=True,
         uncertainty_weights=True,
+        p_value_prioritized=False,
         gap_thresholds=None,
         diagnosing=False,
         disable=True,
@@ -482,7 +517,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             contours = np.copy(peaks[f"position_contour_{posrec_algo}"])
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
         area = np.copy(peaks["area"])
-        area_top = area * peaks["area_fraction_top"]
+        area_fraction_top = area * peaks["area_fraction_top"]
 
         if diagnosing:
             merged_area = []
@@ -492,11 +527,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
         for i in tqdm(argsort[::-1], disable=disable):
             if not unexamined[i]:
                 continue
-            p = [1.0, 1.0]
+            p = np.array([1.0, 1.0])
+            p_threshold = np.array([0.0, 0.0])
             # in the while loops, the peaklets will be merged until the p-value
             # is smaller than the threshold or the peaklets can not be merged anymore
             # i will NOT be updated in the while loop
-            while max(p) >= p_threshold and unexamined[i]:
+            while np.any(p >= p_threshold) and unexamined[i]:
                 indices = []
                 # please mind here that the definition of gaps should
                 # be consistent with in the merging algorithm
@@ -522,11 +558,16 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 else:
                     indices.append(None)
                 p = []
+                p_threshold = []
+                _area = []
                 # get p-values
                 for j in indices:
                     if j is None:
                         p.append(-1.0)
+                        p_threshold.append(1.0)
+                        _area.append(-1.0)
                         continue
+                    log_area = np.log10(peaks["area"][i] + peaks["area"][j])
                     if bayesian:
                         p_ = get_p_value(
                             peaks[i],
@@ -546,11 +587,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
                             sigma_panel,
                             maxexp,
                         )
+                        p_threshold_ = thresholds_interpolation(
+                            log_area,
+                            p_thresholds,
+                        )
                     else:
                         # this is kept for diagnosing and merged_s2s_he
                         this_gap = MergedS2s.get_gap(peaks[i], peaks[j])
-                        gap_threshold = merge_s2_threshold(
-                            np.log10(peaks["area"][i] + peaks["area"][j]),
+                        gap_threshold = thresholds_interpolation(
+                            log_area,
                             gap_thresholds,
                         )
                         # gap of 90-10% area decile distance should not be larger than the threshold
@@ -558,25 +603,47 @@ class MergedS2s(strax.OverlapWindowPlugin):
                             p_ = 1.0
                         else:
                             p_ = -1.0
+                        p_threshold.append(0.0)
                     p.append(p_)
+                    p_threshold.append(p_threshold_)
+                    _area.append(peaks["area"][j])
+                p = np.array(p)
+                p_threshold = np.array(p_threshold)
+                _area = np.array(_area)
                 examined = slice(start_index[i], end_index[i])
                 if diagnosing:
                     merged_area.append(area[examined][merged[examined]].sum())
                     p_values.append(max(p))
 
-                if max(p) < p_threshold:
+                if np.all(p < p_threshold):
                     # this will not allow merging of the already examined peaklets
                     unexamined[examined] = False
                 else:
+                    # whether test the proposal with larger area first
+                    if p_value_prioritized:
+                        left = p[0] > p[1]
+                    else:
+                        left = _area[0] > _area[1]
+                    # if test left first
+                    if left:
+                        if p[0] >= p_threshold[0]:
+                            left = True
+                        else:
+                            assert p[1] >= p_threshold[1]
+                            left = False
+                    else:
+                        if p[1] >= p_threshold[1]:
+                            left = False
+                        else:
+                            assert p[0] >= p_threshold[0]
+                            left = True
                     # slice indicating the direction of merging
-                    if p[0] >= p_threshold and p[0] > p[1]:
+                    if left:
                         direction = slice(indices[0], indices[0] + 2)
                         index = indices[0]
-                    elif p[1] >= p_threshold and p[1] >= p[0]:
+                    else:
                         direction = slice(indices[1] - 1, indices[1] + 1)
                         index = indices[1]
-                    else:
-                        raise RuntimeError("Can not decide to merge or not")
                     # slice indicating the peaklets to be merged
                     start_idx = start_index[direction.start]
                     end_idx = end_index[direction.stop - 1]
@@ -587,7 +654,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                         contour_areas = polygon_area(contours[merging][merged[merging]])
                         weights = np.nan_to_num(1 / contour_areas, nan=np.finfo(np.float32).tiny)
                     else:
-                        weights = area_top[merging][merged[merging]]
+                        weights = area_fraction_top[merging][merged[merging]]
 
                     dr_avg = weighted_averaged_dr(
                         positions[merging, 0][merged[merging]],
@@ -762,19 +829,19 @@ def get_p_value(
 
 
 @numba.njit(cache=True, nogil=True)
-def merge_s2_threshold(log_area, gap_thresholds):
-    """Return gap threshold for log_area of the merged S2 with linear interpolation given the points
-    in gap_thresholds.
+def thresholds_interpolation(log_area, thresholds):
+    """Return threshold for log_area of the merged S2 with linear interpolation given the points in
+    thresholds.
 
     :param log_area: Log 10 area of the merged S2
-    :param gap_thresholds: tuple (n, 2) of fix points for interpolation.
+    :param thresholds: tuple (n, 2) of fix points for interpolation.
 
     """
-    if log_area < gap_thresholds[0, 0]:
-        return gap_thresholds[1, 0]
-    if log_area > gap_thresholds[0, -1]:
-        return gap_thresholds[1, -1]
-    return np.interp(log_area, gap_thresholds[0], gap_thresholds[1])
+    if log_area < thresholds[0, 0]:
+        return thresholds[1, 0]
+    if log_area > thresholds[0, -1]:
+        return thresholds[1, -1]
+    return np.interp(log_area, thresholds[0], thresholds[1])
 
 
 @numba.njit(cache=True, nogil=True)
