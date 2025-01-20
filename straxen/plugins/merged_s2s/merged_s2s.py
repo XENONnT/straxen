@@ -352,7 +352,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             raise ValueError("data_top or data_start is not in the peaklets dtype")
 
         # have to redo the merging to prevent numerical instability
-        if self.merge_s0:
+        if self.merge_s0 and len(start_merge_at) and len(s0):
             # build the time interval of merged_s2s, even though they are not merged yet
             endtime = strax.endtime(peaklets)
             merged_s2s_window = np.zeros(len(start_merge_at), dtype=strax.time_fields)
@@ -363,7 +363,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             # the S0s that should be merged should fully be contained
             merged_s0s = strax.split_by_containment(s0, merged_s2s_window)
             # offsets of indices
-            increments = np.array([len(m) for m in merged_s0s])
+            increments = np.array([len(m) for m in merged_s0s], dtype=int)
             offsets = np.hstack([0, np.cumsum(increments)])
             _start_merge_at = start_merge_at + offsets[:-1]
             _end_merge_at = end_merge_at + offsets[1:]
@@ -391,7 +391,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 max_de=[self.max_n_de, self.max_area_de],
             )
 
-        if np.max((strax.endtime(merged_s2s) - merged_s2s["time"])) > self.max_duration:
+        if (
+            len(merged_s2s)
+            and np.max((strax.endtime(merged_s2s) - merged_s2s["time"])) > self.max_duration
+        ):
             raise ValueError("Merged S2 is too long")
 
         if self.merge_lone_hits:
