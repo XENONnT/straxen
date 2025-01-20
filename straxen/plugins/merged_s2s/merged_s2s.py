@@ -603,7 +603,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                             p_ = 1.0
                         else:
                             p_ = -1.0
-                        p_threshold.append(0.0)
+                        p_threshold_ = 0.0
                     p.append(p_)
                     p_threshold.append(p_threshold_)
                     _area.append(peaks["area"][j])
