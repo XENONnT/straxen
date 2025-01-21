@@ -23,6 +23,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     depends_on = (
         "peak_basics",
         "peak_positions",
+        # "peak_se_score"
     )
     provides = "peak_shadow"
     save_when = strax.SaveWhen.EXPLICIT
