@@ -191,7 +191,7 @@ def plot_records_matrix(
         # labels in the case of strings.
         # Make a dict that converts the label to an int
         int_labels = {h: i for i, h in enumerate(set(ylabs))}
-        mask = np.ones(len(ylabs), dtype=np.bool_)
+        mask = np.ones(len(ylabs), dtype=bool)
         # If the label (int) is different wrt. its neighbour, show it
         mask[1:] = np.abs(np.diff([int_labels[y] for y in ylabs])) > 0
         # Only label the selection

@@ -39,7 +39,7 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
-    __version__ = "1.2.0"
+    __version__ = "1.2.2"
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False, help="No hits for this many ns triggers a new peak"
@@ -120,7 +120,7 @@ class Peaklets(strax.Plugin):
     )
 
     store_data_start = straxen.URLConfig(
-        default=True, type=bool, help="Save the start time of the waveform with 10 ns dt"
+        default=True, type=bool, help="Save the start time of the waveform with minimum dt"
     )
 
     saturation_correction_on = straxen.URLConfig(
@@ -250,6 +250,8 @@ class Peaklets(strax.Plugin):
         # including the left and right extension.
         # (We are not going to use the actual hitlet data_type here.)
         hitlets = hits
+        # This line will not clean the memory, but only prevent misinterpretation
+        # only if sys.getrefcount(hits) - 1 is 1, we can clean the memory
         del hits
 
         # Extend hits into hitlets and clip at chunk boundaries:
@@ -260,19 +262,18 @@ class Peaklets(strax.Plugin):
         self.clip_peaklet_times(hitlets, start, end)
         rlinks = strax.record_links(records)
 
-        # If store_data_top is false, don't digitize the top array
-        _n_top_pmts = self.n_top_pmts if self.store_data_top else -1
         strax.sum_waveform(
             peaklets,
             hitlets,
             records,
             rlinks,
             self.to_pe,
-            n_top_channels=_n_top_pmts,
+            n_top_channels=self.n_top_pmts,
+            store_data_top=self.store_data_top,
             store_data_start=self.store_data_start,
         )
 
-        strax.compute_widths(peaklets)
+        strax.compute_properties(peaklets, n_top_channels=self.n_top_pmts)
 
         # Split peaks using low-split natural breaks;
         # see https://github.com/XENONnT/straxen/pull/45
@@ -289,7 +290,8 @@ class Peaklets(strax.Plugin):
             filter_wing_width=self.peak_split_filter_wing_width,
             min_area=self.peak_split_min_area,
             do_iterations=self.peak_split_iterations,
-            n_top_channels=_n_top_pmts,
+            n_top_channels=self.n_top_pmts,
+            store_data_top=self.store_data_top,
             store_data_start=self.store_data_start,
         )
 
@@ -306,12 +308,15 @@ class Peaklets(strax.Plugin):
                 self.to_pe,
                 reference_length=self.saturation_reference_length,
                 min_reference_length=self.saturation_min_reference_length,
-                n_top_channels=_n_top_pmts,
+                n_top_channels=self.n_top_pmts,
+                store_data_top=self.store_data_top,
                 store_data_start=self.store_data_start,
             )
 
             # Compute the width again for corrected peaks
-            strax.compute_widths(peaklets, select_peaks_indices=peak_list)
+            strax.compute_properties(
+                peaklets, n_top_channels=self.n_top_pmts, select_peaks_indices=peak_list
+            )
 
         # Compute tight coincidence level.
         # Making this a separate plugin would
@@ -347,7 +352,7 @@ class Peaklets(strax.Plugin):
         peaklets["n_hits"] = counts
 
         # Drop the data_top or data_start field
-        if (_n_top_pmts <= 0) or (not self.store_data_start):
+        if (not self.store_data_top) or (not self.store_data_start):
             peaklets = drop_data_field(peaklets, self.dtype_for("peaklets"))
 
         # Check channel of peaklets
@@ -411,15 +416,25 @@ class Peaklets(strax.Plugin):
     @staticmethod
     def add_hit_features(hitlets, peaklets):
         """Create hits timing features."""
+        peaklets["max_diff"] = -1
+        peaklets["min_diff"] = -1
+        peaklets["first_channel"] = DIGITAL_SUM_WAVEFORM_CHANNEL
+        peaklets["last_channel"] = DIGITAL_SUM_WAVEFORM_CHANNEL
         split_hits = strax.split_by_containment(hitlets, peaklets)
-        for peaklet, h_max in zip(peaklets, split_hits):
-            max_time_diff = np.diff(strax.stable_sort(h_max["max_time"]))
-            if len(max_time_diff) > 0:
-                peaklet["max_diff"] = max_time_diff.max()
-                peaklet["min_diff"] = max_time_diff.min()
+        for peaklet, _hitlets in zip(peaklets, split_hits):
+            if len(_hitlets) == 0:
+                continue
+            argsort = strax.stable_argsort(_hitlets["max_time"])
+            sorted_hitlets = _hitlets[argsort]
+            time_diff = np.diff(sorted_hitlets["max_time"])
+            if len(time_diff) > 0:
+                peaklet["max_diff"] = time_diff.max()
+                peaklet["min_diff"] = time_diff.min()
             else:
                 peaklet["max_diff"] = -1
                 peaklet["min_diff"] = -1
+            peaklet["first_channel"] = sorted_hitlets[0]["channel"]
+            peaklet["last_channel"] = sorted_hitlets[-1]["channel"]
 
 
 def drop_data_field(peaklets, goal_dtype, _name_function="_drop_data_field"):
@@ -441,6 +456,7 @@ def peak_saturation_correction(
     min_reference_length=20,
     use_classification=False,
     n_top_channels=0,
+    store_data_top=False,
     store_data_start=False,
 ):
     """Correct the area and per pmt area of peaks from saturation.
@@ -456,6 +472,8 @@ def peak_saturation_correction(
         samples
     :param use_classification: Option of using classification to pick only S2
     :param n_top_channels: Number of top array channels.
+    :param store_data_top: Boolean which indicates whether to store the top array waveform in the
+        peak.
     :param store_data_start: Boolean which indicates whether to store the first samples of the
         waveform in the peak.
 
@@ -537,8 +555,9 @@ def peak_saturation_correction(
         records,
         rlinks,
         to_pe,
-        n_top_channels,
-        store_data_start,
+        n_top_channels=n_top_channels,
+        store_data_top=store_data_top,
+        store_data_start=store_data_start,
         select_peaks_indices=peak_list,
     )
     return peak_list

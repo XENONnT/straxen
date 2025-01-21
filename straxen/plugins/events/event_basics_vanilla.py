@@ -17,7 +17,7 @@ class EventBasicsVanilla(strax.Plugin):
 
     """
 
-    __version__ = "1.3.3"
+    __version__ = "1.3.4"
 
     depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity")
     provides = "event_basics"
@@ -66,9 +66,7 @@ class EventBasicsVanilla(strax.Plugin):
         # Basic event properties
         self._set_posrec_save()
         self._set_dtype_requirements()
-        dtype = []
-        dtype += strax.time_fields
-        dtype += [
+        dtype = strax.time_fields + [
             ("n_peaks", np.int32, "Number of peaks in the event"),
             ("drift_time", np.float32, "Drift time between main S1 and S2 in ns"),
             ("event_number", np.int64, "Event number in this dataset"),
@@ -97,6 +95,26 @@ class EventBasicsVanilla(strax.Plugin):
                 np.int32,
                 f"Alternate S1 smallest time difference between apexes of hits [ns]",
             ),
+            (
+                f"s1_first_channel",
+                np.int16,
+                f"Main S1 first channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"alt_s1_first_channel",
+                np.int16,
+                f"Alternate S1 first channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"s1_last_channel",
+                np.int16,
+                f"Main S1 last channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"alt_s1_last_channel",
+                np.int16,
+                f"Alternate last channel/PMT number (sorted by apexes of hits)",
+            ),
         ]
 
         dtype += [
@@ -116,7 +134,8 @@ class EventBasicsVanilla(strax.Plugin):
         # Properties to store for each peak (main and alternate S1 and S2)
         self.peak_properties = (
             ("time", np.int64, "start time since unix epoch [ns]"),
-            ("center_time", np.int64, "weighted center time since unix epoch [ns]"),
+            ("center_time", np.int64, "weighted average center time since unix epoch [ns]"),
+            ("median_time", np.float32, "weighted relative median time of the peak [ns]"),
             ("endtime", np.int64, "end time since unix epoch [ns]"),
             ("area", np.float32, "area, uncorrected [PE]"),
             ("n_channels", np.int16, "count of contributing PMTs"),
@@ -128,8 +147,8 @@ class EventBasicsVanilla(strax.Plugin):
             ("range_90p_area", np.float32, "width, 90% area [ns]"),
             ("rise_time", np.float32, "time between 10% and 50% area quantiles [ns]"),
             ("area_fraction_top", np.float32, "fraction of area seen by the top PMT array"),
-            ("tight_coincidence", np.int16, "Channel within tight range of mean"),
-            ("n_saturated_channels", np.int16, "Total number of saturated channels"),
+            ("tight_coincidence", np.int16, "channel within tight range of mean"),
+            ("n_saturated_channels", np.int16, "total number of saturated channels"),
         )
 
     def setup(self):
@@ -174,52 +193,42 @@ class EventBasicsVanilla(strax.Plugin):
         self.pos_rec_labels = list(set(posrec_names))
         self.pos_rec_labels.sort()
 
-        self.posrec_save = [(xy + algo) for xy in ["x_", "y_"] for algo in self.pos_rec_labels]
+        self.posrec_save = [(xy + alg) for xy in ["x_", "y_"] for alg in self.pos_rec_labels]
 
     def _get_posrec_dtypes(self):
         """Get S2 positions for each of the position reconstruction algorithms."""
         posrec_dtpye = []
 
-        for algo in self.pos_rec_labels:
+        for alg in self.pos_rec_labels:
             # S2 positions
             posrec_dtpye += [
                 (
-                    f"s2_x_{algo}",
+                    f"s2_x_{alg}",
                     np.float32,
-                    f"Main S2 {algo}-reconstructed X position, uncorrected [cm]",
+                    f"Main S2 {alg}-reconstructed X position, uncorrected [cm]",
                 ),
                 (
-                    f"s2_y_{algo}",
+                    f"s2_y_{alg}",
                     np.float32,
-                    f"Main S2 {algo}-reconstructed Y position, uncorrected [cm]",
+                    f"Main S2 {alg}-reconstructed Y position, uncorrected [cm]",
                 ),
                 (
-                    f"alt_s2_x_{algo}",
+                    f"alt_s2_x_{alg}",
                     np.float32,
-                    f"Alternate S2 {algo}-reconstructed X position, uncorrected [cm]",
+                    f"Alternate S2 {alg}-reconstructed X position, uncorrected [cm]",
                 ),
                 (
-                    f"alt_s2_y_{algo}",
+                    f"alt_s2_y_{alg}",
                     np.float32,
-                    f"Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]",
+                    f"Alternate S2 {alg}-reconstructed Y position, uncorrected [cm]",
                 ),
             ]
 
         return posrec_dtpye
 
-    @staticmethod
-    def set_nan_defaults(buffer):
-        """When constructing the dtype, take extra care to set values to np.Nan / -1 (for ints) as 0
-        might have a meaning."""
-        for field in buffer.dtype.names:
-            if np.issubdtype(buffer.dtype[field], np.integer):
-                buffer[field][:] = -1
-            else:
-                buffer[field][:] = np.nan
-
     def compute(self, events, peaks):
         result = np.zeros(len(events), dtype=self.dtype)
-        self.set_nan_defaults(result)
+        strax.set_nan_defaults(result)
 
         split_peaks = strax.split_by_containment(peaks, events)
 
@@ -227,19 +236,18 @@ class EventBasicsVanilla(strax.Plugin):
         result["endtime"] = events["endtime"]
         result["event_number"] = events["event_number"]
 
-        self.fill_events(result, events, split_peaks)
+        self.fill_events(result, split_peaks)
         return result
 
     # If copy_largest_peaks_into_event is ever numbafied, also numbafy this function
-    def fill_events(self, result_buffer, events, split_peaks):
+    def fill_events(self, result_buffer, split_peaks):
         """Loop over the events and peaks within that event."""
-        for event_i, _ in enumerate(events):
-            peaks_in_event_i = split_peaks[event_i]
+        for event_i, peaks_in_event_i in enumerate(split_peaks):
             n_peaks = len(peaks_in_event_i)
             result_buffer[event_i]["n_peaks"] = n_peaks
 
             if not n_peaks:
-                raise ValueError(f"No peaks within event?\n{events[event_i]}")
+                raise ValueError(f"No peaks within event {event_i}?")
 
             self.fill_result_i(result_buffer[event_i], peaks_in_event_i)
 
@@ -286,7 +294,12 @@ class EventBasicsVanilla(strax.Plugin):
             for largest_index, main_or_alt in enumerate(["s", "alt_s"]):
                 peak_properties_to_save = [name for name, _, _ in self.peak_properties]
                 if s_i == 1:
-                    peak_properties_to_save += ["max_diff", "min_diff"]
+                    peak_properties_to_save += [
+                        "max_diff",
+                        "min_diff",
+                        "first_channel",
+                        "last_channel",
+                    ]
                 elif s_i == 2:
                     peak_properties_to_save += ["x", "y"]
                     peak_properties_to_save += self.posrec_save

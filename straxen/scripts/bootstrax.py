@@ -79,12 +79,15 @@ parser.add_argument(
     help="Don't allow bootstrax to switch to a different target for special runs",
 )
 parser.add_argument(
+    "--fix_resources",
+    action="store_true",
+    help="Don't let bootstrax change number of cores/max_messages because of failures",
+)
+parser.add_argument(
     "--infer_mode",
     action="store_true",
-    help=(
-        "Determine best number max-messages and cores for each run "
-        "automatically. Overrides --cores and --max_messages"
-    ),
+    help="Determine best number max-messages and cores for each run "
+    "automatically. Overrides --cores and --max_messages",
 )
 parser.add_argument(
     "--delete_live",
@@ -102,10 +105,8 @@ parser.add_argument(
 parser.add_argument(
     "--ignore_checks",
     action="store_true",
-    help=(
-        "Do not use! This disables checks on e.g. the timestamps! Should only "
-        "be used if some run is very valuable but some checks are failing."
-    ),
+    help="Do not use! This disables checks on e.g. the timestamps! Should only "
+    "be used if some run is very valuable but some checks are failing.",
 )
 parser.add_argument("--max_messages", type=int, default=10, help="number of max mailbox messages")
 
@@ -631,12 +632,24 @@ def infer_target(rd: dict) -> dict:
         # also use source field, outcome is the same)
         if "event_info" in targets or "event_info" in post_process:
             targets = list(targets) + ["event_info_double"]
-    elif np.any([m in mode for m in nv_calibration_modes]):
-        log.debug("NV calibration-modes")
-        # In any other NV calibration mode we would like to
-        # keep our raw data without applying the software trigger.
-        targets = "raw_records_nv"
-        post_process = "raw_records_nv"
+    elif "ambe" in mode:
+        # rates are very high, to ensure smooth operation let's just do this
+        # based on calibrations of Apr 2023 this is the only safe working solution
+        log.debug("ambe-mode")
+
+        # get the mode from the daq_db
+        # this is a new thing from Nov 2023
+        # it overwrites the mode from the rundb
+        bootstrax_config_coll = daq_db["bootstrax_config"]
+        bootstrax_config = bootstrax_config_coll.find_one({"name": "bootstrax_config"})
+
+        this_eb_ambe_mode = bootstrax_config["ambe_modes"].get(hostname[:3], "default")
+        log.debug(f"Ambe mode for {hostname} is {this_eb_ambe_mode}")
+
+        if this_eb_ambe_mode != "default":
+            log.debug(f"Overwriting targets and post processing for {hostname} from daq_db")
+            targets = bootstrax_config["modes_definitions"][this_eb_ambe_mode]["targets"]
+            post_process = bootstrax_config["modes_definitions"][this_eb_ambe_mode]["post_process"]
 
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
@@ -855,6 +868,17 @@ def infer_mode(rd):
         "timeout": [1200, 1200, None, None, None, None, None, None, None, None, None, 2400],
     }
     if data_rate and args.infer_mode:
+
+        # Temporary solution
+        # It is a patch to try to process some ambe data without failing for memory
+        # If we are doing ambe -> consider the maximum rate
+        # so that we have 10 cores and 12 messages for new ebs
+        # and we have     8 cores and 6 messages for old ebs
+        # added by Carlo on 19 April 2023
+        mode = str(rd.get("mode"))
+        if "ambe" in mode:
+            data_rate = 550
+
         df = pd.DataFrame(benchmark)
         if data_rate not in benchmark["mbs"]:
             df.loc[len(df.index)] = [data_rate, None, None, None, None, None]
@@ -868,7 +892,14 @@ def infer_mode(rd):
         del df, benchmark, result["cores_old"], result["max_messages_old"]
     else:
         result = dict(cores=args.cores, max_messages=args.max_messages, timeout=1000)
+
     n_fails = rd["bootstrax"].get("n_failures", 0)
+    if args.fix_resources:
+        # If we are in a fix resource mode, we should not change the resources
+        # based on the number of failures.
+        n_fails = 0
+        log.debug(f"Fixing resources, ignoring {n_fails} previous failures")
+
     if n_fails:
         # Exponentially lower resources & increase timeout
         result = dict(

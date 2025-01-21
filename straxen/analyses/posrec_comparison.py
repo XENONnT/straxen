@@ -13,7 +13,7 @@ def load_corrected_positions(
     alt_s1=False,
     alt_s2=False,
     cmt_version=None,
-    posrec_algos=("mlp"),  # TODO: https://github.com/XENONnT/straxen/issues/1454
+    posrec_algos=("mlp", "cnf"),  # TODO: https://github.com/XENONnT/straxen/issues/1454
 ):
     """Returns the corrected position for each position algorithm available, without the need to
     reprocess event_basics, as the needed information is already stored in event_basics.
@@ -64,14 +64,14 @@ def load_corrected_positions(
 
     z_obs = -drift_speed * drift_time
 
-    for algo, v_cmt in zip(posrec_algos, cmt_version):
-        fdc_tmp = (f"fdc_map_{algo}", v_cmt, True)
+    for alg, v_cmt in zip(posrec_algos, cmt_version):
+        fdc_tmp = (f"fdc_map_{alg}", v_cmt, True)
         map_tmp = straxen.get_correction_from_cmt(run_id, fdc_tmp)
         itp_tmp = straxen.InterpolatingMap(straxen.common.get_resource(map_tmp, fmt="binary"))
         itp_tmp.scale_coordinates([1.0, 1.0, -drift_speed])
 
         orig_pos = np.vstack(
-            [events[f"{s2_pre}s2_x_{algo}"], events[f"{s2_pre}s2_y_{algo}"], z_obs]
+            [events[f"{s2_pre}s2_x_{alg}"], events[f"{s2_pre}s2_y_{alg}"], z_obs]
         ).T
         r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
         delta_r = itp_tmp(orig_pos)
@@ -87,13 +87,13 @@ def load_corrected_positions(
             invalid = np.abs(z_obs) < np.abs(delta_r)
         z_cor[invalid] = z_obs[invalid]
 
-        result[f"x_{algo}"] = orig_pos[:, 0] * scale
-        result[f"y_{algo}"] = orig_pos[:, 1] * scale
-        result[f"r_{algo}"] = r_cor
-        result[f"r_naive_{algo}"] = r_obs
-        result[f"r_field_distortion_correction_{algo}"] = delta_r
-        result[f"theta_{algo}"] = np.arctan2(orig_pos[:, 1], orig_pos[:, 0])
-        result[f"z_{algo}"] = z_cor
+        result[f"x_{alg}"] = orig_pos[:, 0] * scale
+        result[f"y_{alg}"] = orig_pos[:, 1] * scale
+        result[f"r_{alg}"] = r_cor
+        result[f"r_naive_{alg}"] = r_obs
+        result[f"r_field_distortion_correction_{alg}"] = delta_r
+        result[f"theta_{alg}"] = np.arctan2(orig_pos[:, 1], orig_pos[:, 0])
+        result[f"z_{alg}"] = z_cor
 
     result["z_naive"] = z_obs
     return result
@@ -102,16 +102,16 @@ def load_corrected_positions(
 def load_dtypes(posrec_algos):
     dtype = []
 
-    for algo in posrec_algos:
+    for alg in posrec_algos:
         for xyzr in "x y z r".split():
             dtype += [
                 (
                     (
                         (
                             f"Interaction {xyzr}-position, field-distortion corrected (cm) - "
-                            f"{algo.upper()} posrec algorithm"
+                            f"{alg.upper()} posrec algorithm"
                         ),
-                        f"{xyzr}_{algo}",
+                        f"{xyzr}_{alg}",
                     ),
                     np.float32,
                 ),
@@ -121,9 +121,9 @@ def load_dtypes(posrec_algos):
                 (
                     (
                         "Interaction r-position using observed S2 positions directly (cm) -"
-                        f" {algo.upper()} posrec algorithm"
+                        f" {alg.upper()} posrec algorithm"
                     ),
-                    f"r_naive_{algo}",
+                    f"r_naive_{alg}",
                 ),
                 np.float32,
             ),
@@ -131,16 +131,16 @@ def load_dtypes(posrec_algos):
                 (
                     (
                         "Correction added to r_naive for field distortion (cm) - "
-                        f"{algo.upper()} posrec algorithm"
+                        f"{alg.upper()} posrec algorithm"
                     ),
-                    f"r_field_distortion_correction_{algo}",
+                    f"r_field_distortion_correction_{alg}",
                 ),
                 np.float32,
             ),
             (
                 (
-                    f"Interaction angular position (radians) - {algo.upper()} posrec algorithm",
-                    f"theta_{algo}",
+                    f"Interaction angular position (radians) - {alg.upper()} posrec algorithm",
+                    f"theta_{alg}",
                 ),
                 np.float32,
             ),
