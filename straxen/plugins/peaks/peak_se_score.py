@@ -17,7 +17,10 @@ class PeakSEScore(strax.OverlapWindowPlugin):
     """
 
     __version__ = "0.4.0"
-    depends_on = ("peak_basics", "peak_positions")
+    depends_on = (
+        "peak_basics",
+        "peak_positions",
+    )
     provides = "peak_se_score"
     save_when = strax.SaveWhen.EXPLICIT
 

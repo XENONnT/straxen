@@ -25,7 +25,7 @@ class Events(strax.OverlapWindowPlugin):
 
     __version__ = "0.1.1"
 
-    depends_on = ("peak_basics", "peak_proximity")
+    depends_on = ("peak_basics", "peak_proximity", "peak_shadow")
     provides = "events"
     data_kind = "events"
 
