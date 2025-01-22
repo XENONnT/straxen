@@ -190,6 +190,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     use_bayesian_merging = straxen.URLConfig(default=True, type=bool, help="Use Bayesian merging")
 
+    rm_sparse_xy = straxen.URLConfig(
+        default=True, type=bool, help="Remove peaklets that are too far away in (x, y)"
+    )
+
     use_uncertainty_weights = straxen.URLConfig(
         default=True, type=bool, help="Use uncertainty from probabilistic posrec to derive weights"
     )
@@ -342,6 +346,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.s2_merge_dr_threshold,
             self.default_reconstruction_algorithm,
             self.use_bayesian_merging,
+            self.rm_sparse_xy,
             self.use_uncertainty_weights,
             self.p_value_prioritized,
             self.gap_thresholds,
@@ -477,6 +482,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         dr_threshold,
         posrec_algo,
         bayesian=True,
+        sparse_xy=True,
         uncertainty_weights=True,
         p_value_prioritized=False,
         gap_thresholds=None,
@@ -652,20 +658,25 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     end_idx = end_index[direction.stop - 1]
                     merging = slice(start_idx, end_idx)
 
-                    # calculate weighted averaged deviation of peaklets from the main cluster
-                    if uncertainty_weights:
-                        contour_areas = polygon_area(contours[merging][merged[merging]])
-                        weights = np.nan_to_num(1 / contour_areas, nan=np.finfo(np.float32).tiny)
-                    else:
-                        weights = area_fraction_top[merging][merged[merging]]
+                    if sparse_xy:
+                        # calculate weighted averaged deviation of peaklets from the main cluster
+                        if uncertainty_weights:
+                            contour_areas = polygon_area(contours[merging][merged[merging]])
+                            weights = np.nan_to_num(
+                                1 / contour_areas, nan=np.finfo(np.float32).tiny
+                            )
+                        else:
+                            weights = area_fraction_top[merging][merged[merging]]
 
-                    dr_avg = weighted_averaged_dr(
-                        positions[merging, 0][merged[merging]],
-                        positions[merging, 1][merged[merging]],
-                        weights,
-                    )
-                    # do we really merge the peaklets?
-                    merge = dr_avg < dr_threshold
+                        dr_avg = weighted_averaged_dr(
+                            positions[merging, 0][merged[merging]],
+                            positions[merging, 1][merged[merging]],
+                            weights,
+                        )
+                        # do we really merge the peaklets?
+                        merge = dr_avg < dr_threshold
+                    else:
+                        merge = True
 
                     if merge:
                         merged_peak = strax.merge_peaks(
