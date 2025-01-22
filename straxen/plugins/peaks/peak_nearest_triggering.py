@@ -14,7 +14,12 @@ class PeakNearestTriggering(Events):
     direction of peaks."""
 
     __version__ = "0.0.0"
-    depends_on = ("peak_basics", "peak_proximity")
+    depends_on = (
+        "peak_basics",
+        "peak_proximity",
+        "peak_se_score",
+        "peak_shadow",
+    )
     provides = "peak_nearest_triggering"
     data_kind = "peaks"
     save_when = strax.SaveWhen.EXPLICIT
