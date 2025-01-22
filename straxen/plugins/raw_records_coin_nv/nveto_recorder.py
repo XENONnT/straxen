@@ -132,10 +132,10 @@ class nVETORecorder(strax.Plugin):
             }
 
         # Keep all raw data for the very first n seconds of a run.
-        # This case is much much more tricky since it can also be just a
-        # subset of a run and in this case we need to make sure to also keep
-        # all fragments of a pulse...
-        # For performance check first very first fragment if in applicable time range:
+        # This case is tricky since it can also be just a
+        # subset of a chunk and in this case we need to make sure to also keep
+        # all fragments of a pulse beyond the first n seconds boundary.
+        # For performance check very first fragment if in applicable time range:
         _is_first_record_at_run_start = raw_records_nv[0]["time"] < (
             self.run_start + self.keep_n_seconds_for_monitoring * 10**9
         )
