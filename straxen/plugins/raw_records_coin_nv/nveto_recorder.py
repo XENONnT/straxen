@@ -93,7 +93,7 @@ class nVETORecorder(strax.Plugin):
         default="runstart://plugin.run_id?",
         track=False,
         infer_type=False,
-        help=("Returns run start in utc unix time in ns."),
+        help="Returns run start in utc unix time in ns.",
     )
 
     def setup(self):
@@ -118,6 +118,15 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_nv, start, end, chunk_i):
+
+        if not len(raw_records_nv):
+            rr = raw_records_nv
+            lrs = np.zeros(0, dtype=self.dtype["lone_raw_record_statistics_nv"])
+            return {
+                "raw_records_coin_nv": rr,
+                "lone_raw_record_statistics_nv": lrs,
+            }
+
         if self.check_raw_record_overlaps_nv:
             straxen.check_overlaps(raw_records_nv, n_channels=3000)
 
@@ -136,19 +145,19 @@ class nVETORecorder(strax.Plugin):
         # subset of a chunk and in this case we need to make sure to also keep
         # all fragments of a pulse beyond the first n seconds boundary.
         # For performance check very first fragment if in applicable time range:
-        _is_first_record_at_run_start = raw_records_nv[0]["time"] < (
-            self.run_start + self.keep_n_seconds_for_monitoring * 10**9
+        _need_save_for_monitoring = raw_records_nv[0]["time"] < (
+            self.run_start + self.keep_n_seconds_for_monitoring * straxen.units.s
         )
         raw_records_to_keep_without_trigger = np.zeros(0, dtype=raw_records_nv.dtype)
 
-        if _is_first_record_at_run_start:
+        if _need_save_for_monitoring:
             len_data = len(raw_records_nv[0]["data"])
             # Now compute all pulse starts to make sure that all fragments of a pulse are saved:
             pulse_starts = raw_records_nv["time"] - (
                 raw_records_nv["record_i"] * len_data * raw_records_nv["dt"]
             )
             _pulse_is_in_first_n_seconds = pulse_starts < (
-                self.run_start + self.keep_n_seconds_for_monitoring * 10**9
+                self.run_start + self.keep_n_seconds_for_monitoring * straxen.units.s
             )
 
             # Now divide the data:
@@ -219,7 +228,7 @@ class nVETORecorder(strax.Plugin):
         lrs["endtime"] = end
 
         # Now combine results of with and without software trigger:
-        if _is_first_record_at_run_start:
+        if _need_save_for_monitoring:
             rr = np.concatenate([raw_records_to_keep_without_trigger, rr])
 
         return {
