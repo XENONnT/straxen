@@ -219,7 +219,8 @@ class nVETORecorder(strax.Plugin):
         lrs["endtime"] = end
 
         # Now combine results of with and without software trigger:
-        rr = np.concatenate([raw_records_to_keep_without_trigger, rr])
+        if _is_first_record_at_run_start:
+            rr = np.concatenate([raw_records_to_keep_without_trigger, rr])
 
         return {
             "raw_records_coin_nv": rr,
