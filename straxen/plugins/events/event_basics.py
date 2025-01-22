@@ -113,6 +113,50 @@ class EventBasics(strax.Plugin):
         help="Run mode to be used for the cut. It can affect the parameters of the cut.",
     )
 
+    max_drift_length = straxen.URLConfig(
+        default=straxen.tpc_z,
+        type=(int, float),
+        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
+    )
+
+    shadow_threshold = straxen.URLConfig(
+        default={"s1_time_shadow": 1e3, "s2_time_shadow": 1e4, "s2_position_shadow": 1e4},
+        type=dict,
+        track=True,
+        help="Only take S1/S2s larger than this into account when calculating Shadow [PE]",
+    )
+
+    electron_drift_velocity = straxen.URLConfig(
+        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        cache=True,
+        help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
+    )
+
+    n_drift_time = straxen.URLConfig(
+        default={"sr0": 1, "sr1": 2}, help="Number of drift time to veto"
+    )
+
+    sr = straxen.URLConfig(
+        default="science_run://plugin.run_id?&phase=False",
+        help="Science run to be used for the cut. It can affect the parameters of the cut.",
+    )
+
+    time_shadow_cut_values_mode = straxen.URLConfig(
+        default={
+            "bkg": [0.01010, 0.03822],  # Used by bkg and ted runs
+            "ar37": [0.01010, 0.03822],
+            "radon": [0.08303, 0.40418],
+            "radon_hev": [0.33115, 0.61039],
+            "ambe": [0.03078, 0.18748],
+            "kr83m": [0.01479, 0.07908],
+            "ybe": [0.03189, 0.09658],
+            "rn222": [0.01178, 0.02782],
+        },
+        type=dict,
+        track=True,
+        help="cut values for 2 & 3 hits S1 in different run mode",
+    )
+
     def infer_dtype(self):
         # Basic event properties
         self._set_posrec_save()
@@ -188,6 +232,10 @@ class EventBasics(strax.Plugin):
         self.s2_area_limit = self.position_shadow_s2_area_limit
         self.ellipse_parameters = self.position_shadow_ellipse_parameters_mode[self.run_mode]
         self.straight_parameters = self.position_shadow_straight_parameters_mode[self.run_mode]
+        self.veto_window = (
+            self.max_drift_length / self.electron_drift_velocity * self.n_drift_time[self.sr]
+        )
+        self.time_shadow = self.time_shadow_cut_values_mode[self.run_mode]
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
@@ -301,11 +349,10 @@ class EventBasics(strax.Plugin):
         """For a single event with the result_buffer."""
         # Consider S2s first, then S1s (to enable allow_posts2_s1s = False)
         # number_of_peaks=0 selects all available s2 and sort by area
-        mask_removed_peaks = self.compute_position_shadow_cut(peaks)
-        mask_removed_peaks &= peaks["se_score"] < 0.1
+        mask_good_exposure_peaks = self.get_good_exposure_mask(peaks)
         largest_s2s, s2_idx = self.get_largest_sx_peaks(
             peaks=peaks,
-            mask_removed_peaks=mask_removed_peaks,
+            mask_good_exposure_peaks=mask_good_exposure_peaks,
             s_i=2,
             number_of_peaks=0,
         )
@@ -317,7 +364,7 @@ class EventBasics(strax.Plugin):
 
         largest_s1s, s1_idx = self.get_largest_sx_peaks(
             peaks,
-            mask_removed_peaks=mask_removed_peaks,
+            mask_good_exposure_peaks=mask_good_exposure_peaks,
             s_i=1,
             s1_before_time=s1_latest_time,
             s1_min_coincidence=self.event_s1_min_coincidence,
@@ -412,7 +459,7 @@ class EventBasics(strax.Plugin):
     # @numba.njit <- works but slows if fill_events is not numbafied
     def get_largest_sx_peaks(
         peaks,
-        mask_removed_peaks,
+        mask_good_exposure_peaks,
         s_i,
         s1_before_time=np.inf,
         s1_min_coincidence=0,
@@ -428,8 +475,9 @@ class EventBasics(strax.Plugin):
         if s_i == 1:
             s_mask &= peaks["time"] < s1_before_time
             s_mask &= peaks["tight_coincidence"] >= s1_min_coincidence
+            s_mask &= mask_good_exposure_peaks
         if s_i == 2:
-            s_mask &= mask_removed_peaks
+            s_mask &= mask_good_exposure_peaks
         selected_peaks = peaks[s_mask]
         s_index = np.arange(len(peaks))[s_mask]
         largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:][::-1]
@@ -509,3 +557,36 @@ class EventBasics(strax.Plugin):
         mask |= peaks["area"] > self.s2_area_limit
         mask |= peaks["type"] != 2
         return mask
+
+    def compute_peak_time_veto(self, peaks):
+        mask = np.full(len(peaks), True)
+        for casting_peak in ["_s1", "_s2"]:
+            mask &= (peaks[f"nearest_dt{casting_peak}"] > self.veto_window) | (
+                peaks[f"nearest_dt{casting_peak}"] < 0
+            )
+        return mask
+
+    def compute_peak_hotspot_veto(self, peaks):
+        mask = peaks["se_score"] < 0.1
+        return mask
+
+    def compute_peak_time_shadow(self, peaks):
+        # 2 hits
+        time_shadow_2hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[0]
+        time_shadow_2hits &= peaks["n_hits"] == 2
+        time_shadow_2hits &= peaks["type"] == 1
+        # 3 hits
+        time_shadow_3hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[1]
+        time_shadow_3hits &= peaks["n_hits"] >= 3
+        time_shadow_3hits &= peaks["type"] == 1
+        # for s2, use 3 hits threshold
+        s2_time_shadow_3hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[1]
+        s2_time_shadow_3hits &= peaks["type"] == 2
+        return ~(time_shadow_2hits | time_shadow_3hits | s2_time_shadow_3hits)
+
+    def get_good_exposure_mask(self, peaks):
+        mask_good = self.compute_peak_hotspot_veto(peaks)
+        mask_good &= self.compute_peak_time_veto(peaks)
+        mask_good &= self.compute_peak_time_shadow(peaks)
+        mask_good &= self.compute_position_shadow_cut(peaks)
+        return mask_good

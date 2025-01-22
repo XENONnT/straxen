@@ -106,7 +106,7 @@ class Events(strax.OverlapWindowPlugin):
     diagnose_overlapping = straxen.URLConfig(
         track=False, default=True, infer_type=False, help="Enable runtime checks for disjointness"
     )
-
+    # shadow parameters
     position_shadow_s2_area_limit = straxen.URLConfig(
         default=5e4,
         type=float,
@@ -151,33 +151,49 @@ class Events(strax.OverlapWindowPlugin):
         help="Run mode to be used for the cut. It can affect the parameters of the cut.",
     )
 
-    # max_drift_length = straxen.URLConfig(
-    #     default=straxen.tpc_z,
-    #     type=(int, float),
-    #     help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
-    # )
+    max_drift_length = straxen.URLConfig(
+        default=straxen.tpc_z,
+        type=(int, float),
+        help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
+    )
 
-    # shadow_threshold = straxen.URLConfig(
-    #     default={"s1_time_shadow": 1e3, "s2_time_shadow": 1e4, "s2_position_shadow": 1e4},
-    #     type=dict,
-    #     track=True,
-    #     help="Only take S1/S2s larger than this into account when calculating Shadow [PE]",
-    # )
+    shadow_threshold = straxen.URLConfig(
+        default={"s1_time_shadow": 1e3, "s2_time_shadow": 1e4, "s2_position_shadow": 1e4},
+        type=dict,
+        track=True,
+        help="Only take S1/S2s larger than this into account when calculating Shadow [PE]",
+    )
 
-    # electron_drift_velocity = straxen.URLConfig(
-    #     default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
-    #     cache=True,
-    #     help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
-    # )
+    electron_drift_velocity = straxen.URLConfig(
+        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        cache=True,
+        help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
+    )
 
-    # n_drift_time = straxen.URLConfig(
-    #     default={"sr0": 1, "sr1": 2}, help="Number of drift time to veto"
-    # )
+    n_drift_time = straxen.URLConfig(
+        default={"sr0": 1, "sr1": 2}, help="Number of drift time to veto"
+    )
 
-    # sr = straxen.URLConfig(
-    #     default="science_run://plugin.run_id?&phase=False",
-    #     help="Science run to be used for the cut. It can affect the parameters of the cut.",
-    # )
+    sr = straxen.URLConfig(
+        default="science_run://plugin.run_id?&phase=False",
+        help="Science run to be used for the cut. It can affect the parameters of the cut.",
+    )
+
+    time_shadow_cut_values_mode = straxen.URLConfig(
+        default={
+            "bkg": [0.01010, 0.03822],  # Used by bkg and ted runs
+            "ar37": [0.01010, 0.03822],
+            "radon": [0.08303, 0.40418],
+            "radon_hev": [0.33115, 0.61039],
+            "ambe": [0.03078, 0.18748],
+            "kr83m": [0.01479, 0.07908],
+            "ybe": [0.03189, 0.09658],
+            "rn222": [0.01178, 0.02782],
+        },
+        type=dict,
+        track=True,
+        help="cut values for 2 & 3 hits S1 in different run mode",
+    )
 
     def setup(self):
         if self.s1_min_coincidence > self.event_s1_min_coincidence:
@@ -190,13 +206,14 @@ class Events(strax.OverlapWindowPlugin):
         # reflected in cutax too.
         self.left_extension = self.left_event_extension + self.drift_time_max
         self.right_extension = self.right_event_extension
-        # position shadow related parameters
+        # shadow cuts parameters
         self.s2_area_limit = self.position_shadow_s2_area_limit
         self.ellipse_parameters = self.position_shadow_ellipse_parameters_mode[self.run_mode]
         self.straight_parameters = self.position_shadow_straight_parameters_mode[self.run_mode]
-        # self.veto_window = (
-        #     self.max_drift_length / self.electron_drift_velocity * self.n_drift_time[self.sr]
-        # )
+        self.veto_window = (
+            self.max_drift_length / self.electron_drift_velocity * self.n_drift_time[self.sr]
+        )
+        self.time_shadow = self.time_shadow_cut_values_mode[self.run_mode]
 
     def get_window_size(self):
         # Take a large window for safety, events can have long tails
@@ -205,8 +222,7 @@ class Events(strax.OverlapWindowPlugin):
     def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
         _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
-        mask_good = peaks["se_score"] < 0.1
-        mask_good &= self.compute_position_shadow_cut(peaks)
+        mask_good_exposure_peaks = self.get_good_exposure_mask(peaks)
         if self.exclude_s1_as_triggering_peaks:
             _is_triggering &= peaks["type"] == 2
         else:
@@ -214,7 +230,7 @@ class Events(strax.OverlapWindowPlugin):
             has_tc_large_enough = peaks["tight_coincidence"] >= self.event_s1_min_coincidence
             _is_triggering &= is_not_s1 | has_tc_large_enough
         # additionally require that the peak is tagged by the shadow cut etc.
-        _is_triggering = _is_triggering & mask_good
+        _is_triggering = _is_triggering & mask_good_exposure_peaks
         return _is_triggering
 
     def compute(self, peaks, start, end):
@@ -298,3 +314,28 @@ class Events(strax.OverlapWindowPlugin):
                 peaks[f"nearest_dt{casting_peak}"] < 0
             )
         return mask
+
+    def compute_peak_hotspot_veto(self, peaks):
+        mask = peaks["se_score"] < 0.1
+        return mask
+
+    def compute_peak_time_shadow(self, peaks):
+        # 2 hits
+        time_shadow_2hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[0]
+        time_shadow_2hits &= peaks["n_hits"] == 2
+        time_shadow_2hits &= peaks["type"] == 1
+        # 3 hits
+        time_shadow_3hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[1]
+        time_shadow_3hits &= peaks["n_hits"] >= 3
+        time_shadow_3hits &= peaks["type"] == 1
+        # for s2, use 3 hits threshold
+        s2_time_shadow_3hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[1]
+        s2_time_shadow_3hits &= peaks["type"] == 2
+        return ~(time_shadow_2hits | time_shadow_3hits | s2_time_shadow_3hits)
+
+    def get_good_exposure_mask(self, peaks):
+        mask_good = self.compute_peak_hotspot_veto(peaks)
+        mask_good &= self.compute_peak_time_veto(peaks)
+        mask_good &= self.compute_peak_time_shadow(peaks)
+        mask_good &= self.compute_position_shadow_cut(peaks)
+        return mask_good
