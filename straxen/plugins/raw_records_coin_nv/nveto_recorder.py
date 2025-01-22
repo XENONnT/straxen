@@ -137,7 +137,7 @@ class nVETORecorder(strax.Plugin):
         # all fragments of a pulse...
         # For performance check first very first fragment if in applicable time range:
         _is_first_record_at_run_start = raw_records_nv[0]["time"] < (
-            self.run_start + self.keep_n_seconds_for_monitoring
+            self.run_start + self.keep_n_seconds_for_monitoring * 10**9
         )
         raw_records_to_keep_without_trigger = np.zeros(0, dtype=raw_records_nv.dtype)
 
@@ -148,7 +148,7 @@ class nVETORecorder(strax.Plugin):
                 raw_records_nv["record_i"] * len_data * raw_records_nv["dt"]
             )
             _pulse_is_in_first_n_seconds = pulse_starts < (
-                self.run_start + self.keep_n_seconds_for_monitoring
+                self.run_start + self.keep_n_seconds_for_monitoring * 10**9
             )
 
             # Now divide the data:
