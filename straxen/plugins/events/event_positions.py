@@ -38,15 +38,18 @@ class EventPositions(strax.Plugin):
     )
 
     fdc_map = straxen.URLConfig(
+        default="xedocs://fdc_maps"
+        "?algorithm=plugin.default_reconstruction_algorithm&run_id=plugin.run_id"
+        "&attr=map&scale_coordinates=plugin.coordinate_scale&version=ONLINE",
         infer_type=False,
         help="3D field distortion correction map path",
-        default="legacy-fdc://xenon1t_sr0_sr1?run_id=plugin.run_id",
     )
 
     z_bias_map = straxen.URLConfig(
+        default="itp_map://resource://XnT_z_bias_map_chargeup_20230329.json.gz"
+        "?fmt=json.gz&method=RegularGridInterpolator",
         infer_type=False,
         help="Map of Z bias due to non uniform drift velocity/field",
-        default="legacy-z_bias://0",
     )
 
     def infer_dtype(self):
