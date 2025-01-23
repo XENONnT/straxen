@@ -25,7 +25,7 @@ class MergedS2sHighEnergy(MergedS2s):
         return False
 
     def compute(self, peaklets_he, start, end):
-        if self.no_need(peaklets_he):
+        if self.no_merging(peaklets_he):
             return self.empty_result()
 
         # There are not any lone hits for the high energy channel,

@@ -261,7 +261,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             int(self.s2_merge_gap_thresholds[0][1]) + self.s2_merge_max_duration
         )
 
-    def no_compute(self, peaklets):
+    def no_merging(self, peaklets):
         is_s2 = peaklets["type"] == 2
         return np.sum(is_s2) <= 1 or self.max_gap < 0
 
@@ -279,7 +279,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         for d in enhanced_peaklet_classification.dtype.names:
             enhanced_peaklet_classification[d] = peaklets[d]
 
-        if self.no_compute(peaklets):
+        if self.no_merging(peaklets):
             empty_result = self.empty_result()
             empty_result["enhanced_peaklet_classification"] = enhanced_peaklet_classification
             return empty_result
@@ -531,7 +531,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         # (x, y) positions of the peaklets
         positions = np.vstack([_peaks[f"x_{posrec_algo}"], _peaks[f"y_{posrec_algo}"]]).T
         if uncertainty_weights:
-            contours = _peaks[f"position_contour_{posrec_algo}"]
+            contour_area = _peaks[f"position_contour_area_{posrec_algo}"]
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
         area = _peaks["area"]
         area_fraction_top = area * _peaks["area_fraction_top"]
@@ -707,9 +707,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     if sparse_xy:
                         # calculate weighted averaged deviation of peaklets from the main cluster
                         if uncertainty_weights:
-                            contour_areas = polygon_area(contours[merging][merged[merging]])
                             weights = np.nan_to_num(
-                                1 / contour_areas, nan=np.finfo(np.float32).tiny
+                                1 / contour_area[merging][merged[merging]],
+                                nan=np.finfo(np.float32).tiny,
                             )
                         else:
                             weights = area_fraction_top[merging][merged[merging]]
@@ -1002,20 +1002,3 @@ def weighted_averaged_dr(x, y, weights):
     dr = np.sqrt((x - x_avg) ** 2 + (y - y_avg) ** 2)
     dr_avg = np.average(dr[mask], weights=weights[mask])
     return dr_avg
-
-
-@numba.jit(cache=True)
-def polygon_area(polygon):
-    """Calculate and return the area of a polygon.
-
-    The input is a 3D numpy array where the first dimension represents individual polygons, the
-    second dimension represents vertices of the polygon, and the third dimension represents x and y
-    coordinates of each vertex.
-
-    """
-    x = polygon[..., 0]
-    y = polygon[..., 1]
-    result = np.zeros(polygon.shape[0], dtype=np.float32)
-    for i in range(x.shape[-1]):
-        result += (x[..., i] * y[..., i - 1]) - (y[..., i] * x[..., i - 1])
-    return 0.5 * np.abs(result)
