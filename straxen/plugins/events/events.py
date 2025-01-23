@@ -336,6 +336,6 @@ class Events(strax.OverlapWindowPlugin):
     def get_good_exposure_mask(self, peaks):
         mask_good = self.compute_peak_hotspot_veto(peaks)
         mask_good &= self.compute_peak_time_veto(peaks)
-        mask_good &= self.compute_peak_time_shadow(peaks)
+        # mask_good &= self.compute_peak_time_shadow(peaks)
         mask_good &= self.compute_position_shadow_cut(peaks)
         return mask_good

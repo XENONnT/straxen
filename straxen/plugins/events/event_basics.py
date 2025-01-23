@@ -475,7 +475,7 @@ class EventBasics(strax.Plugin):
         if s_i == 1:
             s_mask &= peaks["time"] < s1_before_time
             s_mask &= peaks["tight_coincidence"] >= s1_min_coincidence
-            s_mask &= mask_good_exposure_peaks
+            # s_mask &= mask_good_exposure_peaks
         if s_i == 2:
             s_mask &= mask_good_exposure_peaks
         selected_peaks = peaks[s_mask]
@@ -587,6 +587,6 @@ class EventBasics(strax.Plugin):
     def get_good_exposure_mask(self, peaks):
         mask_good = self.compute_peak_hotspot_veto(peaks)
         mask_good &= self.compute_peak_time_veto(peaks)
-        mask_good &= self.compute_peak_time_shadow(peaks)
+        # mask_good &= self.compute_peak_time_shadow(peaks)
         mask_good &= self.compute_position_shadow_cut(peaks)
         return mask_good
