@@ -1,4 +1,5 @@
 import numpy as np
+import numba
 import strax
 import straxen
 from ._peaklet_positions_base import PeakletPositionsBase
@@ -26,7 +27,7 @@ class PeakletPositionsCNF(PeakletPositionsBase):
 
     """
 
-    __version__ = "0.0.0"
+    __version__ = "0.0.1"
     child_plugin = True
     algorithm = "cnf"
     provides = "peaklet_positions_cnf"
@@ -116,6 +117,13 @@ class PeakletPositionsCNF(PeakletPositionsBase):
                 np.float32,
                 (self.n_poly + 1, 2),
             ),
+            (
+                (
+                    "Area in position uncertainty contour (cm^2)",
+                    f"position_contour_area_{self.algorithm}",
+                ),
+                np.float32,
+            ),
             (("Position uncertainty in r (cm)", f"r_uncertainty_{self.algorithm}"), np.float32),
             (
                 ("Position uncertainty in theta (rad)", f"theta_uncertainty_{self.algorithm}"),
@@ -178,6 +186,23 @@ class PeakletPositionsCNF(PeakletPositionsBase):
             contour_list.append(contour)
         return np.concatenate(xy_list, axis=0), np.concatenate(contour_list, axis=0)
 
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def polygon_area(polygon):
+        """Calculate and return the area of a polygon.
+
+        The input is a 3D numpy array where the first dimension represents individual polygons, the
+        second dimension represents vertices of the polygon, and the third dimension represents x
+        and y coordinates of each vertex.
+
+        """
+        x = polygon[..., 0]
+        y = polygon[..., 1]
+        result = np.zeros(polygon.shape[0], dtype=np.float32)
+        for i in range(x.shape[-1]):
+            result += (x[..., i] * y[..., i - 1]) - (y[..., i] * x[..., i - 1])
+        return 0.5 * np.abs(result)
+
     def compute(self, peaklets):
         """Compute the position reconstruction for the given peaklets.
 
@@ -190,14 +215,9 @@ class PeakletPositionsCNF(PeakletPositionsBase):
         """
         # Initialize result array
         result = np.ones(len(peaklets), dtype=self.dtype)
-        result["time"], result["endtime"] = peaklets["time"], strax.endtime(peaklets)
-
         # Set default values to NaN
-        result[f"x_{self.algorithm}"] *= np.nan
-        result[f"y_{self.algorithm}"] *= np.nan
-        result[f"position_contour_{self.algorithm}"] *= np.nan
-        result[f"r_uncertainty_{self.algorithm}"] *= np.nan
-        result[f"theta_uncertainty_{self.algorithm}"] *= np.nan
+        strax.set_nan_defaults(result)
+        result["time"], result["endtime"] = peaklets["time"], strax.endtime(peaklets)
 
         # Keep large peaklets only
         peaklet_mask = peaklets["area"] > self.min_reconstruction_area
@@ -224,6 +244,9 @@ class PeakletPositionsCNF(PeakletPositionsBase):
         result[f"x_{self.algorithm}"][peaklet_mask] = xy[:, 0]
         result[f"y_{self.algorithm}"][peaklet_mask] = xy[:, 1]
         result[f"position_contour_{self.algorithm}"][peaklet_mask] = contours
+        result[f"position_contour_area_{self.algorithm}"][peaklet_mask] = self.polygon_area(
+            result[f"position_contour_{self.algorithm}"][peaklet_mask]
+        )
 
         # Calculate uncertainties in r and theta
         r_array = np.linalg.norm(contours, axis=2)
