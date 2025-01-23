@@ -78,15 +78,12 @@ common_config = dict(
     ),
     # Clustering/classification parameters
     # Event level parameters
-    fdc_map="itp_map://"
-    "resource://"
-    "xedocs://fdc_maps"
+    fdc_map="xedocs://fdc_maps"
     "?algorithm=plugin.default_reconstruction_algorithm"
-    "&version=ONLINE"
-    "&attr=value"
     "&run_id=plugin.run_id"
-    "&fmt=binary"
-    "&scale_coordinates=plugin.coordinate_scales",
+    "&attr=map"
+    "&scale_coordinates=plugin.coordinate_scale"
+    "&version=ONLINE",
     z_bias_map="itp_map://"
     "resource://"
     "XnT_z_bias_map_chargeup_20230329.json.gz?"

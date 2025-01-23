@@ -38,19 +38,15 @@ class CorrectedAreas(strax.Plugin):
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
     s1_xyz_map = straxen.URLConfig(
-        default="itp_map://"
-        "resource://"
-        "xedocs://s1_xyz_maps"
-        "?version=ONLINE&run_id=plugin.run_id&attr=value"
-        "&fmt=json&algorithm=plugin.default_reconstruction_algorithm",
+        default="xedocs://s1_xyz_maps"
+        "?run_id=plugin.run_id"
+        "&algorithm=plugin.default_reconstruction_algorithm&attr=map&version=ONLINE",
         cache=True,
     )
     s2_xy_map = straxen.URLConfig(
-        default="itp_map://"
-        "resource://"
-        "xedocs://s2_xy_maps"
-        "?version=ONLINE&run_id=plugin.run_id&attr=value"
-        "&fmt=json&algorithm=plugin.default_reconstruction_algorithm",
+        default="xedocs://s2_xy_maps"
+        "?run_id=plugin.run_id"
+        "&algorithm=plugin.default_reconstruction_algorithm&attr=map&version=ONLINE",
         cache=True,
     )
 
@@ -64,13 +60,19 @@ class CorrectedAreas(strax.Plugin):
 
     # se gain for this run, allowing for using CMT. default to online
     se_gain = straxen.URLConfig(
-        default="objects-to-dict://xedocs://se_gains?run_id=plugin.run_id&version=ONLINE&partition=ab&partition=cd&as_list=True&sort=partition&key_attr=partition&value_attr=value",
+        default="objects-to-dict://"
+        "xedocs://se_gains"
+        "?partition=ab&partition=cd&run_id=plugin.run_id"
+        "&sort=partition&as_list=True&key_attr=partition&value_attr=value&version=ONLINE",
         help="Actual SE gain for a given run (allows for time dependence)",
     )
 
     # relative extraction efficiency which can change with time and modeled by CMT.
     rel_extraction_eff = straxen.URLConfig(
-        default="objects-to-dict://xedocs://rel_extraction_effs?partition=ab&partition=cd&run_id=plugin.run_id&sort=partition&as_list=True&version=ONLINE&key_attr=partition&value_attr=value",
+        default="objects-to-dict://"
+        "xedocs://rel_extraction_effs"
+        "?partition=ab&partition=cd&run_id=plugin.run_id"
+        "&sort=partition&as_list=True&key_attr=partition&value_attr=value&version=ONLINE",
         help="Relative extraction efficiency for this run (allows for time dependence)",
     )
 

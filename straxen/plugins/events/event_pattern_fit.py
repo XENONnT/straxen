@@ -23,7 +23,8 @@ class EventPatternFit(strax.Plugin):
 
     # Getting S1 AFT maps
     s1_aft_map = straxen.URLConfig(
-        default="itp_map://resource://xedocs://s1_aft_xyz_maps?attr=value&fmt=json&run_id=plugin.run_id&version=ONLINE",
+        default="itp_map://resource://xedocs://s1_aft_xyz_maps"
+        "?attr=value&fmt=json&run_id=plugin.run_id&version=ONLINE",
         cache=True,
     )
 

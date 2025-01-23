@@ -73,8 +73,8 @@ class LEDAfterpulseProcessing(strax.Plugin):
         "Specify as a tuple of length n_tpc_pmts, or a number,"
         'or a string like "legacy-thresholds://pmt_commissioning_initial" which means calling'
         "hitfinder_thresholds.py"
-        'or url string like "cmt://hit_thresholds_tpc?version=ONLINE" which means'
-        "calling cmt.",
+        'or url string like "xedocs://hit_thresholds_tpc?version=ONLINE" which means'
+        "calling xedocs.",
     )
 
     hit_min_height_over_noise = straxen.URLConfig(
