@@ -13,7 +13,7 @@ class EventS1PositionCNN(EventS1PositionBase):
     algorithm = "s1_cnn"
     provides = "event_s1_positions_cnn"
 
-    tf_event_model_s1_cnn = straxen.URLConfig(
+    tf_model_s1_cnn = straxen.URLConfig(
         default=(
             f"tf://"
             f"resource://"

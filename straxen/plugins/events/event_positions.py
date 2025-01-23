@@ -26,13 +26,13 @@ class EventPositions(strax.Plugin):
     )
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
 
     electron_drift_time_gate = straxen.URLConfig(
-        default="cmt://electron_drift_time_gate?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_time_gates?attr=value&run_id=plugin.run_id&version=ONLINE",
         help="Electron drift time from the gate in ns",
         cache=True,
     )
