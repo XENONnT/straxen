@@ -57,12 +57,12 @@ class EventS1PositionBase(strax.Plugin):
         return dtype
 
     def get_tf_model(self):
-        """Simple wrapper to have several tf_event_model_s1_cnn, ..
+        """Simple wrapper to have several tf_model_s1_cnn, ..
 
         point to this same function in the compute method
 
         """
-        model = getattr(self, f"tf_event_model_{self.algorithm}", None)
+        model = getattr(self, f"tf_model_{self.algorithm}", None)
         if model is None:
             warn(
                 f"Setting model to None for {self.__class__.__name__} will "

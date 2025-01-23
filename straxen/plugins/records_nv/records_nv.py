@@ -49,7 +49,7 @@ class nVETOPulseProcessing(strax.Plugin):
 
     baseline_samples_nv = straxen.URLConfig(
         infer_type=False,
-        default="cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id",
+        default=26,
         track=True,
         help="Number of samples to use at the start of the pulse to determine the baseline",
     )
