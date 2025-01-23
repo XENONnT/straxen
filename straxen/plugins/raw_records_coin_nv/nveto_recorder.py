@@ -80,7 +80,7 @@ class nVETORecorder(strax.Plugin):
     )
 
     keep_n_seconds_for_monitoring = straxen.URLConfig(
-        default=30,
+        default=10,
         track=False,
         infer_type=False,
         help=(
