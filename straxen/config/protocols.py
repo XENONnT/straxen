@@ -311,3 +311,21 @@ def open_jax_model(model_path: str, **kwargs):
         serialized_jax_object = file_obj.read()
     # Deserialize the JAX object and return its callable function
     return export.deserialize(serialized_jax_object).call
+
+
+@URLConfig.register("runstart")
+def get_run_start(run_id):
+    """Protocol which returns start time of a given run as unix time in ns."""
+    import pytz
+
+    rundb = utilix.xent_collection()
+    doc = rundb.find_one(
+        {"number": int(run_id)},
+        projection={
+            "start": 1,
+        },
+    )
+    start_time = doc["start"]
+    start_time_unix = start_time.replace(tzinfo=pytz.utc).timestamp()
+    start_time_unix = np.int64(start_time_unix) * 10**9
+    return start_time_unix
