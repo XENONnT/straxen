@@ -261,7 +261,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             int(self.s2_merge_gap_thresholds[0][1]) + self.s2_merge_max_duration
         )
 
-    def no_need(self, peaklets):
+    def no_compute(self, peaklets):
         is_s2 = peaklets["type"] == 2
         return np.sum(is_s2) <= 1 or self.max_gap < 0
 
@@ -279,10 +279,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         for d in enhanced_peaklet_classification.dtype.names:
             enhanced_peaklet_classification[d] = peaklets[d]
 
-        if self.no_need(peaklets):
+        if self.no_compute(peaklets):
             empty_result = self.empty_result()
             empty_result["enhanced_peaklet_classification"] = enhanced_peaklet_classification
             return empty_result
+
+        # make sure the peaklets are not overwritten
+        peaklets.flags.writeable = False
 
         is_s2 = peaklets["type"] == 2
 
@@ -305,28 +308,24 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if np.any(_peaklets["time"][1:] < strax.endtime(_peaklets)[:-1]):
             raise ValueError("Peaklets not disjoint, why?")
 
-        if self.merge_s0:
-            s0 = np.copy(_peaklets[_peaklets["type"] == 0])
-
         # only keep S2 peaklets for merging
         is_s2 = _peaklets["type"] == 2
-        peaklets = np.copy(_peaklets[is_s2])
-
-        max_buffer = int(self.max_duration // strax.gcd_of_array(peaklets["dt"]))
 
         if not (self._have_data("data_top") and self._have_data("data_start")):
-            peaklets_w_field = np.zeros(
-                len(peaklets),
+            peaklets = np.zeros(
+                is_s2.sum(),
                 dtype=strax.peak_dtype(
                     n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
                 ),
             )
-            strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_or_start_field")
-            del peaklets
-            peaklets = peaklets_w_field
+            strax.copy_to_buffer(_peaklets[is_s2], peaklets, "_add_data_top_or_start_field")
+        else:
+            peaklets = _peaklets[is_s2]
+
+        max_buffer = int(self.max_duration // strax.gcd_of_array(peaklets["dt"]))
 
         start_merge_at, end_merge_at, _merged = self.get_merge_instructions(
-            np.copy(peaklets),
+            peaklets,
             start,
             end,
             self.max_gap,
@@ -357,7 +356,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
             raise ValueError("data_top or data_start is not in the peaklets dtype")
 
         # have to redo the merging to prevent numerical instability
-        if self.merge_s0 and len(start_merge_at) and len(s0):
+        is_s0 = _peaklets["type"] == 0
+        if self.merge_s0 and len(start_merge_at) and is_s0.sum() > 0:
             # build the time interval of merged_s2s, even though they are not merged yet
             endtime = strax.endtime(peaklets)
             merged_s2s_window = np.zeros(len(start_merge_at), dtype=strax.time_fields)
@@ -366,7 +366,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 merged_s2s_window["time"][i] = peaklets["time"][sl][_merged[sl]][0]
                 merged_s2s_window["endtime"][i] = endtime[sl][_merged[sl]][-1]
             # the S0s that should be merged should fully be contained
-            merged_s0s = strax.split_by_containment(s0, merged_s2s_window)
+            merged_s0s = strax.split_by_containment(_peaklets[is_s0], merged_s2s_window)
             # offsets of indices
             increments = np.array([len(m) for m in merged_s0s], dtype=int)
             offsets = np.hstack([0, np.cumsum(increments)])
@@ -438,11 +438,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return merged_s2s, merged
 
     @staticmethod
-    def get_left_right(peaklets):
-        """Get the left and right boundaries of the peaklets."""
+    def get_left_right(peaklet):
+        """Get the left and right boundaries of the peaklet."""
         # The gap is defined as the 90% to 10% area decile distance of the adjacent peaks
-        left = (peaklets["area_decile_from_midpoint"][1] + peaklets["median_time"]).astype(int)
-        right = (peaklets["area_decile_from_midpoint"][9] + peaklets["median_time"]).astype(int)
+        left = (peaklet["area_decile_from_midpoint"][1] + peaklet["median_time"]).astype(int)
+        right = (peaklet["area_decile_from_midpoint"][9] + peaklet["median_time"]).astype(int)
         return left, right
 
     @staticmethod
@@ -456,13 +456,44 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return this_gap
 
     @staticmethod
+    @numba.njit(cache=True, nogil=True)
     def get_duration(y, x):
         """Get the duration of the merged peaklets."""
-        return max(strax.endtime(y), strax.endtime(x)) - min(y["time"], x["time"])
+        return max(y["endtime"], x["endtime"]) - min(y["time"], x["time"])
+
+    @staticmethod
+    @numba.njit(cache=True, nogil=True)
+    def decile_interp(
+        x,
+        y,
+        panel=np.linspace(0, 1, 11),
+    ):
+        area = x["area"] + y["area"]
+        xf = x["area"] / area
+        yf = y["area"] / area
+        xp = np.concatenate((panel * xf, panel * yf + xf))
+        yp = np.concatenate(
+            (
+                (x["area_decile_from_midpoint"] + x["median_time"]),
+                (y["time"] - x["time"]) + (y["area_decile_from_midpoint"] + y["median_time"]),
+            )
+        )
+        decile = np.interp(panel, xp, yp)
+        return decile[5], decile - decile[5]
+
+    @staticmethod
+    def merge_two_peaks(x, y):
+        """Merge two peaklets in order."""
+        z = np.array(0, dtype=x.dtype)
+        z["time"] = x["time"]
+        z["endtime"] = y["endtime"]
+        z["area"] = x["area"] + y["area"]
+        z["median_time"], z["area_decile_from_midpoint"] = MergedS2s.decile_interp(x, y)
+        return z
 
     @staticmethod
     def get_merge_instructions(
-        peaks,
+        _peaks,
         start,
         end,
         max_gap,
@@ -496,7 +527,30 @@ class MergedS2s(strax.OverlapWindowPlugin):
         2. Normal merging: merge peaklets based on the gap between the peaklets
 
         """
-        max_buffer = int(max_duration // strax.gcd_of_array(peaks["dt"]))
+
+        # (x, y) positions of the peaklets
+        positions = np.vstack([_peaks[f"x_{posrec_algo}"], _peaks[f"y_{posrec_algo}"]]).T
+        if uncertainty_weights:
+            contours = _peaks[f"position_contour_{posrec_algo}"]
+        # weights of the peaklets when calculating the weighted mean deviation in (x, y)
+        area = _peaks["area"]
+        area_fraction_top = area * _peaks["area_fraction_top"]
+
+        dtype = np.dtype(
+            [
+                ("time", np.int64),
+                ("endtime", np.int64),
+                ("area", np.float32),
+                ("median_time", np.float32),
+                ("area_decile_from_midpoint", np.float32, (11,)),
+            ]
+        )
+        peaks = np.zeros(len(_peaks), dtype=dtype)
+        for name in peaks.dtype.names:
+            if name == "endtime":
+                peaks[name] = strax.endtime(_peaks)
+            else:
+                peaks[name] = _peaks[name]
 
         n_peaks = len(peaks)
         if n_peaks == 0:
@@ -513,20 +567,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged = np.full(n_peaks, True)
 
         # approximation of the integration boundaries
-        core_bounds = (peaks["time"][1:] + strax.endtime(peaks)[:-1]) // 2
+        core_bounds = (peaks["time"][1:] + peaks["endtime"][:-1]) // 2
         # here the constraint on boundaries is also to make sure get_window_size covers the gaps
         left_bounds = np.maximum(np.hstack([start, core_bounds]), peaks["time"] - int(max_gap / 2))
         right_bounds = np.minimum(
-            np.hstack([core_bounds, end]), strax.endtime(peaks) + int(max_gap / 2)
+            np.hstack([core_bounds, end]), peaks["endtime"] + int(max_gap / 2)
         )
-
-        # (x, y) positions of the peaklets
-        positions = np.vstack([peaks[f"x_{posrec_algo}"], peaks[f"y_{posrec_algo}"]]).T
-        if uncertainty_weights:
-            contours = np.copy(peaks[f"position_contour_{posrec_algo}"])
-        # weights of the peaklets when calculating the weighted mean deviation in (x, y)
-        area = np.copy(peaks["area"])
-        area_fraction_top = area * peaks["area_fraction_top"]
 
         if diagnosing:
             merged_area = []
@@ -648,14 +694,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
                             left = True
                     # slice indicating the direction of merging
                     if left:
-                        direction = slice(indices[0], indices[0] + 2)
+                        direction = [indices[0], indices[0] + 1]
                         index = indices[0]
                     else:
-                        direction = slice(indices[1] - 1, indices[1] + 1)
+                        direction = [indices[1] - 1, indices[1]]
                         index = indices[1]
                     # slice indicating the peaklets to be merged
-                    start_idx = start_index[direction.start]
-                    end_idx = end_index[direction.stop - 1]
+                    start_idx = start_index[direction[0]]
+                    end_idx = end_index[direction[1]]
                     merging = slice(start_idx, end_idx)
 
                     if sparse_xy:
@@ -679,19 +725,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
                         merge = True
 
                     if merge:
-                        merged_peak = strax.merge_peaks(
-                            peaks[direction],
-                            [0],
-                            [2],
-                            max_buffer=max_buffer,
+                        merged_peak = MergedS2s.merge_two_peaks(
+                            peaks[direction[0]], peaks[direction[1]]
                         )
-                        # this step is necessary to update the properties of the merged peak
-                        # but the properties will be calculated again after merging
-                        # to keep numerical stability
-                        strax.compute_properties(merged_peak, n_top_channels=n_top_pmts)
-                        merged_peak = merged_peak[0]
                         # check if the merged peak is too long
-                        if strax.endtime(merged_peak) - merged_peak["time"] > max_duration:
+                        if merged_peak["endtime"] - merged_peak["time"] > max_duration:
                             raise ValueError("Merged S2 is too long")
                     else:
                         merged[index] = False
@@ -783,18 +821,11 @@ def get_p_value(
     sigma_panel,
     maxexp,
 ):
-    y_time = y["time"]
-    x_time = x["time"]
-    y_median_time = y["median_time"]
-    x_median_time = x["median_time"]
-    y_data = y["data"]
-    y_dt = y["dt"]
-    t0 = y["time"]
-
     # better constraint the mu in boundaries of waveform
     # because the number of bins is not high enough comprising for computation efficiency
     mu = rough_mu(y, x, rough_mu_bins)
 
+    t0 = y["time"]
     y_integrated = normal_cdf(((ry - t0) - mu[:, None]) / sigma, normal_panel)
     y_integrated -= normal_cdf(((ly - t0) - mu[:, None]) / sigma, normal_panel)
     x_integrated = normal_cdf(((rx - t0) - mu[:, None]) / sigma, normal_panel)
@@ -807,13 +838,13 @@ def get_p_value(
     pmf = get_posterior(
         mu,
         sigma,
-        y_dt,
-        y_data,
+        y["area"],
+        y["area_decile_from_midpoint"],
         y_integrated,
-        y_time,
-        y_median_time,
-        x_time,
-        x_median_time,
+        y["time"],
+        y["median_time"],
+        x["time"],
+        x["median_time"],
         rough_seg,
         maxexp,
     ).flatten()
@@ -863,7 +894,7 @@ def rough_mu(y, x, rough_mu_bins):
     """Get rough bins for mu as the integration space."""
     mu = np.linspace(
         min(y["time"], x["time"]) - y["time"],
-        max(strax.endtime(y), strax.endtime(x)) - y["time"],
+        max(y["endtime"], x["endtime"]) - y["time"],
         rough_mu_bins,
     )
     return mu
@@ -885,8 +916,8 @@ def normal_cdf(x, normal_panel):
 def get_posterior(
     mu,
     sigma,
-    y_dt,
-    y_data,
+    y_area,
+    y_area_decile_from_midpoint,
     y_integrated,
     y_time,
     y_median_time,
@@ -897,18 +928,19 @@ def get_posterior(
 ):
     """Get the posterior of (mu, sigma) based on the waveform y."""
     # production of normal PDF
-    y_t = np.arange(y_data.size) * y_dt
+    y_t = y_area_decile_from_midpoint + y_median_time
+    y_t = (y_t[:-1] + y_t[1:]) / 2
+    y_nse = y_area / rough_seg
     sigma2 = 2 * sigma**2
-    log_pdf = -((y_t - mu[:, None]) ** 2 * y_data).sum(axis=1)[:, None] / (rough_seg * sigma2)
     log_sigma = np.log(sigma)
-    y_nse = y_data.sum() / rough_seg
-    log_pdf -= log_sigma * y_nse
-    # account for the bounded sampling of y
-    log_pdf -= np.log(y_integrated) * y_nse
-    # add log prior
     # dt is median between median time of two peaklets
     dt = np.abs((y_time - x_time) + (y_median_time - x_median_time))
-    log_pdf -= dt**2 / 4 / sigma2 + 2 * log_sigma
+    # because the number of electrons are uniformly distributed in y_t
+    log_pdf = -(((y_t - mu[:, None]) ** 2).sum(axis=1) * (y_nse / 10))[:, None] / sigma2
+    # complete normal distribution PDF log_sigma * y_nse
+    # add log prior dt**2 / 4 / sigma2 + 2 * log_sigma
+    # account for the bounded sampling of y np.log(y_integrated) * y_nse
+    log_pdf -= np.log(y_integrated) * y_nse + log_sigma * (y_nse + 2) + dt**2 / 4 / sigma2
     # to prevent numerical overflow
     log_pdf -= log_pdf.max()
     log_pdf += maxexp
