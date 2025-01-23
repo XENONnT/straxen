@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 class nVETOEvents(strax.OverlapWindowPlugin):
     """Plugin which computes the boundaries of veto events."""
 
-    __version__ = "0.1.0"
+    __version__ = "0.1.1"
 
     depends_on = "hitlets_nv"
     provides = "events_nv"
@@ -50,7 +50,7 @@ class nVETOEvents(strax.OverlapWindowPlugin):
     def get_window_size(self):
         return self.event_left_extension_nv + self.event_resolving_time_nv + 1
 
-    def compute(self, hitlets_nv, start, end):
+    def compute(self, hitlets_nv):
         events, hitlets_ids_in_event = find_veto_events(
             hitlets_nv,
             self.event_min_hits_nv,
@@ -139,9 +139,7 @@ def compute_nveto_event_properties(
             if e["n_hits"] > 1 and e["center_time"]:
                 w = hitlets_in_event["area"] / e["area"]  # normalized weights
                 # Definition of variance
-                e["center_time_spread"] = np.sqrt(
-                    np.sum(w * np.power(t - e["center_time"], 2)) / np.sum(w)
-                )
+                e["center_time_spread"] = np.sqrt(np.sum(w * np.power(t - e["center_time"], 2)))
             else:
                 e["center_time_spread"] = np.inf
 
