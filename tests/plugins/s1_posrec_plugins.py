@@ -10,7 +10,7 @@ from straxen.plugins.peaklets._peaklet_positions_base import PeakletPositionsBas
 def test_posrec_set_path(
     self,
     target="event_s1_positions_cnn",
-    config_name="tf_event_model_s1_cnn",
+    config_name="tf_model_s1_cnn",
     field="event_x_s1_cnn",
 ):
     """Test that we can reconstruct even if we set a hardcoded path."""
@@ -46,7 +46,7 @@ def test_posrec_set_path(
 def test_posrec_set_to_none(
     self,
     target="event_s1_positions_cnn",
-    config_name="tf_event_model_s1_cnn",
+    config_name="tf_model_s1_cnn",
     field="event_x_s1_cnn",
 ):
     """Test that we can set the config to None, giving only nan results."""
@@ -60,7 +60,7 @@ def test_posrec_set_to_none(
 def test_posrec_bad_configs_raising_errors(
     self,
     target="event_s1_positions_cnn",
-    config_name="tf_event_model_s1_cnn",
+    config_name="tf_model_s1_cnn",
 ):
     """Test that we get the right errors when we set invalid options."""
     dummy_st = self.st.new_context()

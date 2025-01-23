@@ -6,6 +6,7 @@ from strax.testutils import fake_hits
 import straxen
 from straxen.plugins.peaklets.peaklets import get_tight_coin
 from straxen.plugins.peaklets.peaklet_classification_som import compute_wf_attributes
+from straxen.test_utils import nt_test_run_id
 
 
 def get_filled_peaks(peak_length, data_length, n_widths):
@@ -55,8 +56,8 @@ def test_create_outside_peaks_region(time):
     time_intervals["length"] = time[1::2] - time[::2]
     time_intervals["dt"] = 1
 
-    st = straxen.test_utils.nt_test_context()
-    p = st.get_single_plugin("0", "peaklets")
+    st = straxen.contexts.xenonnt_online()
+    p = st.get_single_plugin(nt_test_run_id, "peaklets")
     outside = p.create_outside_peaks_region(time_intervals, 0, np.max(time))
 
     touching = strax.touching_windows(outside, time_intervals, window=0)
@@ -79,7 +80,7 @@ def test_n_hits():
 
     st = straxen.contexts.xenonnt_online()
     st.set_config({"hit_min_amplitude": 1})
-    p = st.get_single_plugin("0", "peaklets")
+    p = st.get_single_plugin(nt_test_run_id, "peaklets")
     res = p.compute(records, 0, 999)
     peaklets = res["peaklets"]
     assert peaklets["n_hits"] == 3, f"Peaklet has the wrong number of hits!"
