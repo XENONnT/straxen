@@ -1,11 +1,12 @@
+import os
+import re
+import json
+from bson import json_util
+import shutil
 import socket
 import unittest
 import strax
-import os
 import straxen
-import shutil
-import json
-from bson import json_util
 
 
 class TestRucioLocal(unittest.TestCase):
@@ -175,7 +176,10 @@ class TestBasics(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No DB access")
     @unittest.skipIf(
-        socket.getfqdn() in straxen.RucioLocalFrontend.local_rses,
+        any(
+            re.search(socket.getfqdn(), v) is not None
+            for v in straxen.RucioLocalFrontend.local_rses.values()
+        ),
         "Testing useless frontends only works on hosts where it's not supposed to work",
     )
     def test_useless_frontend(self):
