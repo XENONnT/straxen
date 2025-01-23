@@ -60,19 +60,19 @@ class CorrectedAreas(strax.Plugin):
 
     # se gain for this run, allowing for using CMT. default to online
     se_gain = straxen.URLConfig(
-        default="objects-to-dict://"
+        default="take://objects-to-dict://"
         "xedocs://se_gains"
-        "?partition=ab&partition=cd&run_id=plugin.run_id"
-        "&sort=partition&as_list=True&key_attr=partition&value_attr=value&version=ONLINE",
+        "?partition=all_tpc&run_id=plugin.run_id&sort=partition"
+        "&as_list=True&key_attr=partition&value_attr=value&take=all_tpc&version=ONLINE",
         help="Actual SE gain for a given run (allows for time dependence)",
     )
 
     # relative extraction efficiency which can change with time and modeled by CMT.
     rel_extraction_eff = straxen.URLConfig(
-        default="objects-to-dict://"
+        default="take://objects-to-dict://"
         "xedocs://rel_extraction_effs"
-        "?partition=ab&partition=cd&run_id=plugin.run_id"
-        "&sort=partition&as_list=True&key_attr=partition&value_attr=value&version=ONLINE",
+        "?partition=all_tpc&run_id=plugin.run_id&sort=partition"
+        "&as_list=True&key_attr=partition&value_attr=value&take=all_tpc&version=ONLINE",
         help="Relative extraction efficiency for this run (allows for time dependence)",
     )
 
