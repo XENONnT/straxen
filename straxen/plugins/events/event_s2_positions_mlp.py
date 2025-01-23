@@ -13,7 +13,7 @@ class EventS2PositionMLP(EventS2PositionBase):
     algorithm = "mlp"
     provides = "event_s2_positions_mlp"
 
-    tf_event_model_mlp = straxen.URLConfig(
+    tf_model_mlp = straxen.URLConfig(
         default=(
             "tf://"
             "resource://"
