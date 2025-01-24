@@ -1,6 +1,7 @@
 import numpy as np
 from hypothesis import given, strategies, settings
 import hypothesis.strategies as strat
+import unittest
 import strax
 from strax.testutils import fake_hits
 import straxen
@@ -43,13 +44,12 @@ def get_filled_peaks(peak_length, data_length, n_widths):
     return peaks
 
 
-@settings(deadline=None)
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+@settings(deadline=None, max_examples=5)
 @given(
     strat.lists(strat.integers(min_value=0, max_value=10), min_size=8, max_size=8, unique=True),
 )
 def test_create_outside_peaks_region(time):
-    if not straxen.utilix_is_configured():
-        return
     time = strax.stable_sort(time)
     time_intervals = np.zeros(len(time) // 2, strax.time_dt_fields)
     time_intervals["time"] = time[::2]
@@ -67,9 +67,8 @@ def test_create_outside_peaks_region(time):
         assert np.diff(tw) == 0, "Intervals overlap although they should not!"
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_n_hits():
-    if not straxen.utilix_is_configured():
-        return
     records = np.zeros(2, dtype=strax.record_dtype())
     records["length"] = 5
     records["pulse_length"] = 5

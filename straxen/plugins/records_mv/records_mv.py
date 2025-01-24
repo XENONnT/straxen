@@ -42,9 +42,7 @@ class muVETOPulseProcessing(nVETOPulseProcessing):
         track=True,
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_mveto_pmts, or a number, "
-            "or a tuple like (correction=str, version=str, nT=boolean),"
-            "which means we are using cmt."
+            "Specify as a tuple of length n_mveto_pmts, or a number."
         ),
     )
 

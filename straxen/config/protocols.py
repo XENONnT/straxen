@@ -9,7 +9,7 @@ import fsspec
 import straxen
 import tarfile
 import tempfile
-from typing import Container, Iterable, Optional
+from typing import Container, Iterable
 
 import numpy as np
 
@@ -24,18 +24,6 @@ def get_item_or_attr(obj, key, default=None):
     if isinstance(obj, dict):
         return obj.get(key, default)
     return getattr(obj, key, default)
-
-
-@URLConfig.register("cmt")
-def get_correction(
-    name: str, run_id: Optional[str] = None, version: str = "ONLINE", detector: str = "nt", **kwargs
-):
-    """Get value for name from CMT."""
-
-    if run_id is None:
-        raise ValueError("Attempting to fetch a correction without a run_id.")
-
-    return straxen.get_correction_from_cmt(run_id, (name, version, detector == "nt"))
 
 
 @URLConfig.register("resource")
