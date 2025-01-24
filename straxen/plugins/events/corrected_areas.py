@@ -58,7 +58,7 @@ class CorrectedAreas(strax.Plugin):
         "Data will be corrected to this value",
     )
 
-    # se gain for this run, allowing for using CMT. default to online
+    # se gain for this run, allowing for using xedocs. default to online
     se_gain = straxen.URLConfig(
         default="take://objects-to-dict://"
         "xedocs://se_gains"
@@ -67,7 +67,7 @@ class CorrectedAreas(strax.Plugin):
         help="Actual SE gain for a given run (allows for time dependence)",
     )
 
-    # relative extraction efficiency which can change with time and modeled by CMT.
+    # relative extraction efficiency which can change with time and modeled by xedocs.
     rel_extraction_eff = straxen.URLConfig(
         default="take://objects-to-dict://"
         "xedocs://rel_extraction_effs"

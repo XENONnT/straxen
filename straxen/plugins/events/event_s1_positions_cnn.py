@@ -15,14 +15,14 @@ class EventS1PositionCNN(EventS1PositionBase):
 
     tf_model_s1_cnn = straxen.URLConfig(
         default=(
-            f"tf://"
-            f"resource://"
-            f"xedocs://posrec_models"
-            f"?version=ONLINE"
-            f"&run_id=plugin.run_id"
-            f"&kind=s1_cnn"
-            f"&fmt=abs_path"
-            f"&attr=value"
+            "tf://"
+            "resource://"
+            "xedocs://posrec_models"
+            "?version=ONLINE"
+            "&run_id=plugin.run_id"
+            "&kind=s1_cnn"
+            "&fmt=abs_path"
+            "&attr=value"
         ),
         help=(
             's1 position 3d reconstruction cnn model. Should be opened using the "tf" descriptor. '

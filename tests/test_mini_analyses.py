@@ -220,7 +220,7 @@ class TestMiniAnalyses(unittest.TestCase):
         )
 
     def test_event_display(self):
-        """Event display plot, needs CMT."""
+        """Event display plot, needs xedocs."""
         self.st.event_display(nt_test_run_id, time_within=self.first_event)
 
     def test_event_display_no_rr(self):
