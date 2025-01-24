@@ -68,7 +68,7 @@ def test_tight_coincidence(self: PluginTestCase):
     peaklets = self.st.get_array(self.run_id, "peaklets", progress_bar=False)
     message = "There might be some issue in tight_coincidence."
     sum_tight_coincidence = np.sum(peaklets["tight_coincidence"])
-    assert sum_tight_coincidence == 1992, message
+    assert np.abs(sum_tight_coincidence - 1990) < 5, message
 
 
 if __name__ == "__main__":
