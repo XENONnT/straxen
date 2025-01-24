@@ -20,12 +20,12 @@ def test_posrec_set_path(
 
     # Get current config
     plugin = self.st.get_single_plugin(self.run_id, target)
-    cmt_config = plugin.config[config_name]
-    cmt_config_without_tf = cmt_config.replace("tf://", "")
+    config = plugin.config[config_name]
+    config_without_tf = config.replace("tf://", "")
 
     # Hack URLConfigs to give back intermediate results (this should be easier..)
     st_fixed_path = self.st.new_context()
-    st_fixed_path.set_config({config_name: cmt_config_without_tf})
+    st_fixed_path.set_config({config_name: config_without_tf})
     plugin_fixed = st_fixed_path.get_single_plugin(self.run_id, target)
     file_name = getattr(plugin_fixed, config_name)
     self.assertTrue(os.path.exists(file_name))
