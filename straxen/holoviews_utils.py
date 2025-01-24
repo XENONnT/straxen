@@ -433,7 +433,7 @@ class nVETOEventDisplay:
         """Function which creates title test in markdown format."""
         start = self.df_event_time.loc[ind, "time"]
         date = np.datetime_as_string(start.astype("<M8[ns]"), unit="s")
-        start_ns = start - (start // 10**9) * 10**9
+        start_ns = start - (start // straxen.units.s) * straxen.units.s
         end = self.df_event_time.loc[ind, "endtime"]
         end_ns = end - start + start_ns
         return "".join(

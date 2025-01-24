@@ -27,7 +27,7 @@ def test_sum_wf(self: PluginTestCase):
     np.testing.assert_array_almost_equal(
         peaks["area_fraction_top"],
         np.sum(peaks["data_top"], axis=1) / np.sum(peaks["data"], axis=1),
-        # TODO rather high tolerance is needed to pass the test -> possible bug?
+        # TODO: rather high tolerance is needed to pass the test -> possible bug?
         decimal=4,
     )
 
@@ -56,7 +56,7 @@ def test_saturation_correction(self: PluginTestCase):
         records=records["records"], start=np.min(rr["time"]), end=np.max(strax.endtime(rr))
     )
     assert len(peaklets)
-    # TODO add more tests to see if results make sense
+    # TODO: add more tests to see if results make sense
 
 
 @PluginTestAccumulator.register("test_tight_coincidence")
