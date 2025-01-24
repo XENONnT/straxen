@@ -133,7 +133,15 @@ def open_resource(file_name: str, fmt="text"):
         if isinstance(result, np.lib.npyio.NpzFile):
             # Slurp the arrays in the file, so the result can be copied,
             # then close the file so its descriptors does not leak.
-            result_slurped = {k: v[:] for k, v in result.items()}
+            result_slurped = {}
+            for k, v in result.items():
+                try:
+                    # Attempt to copy the array if it's an array-like object
+                    result_slurped[k] = v[:] if hasattr(v, "__getitem__") else v
+                except Exception as e:
+                    # Log or handle the error if something goes wrong
+                    print(f"Error processing key '{k}': {e}")
+                    result_slurped[k] = v  # Keep the original object
             result.close()
             result = result_slurped
     elif fmt == "pkl":
