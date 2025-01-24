@@ -212,7 +212,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
 @export
 class RucioSaver(strax.Saver):
-    """TODO Saves data to rucio if you are the production user."""
+    """TODO: Saves data to rucio if you are the production user."""
 
     def __init__(self, *args, **kwargs):
         raise NotImplementedError
