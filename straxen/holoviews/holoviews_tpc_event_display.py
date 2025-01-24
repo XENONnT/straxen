@@ -165,7 +165,7 @@ class InteractiveTPCEventDisplay:
         s2_plot = pmt_array.plot_pmt_array(
             self._s2,
             label="S2",
-            logz=True,  # TODO make me optional?
+            logz=True,  # TODO: make me optional?
             **pattern_ops,
         )
         s2_point = hv.Points(
@@ -178,7 +178,7 @@ class InteractiveTPCEventDisplay:
             alt_s2_plot = pmt_array.plot_pmt_array(
                 self._alt_s2,
                 label="alt. S2",
-                logz=True,  # TODO make me optional?
+                logz=True,  # TODO: make me optional?
                 **pattern_ops,
             )
             alt_s2_point = hv.Points(

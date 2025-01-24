@@ -24,7 +24,7 @@ class EventBasicsVanilla(strax.Plugin):
     data_kind = "events"
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
@@ -94,6 +94,26 @@ class EventBasicsVanilla(strax.Plugin):
                 f"alt_s1_min_diff",
                 np.int32,
                 f"Alternate S1 smallest time difference between apexes of hits [ns]",
+            ),
+            (
+                f"s1_first_channel",
+                np.int16,
+                f"Main S1 first channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"alt_s1_first_channel",
+                np.int16,
+                f"Alternate S1 first channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"s1_last_channel",
+                np.int16,
+                f"Main S1 last channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"alt_s1_last_channel",
+                np.int16,
+                f"Alternate last channel/PMT number (sorted by apexes of hits)",
             ),
         ]
 
@@ -274,7 +294,12 @@ class EventBasicsVanilla(strax.Plugin):
             for largest_index, main_or_alt in enumerate(["s", "alt_s"]):
                 peak_properties_to_save = [name for name, _, _ in self.peak_properties]
                 if s_i == 1:
-                    peak_properties_to_save += ["max_diff", "min_diff"]
+                    peak_properties_to_save += [
+                        "max_diff",
+                        "min_diff",
+                        "first_channel",
+                        "last_channel",
+                    ]
                 elif s_i == 2:
                     peak_properties_to_save += ["x", "y"]
                     peak_properties_to_save += self.posrec_save

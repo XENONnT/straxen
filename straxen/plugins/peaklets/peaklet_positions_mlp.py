@@ -20,10 +20,12 @@ class PeakletPositionsMLP(PeakletPositionsBase):
         default=(
             "keras3://"
             "resource://"
-            f"cmt://{algorithm}_model"
-            "?version=ONLINE"
-            "&run_id=plugin.run_id"
+            "xedocs://posrec_models"
+            "?attr=value"
             "&fmt=abs_path"
+            "&kind=mlp"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
         ),
         help=(
             'MLP model. Should be opened using the "keras3" descriptor. '
