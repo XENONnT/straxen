@@ -317,4 +317,3 @@ def get_run_start(run_id):
     start_time_unix = start_time.replace(tzinfo=pytz.utc).timestamp()
     start_time_unix = np.int64(start_time_unix) * straxen.units.s
     return start_time_unix
-
