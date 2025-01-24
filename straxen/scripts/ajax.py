@@ -41,8 +41,7 @@ ajax_thresholds = {
     # this many seconds ago to e.g. allow for saving et cetera
     "wait_after_processing": 12 * 3600,  # s
     # Remove high level plugins if the run is this old
-    # TODO
-    # change the value to a different one
+    # TODO: change the value to a different one
     "remove_high_level_data": 365 * 24 * 3600,  # s
     # Minimum time for restarting ajax to check for new stuff to clean (essentially the
     # timeout)

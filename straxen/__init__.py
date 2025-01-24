@@ -4,10 +4,6 @@ __version__ = "3.0.2"
 from utilix import uconfig
 from .common import *
 
-# contexts.py below
-from .corrections_services import *
-from .get_corrections import *
-
 from .itp_map import *
 from .matplotlib_utils import *
 from .mini_analysis import *

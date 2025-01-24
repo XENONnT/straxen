@@ -58,26 +58,3 @@ def test_nt_is_nt_online():
         nt_key = st.key_for("0", plugin)
         nt_online_key = st_online.key_for("0", plugin)
         assert str(nt_key) == str(nt_online_key)
-
-
-@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_cmt_versions():
-    """Let's try and see which CMT versions are compatible with this straxen version."""
-    cmt = straxen.CorrectionsManagementServices()
-    cmt_versions = list(cmt.global_versions)[::-1]
-    print(cmt_versions)
-    success_for = []
-    for global_version in cmt_versions:
-        try:
-            xenonnt(global_version)
-            success_for.append(global_version)
-        except straxen.CMTVersionError:
-            pass
-    print(
-        f"This straxen version works with {success_for} but is "
-        f"incompatible with {set(cmt_versions) - set(success_for)}"
-    )
-
-    test = unittest.TestCase()
-    # We should always work for the online version
-    test.assertTrue(len(success_for) >= 1)

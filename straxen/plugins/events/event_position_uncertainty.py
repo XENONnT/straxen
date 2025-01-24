@@ -61,9 +61,11 @@ class EventPositionContour(strax.Plugin):
     )
 
     fdc_map = straxen.URLConfig(
+        default="xedocs://fdc_maps"
+        "?algorithm=plugin.default_reconstruction_algorithm&run_id=plugin.run_id"
+        "&attr=map&scale_coordinates=plugin.coordinate_scale&version=ONLINE",
         infer_type=False,
         help="3D field distortion correction map path",
-        default="legacy-fdc://xenon1t_sr0_sr1?run_id=plugin.run_id",
     )
 
     use_fdc_for_contour = straxen.URLConfig(

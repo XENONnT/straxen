@@ -9,7 +9,7 @@ import fsspec
 import straxen
 import tarfile
 import tempfile
-from typing import Container, Iterable, Optional
+from typing import Container, Iterable
 
 import numpy as np
 
@@ -24,18 +24,6 @@ def get_item_or_attr(obj, key, default=None):
     if isinstance(obj, dict):
         return obj.get(key, default)
     return getattr(obj, key, default)
-
-
-@URLConfig.register("cmt")
-def get_correction(
-    name: str, run_id: Optional[str] = None, version: str = "ONLINE", detector: str = "nt", **kwargs
-):
-    """Get value for name from CMT."""
-
-    if run_id is None:
-        raise ValueError("Attempting to fetch a correction without a run_id.")
-
-    return straxen.get_correction_from_cmt(run_id, (name, version, detector == "nt"))
 
 
 @URLConfig.register("resource")
@@ -311,3 +299,21 @@ def open_jax_model(model_path: str, **kwargs):
         serialized_jax_object = file_obj.read()
     # Deserialize the JAX object and return its callable function
     return export.deserialize(serialized_jax_object).call
+
+
+@URLConfig.register("runstart")
+def get_run_start(run_id):
+    """Protocol which returns start time of a given run as unix time in ns."""
+    import pytz
+
+    rundb = utilix.xent_collection()
+    doc = rundb.find_one(
+        {"number": int(run_id)},
+        projection={
+            "start": 1,
+        },
+    )
+    start_time = doc["start"]
+    start_time_unix = start_time.replace(tzinfo=pytz.utc).timestamp()
+    start_time_unix = np.int64(start_time_unix) * straxen.units.s
+    return start_time_unix

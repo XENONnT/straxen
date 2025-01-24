@@ -54,9 +54,7 @@ class nVETOHitlets(strax.Plugin):
         track=True,
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_nveto_pmts, or a number, "
-            "or a tuple like (correction=str, version=str, nT=boolean), "
-            "which means we are using cmt."
+            "Specify as a tuple of length n_nveto_pmts, or a number."
         ),
     )
 
@@ -110,8 +108,7 @@ class nVETOHitlets(strax.Plugin):
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0] :] = to_pe[:]
 
-        # Check config of `hit_min_amplitude_nv` and define hit thresholds
-        # if cmt config
+        # Assign attribute that might be used in daughter classes:
         self.hit_thresholds = self.hit_min_amplitude_nv
 
     def compute(self, records_nv, start, end):

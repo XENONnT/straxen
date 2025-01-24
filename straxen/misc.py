@@ -228,11 +228,11 @@ class TimeWidgets:
         start, start_ns = self._convert_to_datetime(self._start_widget, time_zone)
         start = start.astimezone(tz=pytz.UTC)
         start = start.timestamp()
-        start = int(start * 10**9) + start_ns
+        start = int(start * straxen.units.s) + start_ns
         end, end_ns = self._convert_to_datetime(self._end_widget, time_zone)
         end = end.astimezone(tz=pytz.UTC)
         end = end.timestamp()
-        end = int(end * 10**9) + end_ns
+        end = int(end * straxen.units.s) + end_ns
 
         if start > end:
             warnings.warn("Start time is larger than endtime are you sure you wanted this?")
