@@ -1,5 +1,6 @@
 import strax
 import numpy as np
+from straxen.plugins.peaklets.peaklet_classification_som import som_additional_fields
 from straxen.plugins.peaks.peaks_vanilla import PeaksVanilla
 
 export, __all__ = strax.exporter()
@@ -16,25 +17,12 @@ class PeaksSOM(PeaksVanilla):
     __version__ = "0.0.1"
     child_plugin = True
 
-    def infer_dtype(self):
-        peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
-            "peaklet_classification"
-        )
-        peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
-        # The merged dtype is argument position dependent!
-        # It must be first classification then peaklet
-        # Otherwise strax will raise an error when checking for the returned dtype!
-        merged_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
-        return merged_dtype
-
     def compute(self, peaklets, merged_s2s):
-        result = super().compute(peaklets, merged_s2s)
-
-        # For merged_s2s SOM and straxen type are undefined:
-        _is_merged_s2 = np.isin(result["time"], merged_s2s["time"]) & np.isin(
-            strax.endtime(result), strax.endtime(merged_s2s)
+        som_additional = np.zeros(
+            len(merged_s2s), dtype=strax.to_numpy_dtype(som_additional_fields)
         )
-        result["vanilla_type"][_is_merged_s2] = -1
-        result["som_sub_type"][_is_merged_s2] = -1
-
-        return result
+        strax.set_nan_defaults(som_additional)
+        # make sure _merged_s2s and peaklets have same dtype
+        _merged_s2s = strax.merge_arrs([merged_s2s, som_additional], dtype=peaklets.dtype)
+        peaks = super().compute(peaklets, _merged_s2s)
+        return peaks

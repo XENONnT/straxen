@@ -34,7 +34,13 @@ class RucioRemoteFrontend(strax.StorageFrontend):
     path = None
 
     def __init__(
-        self, download_heavy=False, staging_dir="./strax_data", rses_only=tuple(), *args, **kwargs
+        self,
+        download_heavy=False,
+        stage=False,
+        staging_dir="./strax_data",
+        rses_only=tuple(),
+        *args,
+        **kwargs,
     ):
         """
         :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
@@ -49,7 +55,9 @@ class RucioRemoteFrontend(strax.StorageFrontend):
 
         if HAVE_ADMIX:
             self.backends = [
-                RucioRemoteBackend(staging_dir, download_heavy=download_heavy, rses_only=rses_only),
+                RucioRemoteBackend(
+                    staging_dir, download_heavy=download_heavy, stage=stage, rses_only=rses_only
+                ),
             ]
         else:
             self.log.warning(
@@ -95,7 +103,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     # for caching RSE locations
     dset_cache: Dict[str, str] = {}
 
-    def __init__(self, staging_dir, download_heavy=False, rses_only=tuple(), **kwargs):
+    def __init__(self, staging_dir, download_heavy=False, stage=False, rses_only=tuple(), **kwargs):
         """
         :param staging_dir: Path (a string) where to save data. Must be
             a writable location.
@@ -119,6 +127,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         super().__init__(**kwargs)
         self.staging_dir = staging_dir
         self.download_heavy = download_heavy
+        self.stage = stage
         self.rses_only = strax.to_str_tuple(rses_only)
 
     def _get_rse(self, dset_did, **filters):
@@ -143,7 +152,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             self.dset_cache[dset_did] = rse
 
         metadata_did = strax.RUN_METADATA_PATTERN % dset_did
-        downloaded = admix.download(metadata_did, rse=rse, location=self.staging_dir)
+        downloaded = admix.download(
+            metadata_did, rse=rse, location=self.staging_dir, stage=self.stage
+        )
         if len(downloaded) != 1:
             raise ValueError(f"{metadata_did} should be a single file. We found {len(downloaded)}.")
         metadata_path = downloaded[0]
@@ -178,7 +189,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 rse = self._get_rse(dset_did)
                 self.dset_cache[dset_did] = rse
 
-            downloaded = admix.download(chunk_did, rse=rse, location=self.staging_dir)
+            downloaded = admix.download(
+                chunk_did, rse=rse, location=self.staging_dir, stage=self.stage
+            )
             if len(downloaded) != 1:
                 raise ValueError(
                     f"{chunk_did} should be a single file. We found {len(downloaded)}."
@@ -199,7 +212,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
 @export
 class RucioSaver(strax.Saver):
-    """TODO Saves data to rucio if you are the production user."""
+    """TODO: Saves data to rucio if you are the production user."""
 
     def __init__(self, *args, **kwargs):
         raise NotImplementedError

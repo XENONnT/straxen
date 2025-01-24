@@ -42,7 +42,13 @@ class PeaksVanilla(strax.Plugin):
     )
 
     def infer_dtype(self):
-        return self.deps["peaklets"].dtype_for("peaklets")
+        # In case peaklet_classification has more fields than peaklets, we need to merge them
+        peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
+        peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
+            "peaklet_classification"
+        )
+        merged_dtype = strax.merged_dtype((peaklets_dtype, peaklet_classification_dtype))
+        return merged_dtype
 
     def compute(self, peaklets, merged_s2s):
         # Remove fake merged S2s from dirty hack, see above
@@ -50,22 +56,22 @@ class PeaksVanilla(strax.Plugin):
 
         if self.merge_without_s1:
             is_s1 = peaklets["type"] == 1
-            peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s)
-            peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1], peaks]))
+            _peaks = strax.replace_merged(peaklets[~is_s1], merged_s2s)
+            _peaks = strax.sort_by_time(np.concatenate([peaklets[is_s1], _peaks]))
         else:
-            peaks = strax.replace_merged(peaklets, merged_s2s)
+            _peaks = strax.replace_merged(peaklets, merged_s2s)
 
         if self.diagnose_sorting:
-            assert np.all(np.diff(peaks["time"]) >= 0), "Peaks not sorted"
+            assert np.all(np.diff(_peaks["time"]) >= 0), "Peaks not sorted"
             if self.merge_without_s1:
-                to_check = peaks["type"] != 1
+                to_check = _peaks["type"] != 1
             else:
-                to_check = peaks["type"] != FAKE_MERGED_S2_TYPE
+                to_check = _peaks["type"] != FAKE_MERGED_S2_TYPE
 
             assert np.all(
-                peaks["time"][to_check][1:] >= strax.endtime(peaks)[to_check][:-1]
+                _peaks["time"][to_check][1:] >= strax.endtime(_peaks)[to_check][:-1]
             ), "Peaks not disjoint"
 
-        result = np.zeros(len(peaks), dtype=self.dtype)
-        strax.copy_to_buffer(peaks, result, f"_copy_requested_{self.provides[0]}_fields")
-        return result
+        peaks = np.zeros(len(_peaks), dtype=self.dtype)
+        strax.copy_to_buffer(_peaks, peaks, f"_copy_requested_{self.provides[0]}_fields")
+        return peaks

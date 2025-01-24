@@ -54,9 +54,7 @@ class nVETOHitlets(strax.Plugin):
         track=True,
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_nveto_pmts, or a number, "
-            "or a tuple like (correction=str, version=str, nT=boolean), "
-            "which means we are using cmt."
+            "Specify as a tuple of length n_nveto_pmts, or a number."
         ),
     )
 
@@ -82,11 +80,20 @@ class nVETOHitlets(strax.Plugin):
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
-        help="immutabledict mapping subdetector to (min, max) " "channel number.",
+        help="immutabledict mapping subdetector to (min, max) channel number.",
     )
 
     gain_model_nv = straxen.URLConfig(
-        default="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id",
+        default=(
+            "list-to-array://"
+            "xedocs://pmt_area_to_pes"
+            "?as_list=True"
+            "&sort=pmt"
+            "&detector=neutron_veto"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+            "&attr=value"
+        ),
         infer_type=False,
         help="PMT gain model. Specify as (model_type, model_config, nT = True)",
     )
@@ -101,8 +108,7 @@ class nVETOHitlets(strax.Plugin):
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0] :] = to_pe[:]
 
-        # Check config of `hit_min_amplitude_nv` and define hit thresholds
-        # if cmt config
+        # Assign attribute that might be used in daughter classes:
         self.hit_thresholds = self.hit_min_amplitude_nv
 
     def compute(self, records_nv, start, end):

@@ -55,7 +55,7 @@ class nVETORecorder(strax.Plugin):
     baseline_software_trigger_samples_nv = straxen.URLConfig(
         infer_type=False,
         default=26,
-        track=False,
+        track=True,
         help="Number of samples used in baseline rms calculation",
     )
 
@@ -79,14 +79,21 @@ class nVETORecorder(strax.Plugin):
         help="Crash if any of the pulses in raw_records overlap with others in the same channel",
     )
 
-    keep_n_chunks_for_monitoring = straxen.URLConfig(
-        default=5,
+    keep_n_seconds_for_monitoring = straxen.URLConfig(
+        default=10,
         track=False,
         infer_type=False,
         help=(
-            "How many chunks at a begining of a run should be "
-            "kept to monitor the detector performance."
+            "Number of seconds which should be stored without applying the software trigger."
+            "Use -1 if all records should be kept without applying the software trigger."
         ),
+    )
+
+    run_start = straxen.URLConfig(
+        default="runstart://plugin.run_id?",
+        track=False,
+        infer_type=False,
+        help="Returns run start in utc unix time in ns.",
     )
 
     def setup(self):
@@ -111,15 +118,20 @@ class nVETORecorder(strax.Plugin):
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_nv, start, end, chunk_i):
+
+        if not len(raw_records_nv):
+            rr = raw_records_nv
+            lrs = np.zeros(0, dtype=self.dtype["lone_raw_record_statistics_nv"])
+            return {
+                "raw_records_coin_nv": rr,
+                "lone_raw_record_statistics_nv": lrs,
+            }
+
         if self.check_raw_record_overlaps_nv:
             straxen.check_overlaps(raw_records_nv, n_channels=3000)
 
-        # Cover the case if we do not want to have any coincidence
-        # Keep all raw data for the very first 5 chunks of data for
-        # monitoring purposes.
-        _keep_all_raw_records = (self.coincidence_level_recorder_nv <= 1) or (
-            chunk_i < self.keep_n_chunks_for_monitoring
-        )
+        # Cover the case if we do not want to have any coincidence:
+        _keep_all_raw_records = self.keep_n_seconds_for_monitoring == -1
         if _keep_all_raw_records:
             rr = raw_records_nv
             lrs = np.zeros(0, dtype=self.dtype["lone_raw_record_statistics_nv"])
@@ -127,6 +139,30 @@ class nVETORecorder(strax.Plugin):
                 "raw_records_coin_nv": rr,
                 "lone_raw_record_statistics_nv": lrs,
             }
+
+        # Keep all raw data for the very first n seconds of a run.
+        # This case is tricky since it can also be just a
+        # subset of a chunk and in this case we need to make sure to also keep
+        # all fragments of a pulse beyond the first n seconds boundary.
+        # For performance check very first fragment if in applicable time range:
+        _need_save_for_monitoring = raw_records_nv[0]["time"] < (
+            self.run_start + self.keep_n_seconds_for_monitoring * straxen.units.s
+        )
+        raw_records_to_keep_without_trigger = np.zeros(0, dtype=raw_records_nv.dtype)
+
+        if _need_save_for_monitoring:
+            len_data = len(raw_records_nv[0]["data"])
+            # Now compute all pulse starts to make sure that all fragments of a pulse are saved:
+            pulse_starts = raw_records_nv["time"] - (
+                raw_records_nv["record_i"] * len_data * raw_records_nv["dt"]
+            )
+            _pulse_is_in_first_n_seconds = pulse_starts < (
+                self.run_start + self.keep_n_seconds_for_monitoring * straxen.units.s
+            )
+
+            # Now divide the data:
+            raw_records_to_keep_without_trigger = raw_records_nv[_pulse_is_in_first_n_seconds]
+            raw_records_nv = raw_records_nv[~_pulse_is_in_first_n_seconds]
 
         # Search for hits to define coincidence intervals:
         temp_records = strax.raw_to_records(raw_records_nv)
@@ -190,6 +226,10 @@ class nVETORecorder(strax.Plugin):
         lrs, lr = compute_lone_records(lr, self.channel_map["nveto"], 0)
         lrs["time"] = start
         lrs["endtime"] = end
+
+        # Now combine results of with and without software trigger:
+        if _need_save_for_monitoring:
+            rr = np.concatenate([raw_records_to_keep_without_trigger, rr])
 
         return {
             "raw_records_coin_nv": rr,
@@ -325,7 +365,7 @@ def pulse_in_interval(raw_records, record_links, start_times, end_times):
 
     """
     nrr = len(raw_records)
-    result = np.zeros(nrr, bool)
+    result = np.zeros(nrr, np.bool_)
 
     last_interval_seen = 0
     for ind, rr in enumerate(raw_records):

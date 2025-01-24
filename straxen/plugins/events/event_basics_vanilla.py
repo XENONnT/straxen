@@ -24,7 +24,7 @@ class EventBasicsVanilla(strax.Plugin):
     data_kind = "events"
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
@@ -94,6 +94,26 @@ class EventBasicsVanilla(strax.Plugin):
                 f"alt_s1_min_diff",
                 np.int32,
                 f"Alternate S1 smallest time difference between apexes of hits [ns]",
+            ),
+            (
+                f"s1_first_channel",
+                np.int16,
+                f"Main S1 first channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"alt_s1_first_channel",
+                np.int16,
+                f"Alternate S1 first channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"s1_last_channel",
+                np.int16,
+                f"Main S1 last channel/PMT number (sorted by apexes of hits)",
+            ),
+            (
+                f"alt_s1_last_channel",
+                np.int16,
+                f"Alternate last channel/PMT number (sorted by apexes of hits)",
             ),
         ]
 
@@ -173,34 +193,34 @@ class EventBasicsVanilla(strax.Plugin):
         self.pos_rec_labels = list(set(posrec_names))
         self.pos_rec_labels.sort()
 
-        self.posrec_save = [(xy + algo) for xy in ["x_", "y_"] for algo in self.pos_rec_labels]
+        self.posrec_save = [(xy + alg) for xy in ["x_", "y_"] for alg in self.pos_rec_labels]
 
     def _get_posrec_dtypes(self):
         """Get S2 positions for each of the position reconstruction algorithms."""
         posrec_dtpye = []
 
-        for algo in self.pos_rec_labels:
+        for alg in self.pos_rec_labels:
             # S2 positions
             posrec_dtpye += [
                 (
-                    f"s2_x_{algo}",
+                    f"s2_x_{alg}",
                     np.float32,
-                    f"Main S2 {algo}-reconstructed X position, uncorrected [cm]",
+                    f"Main S2 {alg}-reconstructed X position, uncorrected [cm]",
                 ),
                 (
-                    f"s2_y_{algo}",
+                    f"s2_y_{alg}",
                     np.float32,
-                    f"Main S2 {algo}-reconstructed Y position, uncorrected [cm]",
+                    f"Main S2 {alg}-reconstructed Y position, uncorrected [cm]",
                 ),
                 (
-                    f"alt_s2_x_{algo}",
+                    f"alt_s2_x_{alg}",
                     np.float32,
-                    f"Alternate S2 {algo}-reconstructed X position, uncorrected [cm]",
+                    f"Alternate S2 {alg}-reconstructed X position, uncorrected [cm]",
                 ),
                 (
-                    f"alt_s2_y_{algo}",
+                    f"alt_s2_y_{alg}",
                     np.float32,
-                    f"Alternate S2 {algo}-reconstructed Y position, uncorrected [cm]",
+                    f"Alternate S2 {alg}-reconstructed Y position, uncorrected [cm]",
                 ),
             ]
 
@@ -274,7 +294,12 @@ class EventBasicsVanilla(strax.Plugin):
             for largest_index, main_or_alt in enumerate(["s", "alt_s"]):
                 peak_properties_to_save = [name for name, _, _ in self.peak_properties]
                 if s_i == 1:
-                    peak_properties_to_save += ["max_diff", "min_diff"]
+                    peak_properties_to_save += [
+                        "max_diff",
+                        "min_diff",
+                        "first_channel",
+                        "last_channel",
+                    ]
                 elif s_i == 2:
                     peak_properties_to_save += ["x", "y"]
                     peak_properties_to_save += self.posrec_save

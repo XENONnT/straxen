@@ -39,7 +39,7 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
-    __version__ = "1.2.1"
+    __version__ = "1.2.2"
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False, help="No hits for this many ns triggers a new peak"
@@ -150,15 +150,22 @@ class Peaklets(strax.Plugin):
     )
 
     hit_min_amplitude = straxen.URLConfig(
+        default=(
+            "list-to-array://"
+            "xedocs://hit_thresholds"
+            "?as_list=True"
+            "&sort=pmt"
+            "&attr=value"
+            "&detector=tpc"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+        ),
+        help="Minimum hit amplitude in ADC counts above baseline. "
+        "Specify as a tuple of length n_tpc_pmts, or a number,"
+        'or a string like "pmt_commissioning_initial" which means calling'
+        "hitfinder_thresholds.py",
         track=True,
         infer_type=False,
-        default="cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id",
-        help=(
-            "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_tpc_pmts, or a number, "
-            "or a tuple like (correction=str, version=str, nT=boolean),"
-            "which means we are using cmt."
-        ),
     )
 
     def infer_dtype(self):
@@ -416,15 +423,25 @@ class Peaklets(strax.Plugin):
     @staticmethod
     def add_hit_features(hitlets, peaklets):
         """Create hits timing features."""
+        peaklets["max_diff"] = -1
+        peaklets["min_diff"] = -1
+        peaklets["first_channel"] = DIGITAL_SUM_WAVEFORM_CHANNEL
+        peaklets["last_channel"] = DIGITAL_SUM_WAVEFORM_CHANNEL
         split_hits = strax.split_by_containment(hitlets, peaklets)
-        for peaklet, h_max in zip(peaklets, split_hits):
-            max_time_diff = np.diff(strax.stable_sort(h_max["max_time"]))
-            if len(max_time_diff) > 0:
-                peaklet["max_diff"] = max_time_diff.max()
-                peaklet["min_diff"] = max_time_diff.min()
+        for peaklet, _hitlets in zip(peaklets, split_hits):
+            if len(_hitlets) == 0:
+                continue
+            argsort = strax.stable_argsort(_hitlets["max_time"])
+            sorted_hitlets = _hitlets[argsort]
+            time_diff = np.diff(sorted_hitlets["max_time"])
+            if len(time_diff) > 0:
+                peaklet["max_diff"] = time_diff.max()
+                peaklet["min_diff"] = time_diff.min()
             else:
                 peaklet["max_diff"] = -1
                 peaklet["min_diff"] = -1
+            peaklet["first_channel"] = sorted_hitlets[0]["channel"]
+            peaklet["last_channel"] = sorted_hitlets[-1]["channel"]
 
 
 def drop_data_field(peaklets, goal_dtype, _name_function="_drop_data_field"):

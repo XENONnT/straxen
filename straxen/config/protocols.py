@@ -9,7 +9,7 @@ import fsspec
 import straxen
 import tarfile
 import tempfile
-from typing import Container, Iterable, Optional
+from typing import Container, Iterable
 
 import numpy as np
 
@@ -26,25 +26,13 @@ def get_item_or_attr(obj, key, default=None):
     return getattr(obj, key, default)
 
 
-@URLConfig.register("cmt")
-def get_correction(
-    name: str, run_id: Optional[str] = None, version: str = "ONLINE", detector: str = "nt", **kwargs
-):
-    """Get value for name from CMT."""
-
-    if run_id is None:
-        raise ValueError("Attempting to fetch a correction without a run_id.")
-
-    return straxen.get_correction_from_cmt(run_id, (name, version, detector == "nt"))
-
-
 @URLConfig.register("resource")
-def get_resource(name: str, fmt: str = "text", **kwargs):
-    """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+def get_resource(name: str, fmt: str = "text", readable: bool = False, **kwargs):
+    """Fetch a straxen resource, allow a direct download using <fmt='abs_path'> otherwise kwargs are
     passed directly to straxen.get_resource."""
     if fmt == "abs_path":
         downloader = utilix.mongo_storage.MongoDownloader()
-        return downloader.download_single(name)
+        return downloader.download_single(name, human_readable_file_name=readable)
     return straxen.get_resource(name, fmt=fmt)
 
 
@@ -65,6 +53,8 @@ def read_json(content: str, **kwargs):
 @URLConfig.register("take")
 def get_key(container: Container, take=None, **kwargs):
     """Return a single element of a container."""
+    if not isinstance(container, dict):
+        raise ValueError(f"Container is not a dict but a {type(container)}")
     if take is None:
         return container
     if not isinstance(take, list):
@@ -309,4 +299,22 @@ def open_jax_model(model_path: str, **kwargs):
         serialized_jax_object = file_obj.read()
     # Deserialize the JAX object and return its callable function
     return export.deserialize(serialized_jax_object).call
+
+
+@URLConfig.register("runstart")
+def get_run_start(run_id):
+    """Protocol which returns start time of a given run as unix time in ns."""
+    import pytz
+
+    rundb = utilix.xent_collection()
+    doc = rundb.find_one(
+        {"number": int(run_id)},
+        projection={
+            "start": 1,
+        },
+    )
+    start_time = doc["start"]
+    start_time_unix = start_time.replace(tzinfo=pytz.utc).timestamp()
+    start_time_unix = np.int64(start_time_unix) * straxen.units.s
+    return start_time_unix
 

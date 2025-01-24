@@ -180,7 +180,7 @@ def open_resource(file_name: str, fmt="text"):
 
 
 @export
-def get_resource(x: str, fmt="text"):
+def get_resource(x: str, fmt="text", readable=False):
     """
     Get the resource from an online source to be opened here. We will
         sequentially try the following:
@@ -209,7 +209,7 @@ def get_resource(x: str, fmt="text"):
     elif straxen.uconfig is not None:
         downloader = utilix.mongo_storage.MongoDownloader()
         if x in downloader.list_files():
-            path = downloader.download_single(x)
+            path = downloader.download_single(x, human_readable_file_name=readable)
             return open_resource(path, fmt=fmt)
     # 4. load from URL
     if "://" in x:

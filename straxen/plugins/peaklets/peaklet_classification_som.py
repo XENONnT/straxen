@@ -12,8 +12,9 @@ __all__.extend(["som_additional_fields"])
 
 
 som_additional_fields = [
-    ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
     ("vanilla_type", np.int8, "Vanilla type of the peak(let)"),
+    ("som_type", np.int8, "SOM type of the peak(let)"),
+    ("som_sub_type", np.int32, "SOM subtype of the peak(let)"),
     ("loc_x_som", np.int16, "x location of the peak(let) in the SOM"),
     ("loc_y_som", np.int16, "y location of the peak(let) in the SOM"),
 ]
@@ -37,7 +38,7 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
     analysis.
     """
 
-    __version__ = "0.2.0"
+    __version__ = "0.2.1"
     child_plugin = True
 
     dtype = (
@@ -73,39 +74,41 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
 
     def compute(self, peaklets):
         # Current classification
-        peaklets_classifcation = super().compute(peaklets)
+        _peaklets_classifcation = super().compute(peaklets)
 
-        peaklet_with_som = np.zeros(len(peaklets_classifcation), dtype=self.dtype)
-        strax.copy_to_buffer(peaklets_classifcation, peaklet_with_som, "_copy_peaklets_information")
-        peaklet_with_som["vanilla_type"] = peaklets_classifcation["type"]
-        del peaklets_classifcation
+        peaklets_classifcation = np.zeros(len(_peaklets_classifcation), dtype=self.dtype)
+        strax.set_nan_defaults(peaklets_classifcation)
+        strax.copy_to_buffer(
+            _peaklets_classifcation, peaklets_classifcation, "_copy_peaklets_information"
+        )
+        peaklets_classifcation["vanilla_type"] = _peaklets_classifcation["type"]
+        peaklets_classifcation["som_sub_type"] = _peaklets_classifcation["type"]
+        del _peaklets_classifcation
 
         # SOM classification
-        peaklets_w_type = peaklets.copy()
-        peaklets_w_type["type"] = peaklet_with_som["type"]
-        _is_s1_or_s2 = np.isin(peaklets_w_type["type"], [1, 2])
-
-        peaklets_w_type = peaklets_w_type[_is_s1_or_s2]
+        _is_s1_or_s2 = np.isin(peaklets_classifcation["vanilla_type"], [1, 2])
+        _peaklets = np.copy(peaklets[_is_s1_or_s2])
+        _peaklets["type"] = peaklets_classifcation["type"][_is_s1_or_s2]
 
         som_sub_type, x_som, y_som = recall_populations(
-            peaklets_w_type,
+            _peaklets,
             self.som_weight_cube,
             self.som_img,
             self.som_norm_factors,
             self.som_data,
         )
-        strax_type = som_type_to_type(
+        peaklets_classifcation["som_type"][_is_s1_or_s2] = som_type_to_type(
             som_sub_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
         )
-        peaklet_with_som["som_sub_type"][_is_s1_or_s2] = som_sub_type
-        peaklet_with_som["loc_x_som"][_is_s1_or_s2] = x_som
-        peaklet_with_som["loc_y_som"][_is_s1_or_s2] = y_som
+        peaklets_classifcation["som_sub_type"][_is_s1_or_s2] = som_sub_type
+        peaklets_classifcation["loc_x_som"][_is_s1_or_s2] = x_som
+        peaklets_classifcation["loc_y_som"][_is_s1_or_s2] = y_som
         if self.use_som_as_default:
-            peaklet_with_som["type"][_is_s1_or_s2] = strax_type
+            peaklets_classifcation["type"] = peaklets_classifcation["som_type"]
         else:
-            peaklet_with_som["type"] = peaklet_with_som["vanilla_type"]
+            peaklets_classifcation["type"] = peaklets_classifcation["vanilla_type"]
 
-        return peaklet_with_som
+        return peaklets_classifcation
 
 
 def recall_populations(dataset, weight_cube, som_cls_img, norm_factors, som_data):
