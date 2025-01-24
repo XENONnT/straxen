@@ -25,6 +25,7 @@ class PeakletPositionsMLP(PeakletPositionsBase):
             "&fmt=abs_path"
             "&kind=mlp"
             "&run_id=plugin.run_id"
+            "&readable=True"
             "&version=ONLINE"
         ),
         help=(
