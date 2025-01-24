@@ -12,8 +12,8 @@ class EventPositions(strax.Plugin):
     """Computes the observed and corrected position for the main S1/S2 pairs in an event.
 
     For XENONnT data, it returns the FDC corrected positions of the
-    default_reconstruction_algorithm. In case the fdc_map is given as a file (not through CMT), then
-    the coordinate system should be given as (x, y, z), not (x, y, drift_time).
+    default_reconstruction_algorithm. In case the fdc_map is given as a file (not through xedocs),
+    then the coordinate system should be given as (x, y, z), not (x, y, drift_time).
 
     """
 

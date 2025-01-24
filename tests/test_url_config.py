@@ -161,7 +161,7 @@ class TestURLConfig(unittest.TestCase):
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test xedocs.")
     def test_itp_dict(self, ab_value=20, cd_value=21, dump_as="json"):
         """Test that we are getting ~the same value from interpolating at the central date in a
         dict.
@@ -310,7 +310,7 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(filtered2, all_kwargs)
         func2(**filtered2)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test xedocs.")
     def test_dry_evaluation(self):
         """Check that running a dry evaluation can be done outside of the context of a URL config
         and yield the same result."""
