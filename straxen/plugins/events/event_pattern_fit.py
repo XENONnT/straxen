@@ -44,8 +44,7 @@ class EventPatternFit(strax.Plugin):
         help="S1 (x, y, z) optical/pattern map.",
         infer_type=False,
         default=(
-            "itp_map://"
-            "resource://"
+            "itp_map://resource://"
             "XENONnT_s1_xyz_patterns_corrected_qes_MCva43fa9b_wires.pkl"
             "?fmt=pkl"
         ),
@@ -55,8 +54,7 @@ class EventPatternFit(strax.Plugin):
         help="S2 (x, y) optical/pattern map.",
         infer_type=False,
         default=(
-            "itp_map://"
-            "resource://"
+            "itp_map://resource://"
             "XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"
             "?fmt=pkl"
         ),
@@ -66,8 +64,7 @@ class EventPatternFit(strax.Plugin):
         help="S2 (x, y) optical data-driven model",
         infer_type=False,
         default=(
-            "tf://"
-            "resource://"
+            "tf://resource://"
             "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz"
             "?custom_objects=plugin.s2_map_custom_objects"
             "&fmt=abs_path"

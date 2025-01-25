@@ -28,7 +28,7 @@ def get_item_or_attr(obj, key, default=None):
 
 @URLConfig.register("resource")
 def get_resource(name: str, fmt: str = "text", readable: bool = False, **kwargs):
-    """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+    """Fetch a straxen resource, allow a direct download using <fmt='abs_path'> otherwise kwargs are
     passed directly to straxen.get_resource."""
     if fmt == "abs_path":
         downloader = utilix.mongo_storage.MongoDownloader()
