@@ -61,6 +61,7 @@ jobs:
           pip install git+https://github.com/XENONnT/base_environment.git --force-reinstall
           pip install git+https://github.com/AxFoundation/strax.git --force-reinstall
           pip install .
+          pip install --upgrade xarray rasterio
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.11.0
