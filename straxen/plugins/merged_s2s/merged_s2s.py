@@ -145,22 +145,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     s2_merge_p_thresholds = straxen.URLConfig(
         default=(
-            (1.18, 1.00e-01),
-            (1.51, 1.00e-01),
-            (1.84, 1.00e-01),
             (2.18, 1.00e-01),
-            (2.51, 6.43e-02),
-            (2.84, 1.96e-02),
-            (3.18, 1.40e-02),
-            (3.51, 7.37e-03),
-            (3.84, 3.58e-03),
-            (4.18, 1.83e-03),
-            (4.51, 2.45e-03),
-            (4.84, 2.79e-02),
-            (5.18, 1.00e-01),
-            (5.51, 1.00e-01),
-            (5.84, 1.00e-01),
-            (6.18, 1.00e-01),
+            (2.51, 4.21e-02),
+            (2.84, 1.90e-02),
+            (3.18, 1.96e-02),
+            (3.51, 2.08e-02),
+            (3.84, 1.64e-02),
+            (4.18, 2.28e-02),
+            (4.51, 1.00e-01),
         ),
         infer_type=False,
         help=(
@@ -170,10 +162,29 @@ class MergedS2s(strax.OverlapWindowPlugin):
         ),
     )
 
-    s2_merge_dr_threshold = straxen.URLConfig(
-        default=14.0,
-        type=(int, float),
-        help="Threshold for the weighted mean deviation of the peaklets from the main cluster [cm]",
+    s2_merge_dr_thresholds = straxen.URLConfig(
+        default=(
+            (1.51, 1.40e01),
+            (1.84, 1.83e01),
+            (2.18, 1.97e01),
+            (2.51, 1.24e01),
+            (2.84, 5.75e00),
+            (3.18, 2.74e00),
+            (3.51, 1.24e00),
+            (3.84, 5.29e-01),
+            (4.18, 2.72e-01),
+            (4.51, 1.55e-01),
+            (4.84, 1.01e-01),
+            (5.18, 6.30e-02),
+            (5.51, 3.49e-02),
+            (5.84, 0.00e00),
+        ),
+        type=tuple,
+        help=(
+            "Points to define maximum weighted mean deviation of "
+            "the peaklets from the main cluster [cm]\n"
+            "The format is ((log10(area_top), dr), (..., ...), (..., ...))"
+        ),
     )
 
     s2_merge_de_threshold = straxen.URLConfig(
@@ -206,6 +217,16 @@ class MergedS2s(strax.OverlapWindowPlugin):
         default=True, type=bool, track=False, help="Whether to disable the progress bar"
     )
 
+    copied_dtype = np.dtype(
+        [
+            ("time", np.int64),
+            ("endtime", np.int64),
+            ("area", np.float32),
+            ("median_time", np.float32),
+            ("area_decile_from_midpoint", np.float32, (11,)),
+        ]
+    )
+
     def _have_data(self, field):
         return field in self.deps["peaklets"].dtype_for("peaklets").names
 
@@ -231,6 +252,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.to_pe = self.gain_model
         self.gap_thresholds = np.array(self.s2_merge_gap_thresholds).T
         self.p_thresholds = np.array(self.s2_merge_p_thresholds).T
+        self.dr_thresholds = np.array(self.s2_merge_dr_thresholds).T
         # Max gap and area should be set by the gap thresholds to avoid contradictions
         if np.argmax(self.gap_thresholds[1]) != 0:
             raise ValueError("The first point should be the maximum gap to allow merging")
@@ -342,7 +364,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.maxexp,
             self.n_top_pmts,
             self.p_thresholds,
-            self.s2_merge_dr_threshold,
+            self.dr_thresholds,
             self.default_reconstruction_algorithm,
             self.use_bayesian_merging,
             self.rm_sparse_xy,
@@ -510,7 +532,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         maxexp,
         n_top_pmts,
         p_thresholds,
-        dr_threshold,
+        dr_thresholds,
         posrec_algo,
         bayesian=True,
         sparse_xy=True,
@@ -534,18 +556,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
             contour_area = _peaks[f"position_contour_area_{posrec_algo}"]
         # weights of the peaklets when calculating the weighted mean deviation in (x, y)
         area = _peaks["area"]
-        area_fraction_top = area * _peaks["area_fraction_top"]
+        area_top = area * _peaks["area_fraction_top"]
 
-        dtype = np.dtype(
-            [
-                ("time", np.int64),
-                ("endtime", np.int64),
-                ("area", np.float32),
-                ("median_time", np.float32),
-                ("area_decile_from_midpoint", np.float32, (11,)),
-            ]
-        )
-        peaks = np.zeros(len(_peaks), dtype=dtype)
+        peaks = np.zeros(len(_peaks), dtype=MergedS2s.copied_dtype)
         for name in peaks.dtype.names:
             if name == "endtime":
                 peaks[name] = strax.endtime(_peaks)
@@ -577,6 +590,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if diagnosing:
             merged_area = []
             p_values = []
+            dr_avgs = []
 
         argsort = strax.stable_argsort(peaks["area"])
         for i in tqdm(argsort[::-1], disable=disable):
@@ -584,6 +598,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 continue
             p = np.array([1.0, 1.0])
             p_threshold = np.array([0.0, 0.0])
+            left = True
+            dr_avg = 0.0
             # in the while loops, the peaklets will be merged until the p-value
             # is smaller than the threshold or the peaklets can not be merged anymore
             # i will NOT be updated in the while loop
@@ -594,7 +610,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 # and the merged peak should not be longer than the max duration
                 if (
                     start_index[i] - 1 >= 0
-                    and area[start_index[i] - 1] > 0
                     and unexamined[start_index[i] - 1]
                     and MergedS2s.get_gap(peaks[i], peaks[start_index[i] - 1]) < max_gap
                     and MergedS2s.get_duration(peaks[i], peaks[start_index[i] - 1]) <= max_duration
@@ -604,7 +619,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     indices.append(None)
                 if (
                     end_index[i] < n_peaks
-                    and area[end_index[i]] > 0
                     and unexamined[end_index[i]]
                     and MergedS2s.get_gap(peaks[i], peaks[end_index[i]]) < max_gap
                     and MergedS2s.get_duration(peaks[i], peaks[end_index[i]]) <= max_duration
@@ -666,9 +680,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 p_threshold = np.array(p_threshold)
                 _area = np.array(_area)
                 examined = slice(start_index[i], end_index[i])
+
                 if diagnosing:
                     merged_area.append(area[examined][merged[examined]].sum())
-                    p_values.append(max(p))
 
                 if np.all(p < p_threshold):
                     # this will not allow merging of the already examined peaklets
@@ -712,7 +726,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                                 nan=np.finfo(np.float32).tiny,
                             )
                         else:
-                            weights = area_fraction_top[merging][merged[merging]]
+                            weights = area_top[merging][merged[merging]]
 
                         dr_avg = weighted_averaged_dr(
                             positions[merging, 0][merged[merging]],
@@ -720,7 +734,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
                             weights,
                         )
                         # do we really merge the peaklets?
-                        merge = dr_avg < dr_threshold
+                        dr_threshold_ = thresholds_interpolation(
+                            np.log10(area_top[merging][merged[merging]].sum()),
+                            dr_thresholds,
+                        )
+                        merge = dr_avg < dr_threshold_
                     else:
                         merge = True
 
@@ -743,6 +761,17 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     end_index[merging] = end_index[merging.stop - 1]
                     left_bounds[merging] = left_bounds[merging.start]
                     right_bounds[merging] = right_bounds[merging.stop - 1]
+
+                if diagnosing:
+                    if left:
+                        p_values.append(p[0])
+                    else:
+                        p_values.append(p[1])
+                    if sparse_xy:
+                        dr_avgs.append(dr_avg)
+                    else:
+                        dr_avgs.append(0.0)
+
         if np.any(np.diff(start_index) < 0) or np.any(np.diff(end_index) < 0):
             raise ValueError("Indices are not sorted!")
         n_peaklets = end_index - start_index
@@ -750,7 +779,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         start_index = np.unique(start_index[need_merging])
         end_index = np.unique(end_index[need_merging])
         if diagnosing:
-            return start_index, end_index, merged, merged_area, p_values
+            return start_index, end_index, merged, merged_area, p_values, dr_avgs
         return start_index, end_index, merged
 
     @staticmethod
@@ -995,7 +1024,8 @@ def weighted_averaged_dr(x, y, weights):
     mask = weights > 0
     mask &= ~np.isnan(x)
     mask &= ~np.isnan(x)
-    if not np.any(mask):
+    # do not merge any S2 looks weird
+    if not np.all(mask):
         return np.nan
     x_avg = np.average(x[mask], weights=weights[mask])
     y_avg = np.average(y[mask], weights=weights[mask])
