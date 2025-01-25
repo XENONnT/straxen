@@ -41,15 +41,13 @@ class nVETOPulseProcessing(strax.Plugin):
         track=True,
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_nveto_pmts, or a number, "
-            "or a tuple like (correction=str, version=str, nT=boolean), "
-            "which means we are using cmt."
+            "Specify as a tuple of length n_nveto_pmts, or a number."
         ),
     )
 
     baseline_samples_nv = straxen.URLConfig(
         infer_type=False,
-        default="cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id",
+        default=26,
         track=True,
         help="Number of samples to use at the start of the pulse to determine the baseline",
     )

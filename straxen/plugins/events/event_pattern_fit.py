@@ -23,20 +23,19 @@ class EventPatternFit(strax.Plugin):
 
     # Getting S1 AFT maps
     s1_aft_map = straxen.URLConfig(
-        default=(
-            "itp_map://resource://cmt://s1_aft_xyz_map?version=ONLINE&run_id=plugin.run_id&fmt=json"
-        ),
+        default="itp_map://resource://xedocs://s1_aft_xyz_maps"
+        "?attr=value&fmt=json&run_id=plugin.run_id&version=ONLINE",
         cache=True,
     )
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
 
     electron_drift_time_gate = straxen.URLConfig(
-        default="cmt://electron_drift_time_gate?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_time_gates?attr=value&run_id=plugin.run_id&version=ONLINE",
         help="Electron drift time from the gate in ns",
         cache=True,
     )
@@ -45,8 +44,7 @@ class EventPatternFit(strax.Plugin):
         help="S1 (x, y, z) optical/pattern map.",
         infer_type=False,
         default=(
-            "itp_map://"
-            "resource://"
+            "itp_map://resource://"
             "XENONnT_s1_xyz_patterns_corrected_qes_MCva43fa9b_wires.pkl"
             "?fmt=pkl"
         ),
@@ -56,8 +54,7 @@ class EventPatternFit(strax.Plugin):
         help="S2 (x, y) optical/pattern map.",
         infer_type=False,
         default=(
-            "itp_map://"
-            "resource://"
+            "itp_map://resource://"
             "XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"
             "?fmt=pkl"
         ),
@@ -67,8 +64,7 @@ class EventPatternFit(strax.Plugin):
         help="S2 (x, y) optical data-driven model",
         infer_type=False,
         default=(
-            "tf://"
-            "resource://"
+            "tf://resource://"
             "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz"
             "?custom_objects=plugin.s2_map_custom_objects"
             "&fmt=abs_path"

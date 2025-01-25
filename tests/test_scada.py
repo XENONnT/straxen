@@ -13,7 +13,7 @@ class SCInterfaceTest(unittest.TestCase):
         self.start = 1609682275000000000
         # Add micro-second to check if query does not fail if inquery precsion > SC precision
         self.start += 10**6
-        self.end = self.start + 5 * 10**9
+        self.end = self.start + 5 * straxen.units.s
 
     def test_wrong_querries(self):
         parameters = {"SomeParameter": "XE1T.CTPC.Board06.Chan011.VMon"}

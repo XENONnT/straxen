@@ -117,12 +117,6 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(p.test_config, "0666")
         self.assertIsInstance(p.test_config, str)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
-    def test_cmt_protocol(self):
-        self.st.set_config({"test_config": "cmt://elife?version=v1&run_id=plugin.run_id"})
-        p = self.st.get_single_plugin(nt_test_run_id, "test_data")
-        self.assertTrue(abs(p.test_config - 219203.49884000001) < 1e-2)
-
     def test_json_protocol(self):
         self.st.set_config({"test_config": 'json://{"a":0}'})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
@@ -167,7 +161,7 @@ class TestURLConfig(unittest.TestCase):
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test xedocs.")
     def test_itp_dict(self, ab_value=20, cd_value=21, dump_as="json"):
         """Test that we are getting ~the same value from interpolating at the central date in a
         dict.
@@ -316,21 +310,23 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(filtered2, all_kwargs)
         func2(**filtered2)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test xedocs.")
     def test_dry_evaluation(self):
         """Check that running a dry evaluation can be done outside of the context of a URL config
         and yield the same result."""
-        plugin_url = "cmt://electron_drift_velocity?run_id=plugin.run_id&version=v3"
+        plugin_url = (
+            "xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE"
+        )
         self.st.set_config({"test_config": plugin_url})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         correct_val = p.test_config
 
         # We can also get it from one of these methods
         dry_val1 = straxen.URLConfig.evaluate_dry(
-            f"cmt://electron_drift_velocity?run_id={nt_test_run_id}&version=v3"
+            f"xedocs://electron_drift_velocities?attr=value&run_id={nt_test_run_id}&version=ONLINE"
         )
         dry_val2 = straxen.URLConfig.evaluate_dry(
-            f"cmt://electron_drift_velocity?version=v3", run_id=nt_test_run_id
+            f"xedocs://electron_drift_velocities?attr=value&version=ONLINE", run_id=nt_test_run_id
         )
 
         # All methods should yield the same

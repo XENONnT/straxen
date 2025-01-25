@@ -220,7 +220,7 @@ class TestMiniAnalyses(unittest.TestCase):
         )
 
     def test_event_display(self):
-        """Event display plot, needs CMT."""
+        """Event display plot, needs xedocs."""
         self.st.event_display(nt_test_run_id, time_within=self.first_event)
 
     def test_event_display_no_rr(self):
@@ -361,10 +361,6 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_records_matrix_downsample(self):
         """Test that downsampling works in the record matrix."""
         self.st.records_matrix(nt_test_run_id, time_within=self.first_event, max_samples=20)
-
-    def test_load_corrected_positions(self):
-        """Test that we can do st.load_corrected_positions."""
-        self.st.load_corrected_positions(nt_test_run_id, time_within=self.first_peak)
 
     def test_nv_event_display(self):
         """Test NV event display for a single event."""
