@@ -222,7 +222,6 @@ class Events(strax.OverlapWindowPlugin):
     def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
         _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
-        mask_good_exposure_peaks = self.get_good_exposure_mask(peaks)
         if self.exclude_s1_as_triggering_peaks:
             _is_triggering &= peaks["type"] == 2
         else:
@@ -230,6 +229,7 @@ class Events(strax.OverlapWindowPlugin):
             has_tc_large_enough = peaks["tight_coincidence"] >= self.event_s1_min_coincidence
             _is_triggering &= is_not_s1 | has_tc_large_enough
         # additionally require that the peak is tagged by the shadow cut etc.
+        mask_good_exposure_peaks = self.get_good_exposure_mask(peaks)
         _is_triggering = _is_triggering & mask_good_exposure_peaks
         return _is_triggering
 
@@ -316,8 +316,9 @@ class Events(strax.OverlapWindowPlugin):
         return mask
 
     def compute_peak_hotspot_veto(self, peaks):
-        mask = peaks["se_score"] < 0.1
-        return mask
+        mask = peaks["se_score"] > 0.1
+        mask &= peaks["type"] == 2
+        return ~mask
 
     def compute_peak_time_shadow(self, peaks):
         # 2 hits
@@ -328,14 +329,16 @@ class Events(strax.OverlapWindowPlugin):
         time_shadow_3hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[1]
         time_shadow_3hits &= peaks["n_hits"] >= 3
         time_shadow_3hits &= peaks["type"] == 1
-        # for s2, use 3 hits threshold
-        s2_time_shadow_3hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[1]
-        s2_time_shadow_3hits &= peaks["type"] == 2
-        return ~(time_shadow_2hits | time_shadow_3hits | s2_time_shadow_3hits)
+        # for s2, cut on the small population
+        s2_time_shadow_term = peaks["shadow_s2_position_shadow"] / peaks["pdf_s2_position_shadow"]
+        s2_time_shadow_2hits = peaks["type"] == 2
+        s2_time_shadow_2hits &= peaks["area"] < 300
+        s2_time_shadow_2hits &= s2_time_shadow_term > self.time_shadow[0]
+        return ~(time_shadow_2hits | time_shadow_3hits | s2_time_shadow_2hits)
 
     def get_good_exposure_mask(self, peaks):
         mask_good = self.compute_peak_hotspot_veto(peaks)
         mask_good &= self.compute_peak_time_veto(peaks)
-        # mask_good &= self.compute_peak_time_shadow(peaks)
+        mask_good &= self.compute_peak_time_shadow(peaks)
         mask_good &= self.compute_position_shadow_cut(peaks)
         return mask_good

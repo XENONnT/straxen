@@ -475,7 +475,7 @@ class EventBasics(strax.Plugin):
         if s_i == 1:
             s_mask &= peaks["time"] < s1_before_time
             s_mask &= peaks["tight_coincidence"] >= s1_min_coincidence
-            # s_mask &= mask_good_exposure_peaks
+            s_mask &= mask_good_exposure_peaks
         if s_i == 2:
             s_mask &= mask_good_exposure_peaks
         selected_peaks = peaks[s_mask]
@@ -567,8 +567,9 @@ class EventBasics(strax.Plugin):
         return mask
 
     def compute_peak_hotspot_veto(self, peaks):
-        mask = peaks["se_score"] < 0.1
-        return mask
+        mask = peaks["se_score"] > 0.1
+        mask &= peaks["type"] == 2
+        return ~mask
 
     def compute_peak_time_shadow(self, peaks):
         # 2 hits
@@ -579,14 +580,16 @@ class EventBasics(strax.Plugin):
         time_shadow_3hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[1]
         time_shadow_3hits &= peaks["n_hits"] >= 3
         time_shadow_3hits &= peaks["type"] == 1
-        # for s2, use 3 hits threshold
-        s2_time_shadow_3hits = peaks["shadow_s2_time_shadow"] > self.time_shadow[1]
-        s2_time_shadow_3hits &= peaks["type"] == 2
-        return ~(time_shadow_2hits | time_shadow_3hits | s2_time_shadow_3hits)
+        # for s2, cut on the small population
+        s2_time_shadow_term = peaks["shadow_s2_position_shadow"] / peaks["pdf_s2_position_shadow"]
+        s2_time_shadow_2hits = peaks["type"] == 2
+        s2_time_shadow_2hits &= peaks["area"] < 300
+        s2_time_shadow_2hits &= s2_time_shadow_term > self.time_shadow[0]
+        return ~(time_shadow_2hits | time_shadow_3hits | s2_time_shadow_2hits)
 
     def get_good_exposure_mask(self, peaks):
         mask_good = self.compute_peak_hotspot_veto(peaks)
         mask_good &= self.compute_peak_time_veto(peaks)
-        # mask_good &= self.compute_peak_time_shadow(peaks)
+        mask_good &= self.compute_peak_time_shadow(peaks)
         mask_good &= self.compute_position_shadow_cut(peaks)
         return mask_good
