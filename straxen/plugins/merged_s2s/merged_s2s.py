@@ -642,6 +642,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
                         p_threshold.append(1.0)
                         _area.append(-1.0)
                         continue
+                    # if area is non-positive, "merge" in time
+                    # but still skip it later in (x, y) because its weight is nan
+                    if not peaks["area"][j] > 0:
+                        p.append(1.0)
+                        p_threshold.append(-1.0)
+                        _area.append(peaks["area"][j])
+                        continue
                     log_area = np.log10(peaks["area"][i] + peaks["area"][j])
                     if bayesian:
                         p_ = get_p_value(
@@ -727,10 +734,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     if sparse_xy:
                         # calculate weighted averaged deviation of peaklets from the main cluster
                         if uncertainty_weights:
-                            weights = np.nan_to_num(
-                                1 / contour_area[merging][merged[merging]],
-                                nan=np.finfo(np.float32).tiny,
-                            )
+                            weights = 1 / contour_area[merging][merged[merging]]
                         else:
                             weights = area_top[merging][merged[merging]]
 
