@@ -43,6 +43,7 @@ strax.Context.get_components = get_components_wrapper(strax.Context.get_componen
 
 @strax.Context.add_method
 def _superrun_configs(self, run_id, targets):
+    targets = strax.to_str_tuple(targets)
     plugins = self._get_plugins(targets=targets, run_id=run_id)
     configs = dict()
     for data_type, plugin in plugins.items():
