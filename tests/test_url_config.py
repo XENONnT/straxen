@@ -473,6 +473,7 @@ class TestURLConfig(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             straxen.config.check_urls("cmt")
 
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_superrun_safeguard(self):
         """Test that the superrun safeguard works as expected."""
 
