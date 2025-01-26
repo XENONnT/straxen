@@ -61,8 +61,7 @@ class URLConfig(strax.Config):
 
     def __init__(self, cache=0, **kwargs):
         """
-        :param cache: number of values to keep in cache,
-                      if set to True will cache all values
+        :param cache: number of values to keep in cache, if set to True will cache all values
         :param **kwargs: additional keyword arguments accepted by strax.Option
         """
         self.final_type = OMITTED
