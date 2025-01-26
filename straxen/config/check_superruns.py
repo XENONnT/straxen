@@ -78,14 +78,19 @@ def _hashed_url_config(configs):
         # filter out plugin related kwargs
         _extra_kwargs = dict()
         for k, v in extra_kwargs.items():
-            if isinstance(v, str) and straxen.URLConfig.PLUGIN_ATTR_PREFIX not in v:
+            flag = not isinstance(v, str)
+            flag |= isinstance(v, str) and straxen.URLConfig.PLUGIN_ATTR_PREFIX not in v
+            if flag:
                 _extra_kwargs[k] = v
         url = straxen.URLConfig.format_url_kwargs(arg, **_extra_kwargs)
         if "resource" in url:
             protocol, arg, kwargs = straxen.URLConfig.url_to_ast(url)
             while protocol != "resource":
                 protocol, arg, kwargs = arg
-            url = straxen.URLConfig.ast_to_url(arg)
+            if isinstance(arg, tuple):
+                url = straxen.URLConfig.ast_to_url(arg)
+            else:
+                url = arg
         evaluated = straxen.URLConfig.evaluate_dry(url)
         try:
             strax.hashablize(evaluated)
