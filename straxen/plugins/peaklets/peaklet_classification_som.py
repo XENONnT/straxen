@@ -50,7 +50,8 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
     )
 
     som_files = straxen.URLConfig(
-        default="resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy"
+        default="resource://xedocs://som_classifiers?attr=value"
+        "&version=ONLINE&run_id=pluigin.run_id&fmt=npy"
     )
 
     use_som_as_default = straxen.URLConfig(
