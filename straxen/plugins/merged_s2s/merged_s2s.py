@@ -187,10 +187,17 @@ class MergedS2s(strax.OverlapWindowPlugin):
         ),
     )
 
-    s2_merge_de_threshold = straxen.URLConfig(
-        default=(1, 3),
+    s2_merge_unmerged_thresholds = straxen.URLConfig(
+        default=(1, 49.5, 0.01),
         type=tuple,
-        help="Max (number, number of sigma_seg) of type 20 peaklets inside a peak",
+        help=(
+            "Max (number, fraction of unmerged, total area of unmerged) "
+            "of type 20 peaklets inside a peak. "
+            "The number of type 20 peaklets should not be larger than the number threshold. "
+            "The area of type 20 peaklets should not be larger than the both area thresholds. "
+            "The fraction threshold is important when S2 is large, "
+            "while the total area threshold is important when S2 is small."
+        ),
     )
 
     p_value_prioritized = straxen.URLConfig(
@@ -275,8 +282,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         self.sigma = np.linspace(self.rough_min_sigma, self.rough_max_sigma, self.rough_sigma_bins)
         self.sigma_panel = np.repeat(self.sigma[None, :], self.rough_mu_bins, axis=0).flatten()
 
-        self.max_n_de = self.s2_merge_de_threshold[0]
-        self.max_area_de = self.rough_seg + self.sigma_seg * self.s2_merge_de_threshold[1]
+        self.unmerged_thresholds = self.s2_merge_unmerged_thresholds
 
     def get_window_size(self):
         return self.merged_s2s_get_window_size_factor * (
@@ -406,7 +412,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 _end_merge_at,
                 __merged[argsort],
                 max_buffer,
-                max_de=[self.max_n_de, self.max_area_de],
+                max_unmerged=self.unmerged_thresholds,
             )
         else:
             merged_s2s = self.merge_peaklets(
@@ -415,7 +421,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 end_merge_at,
                 _merged,
                 max_buffer,
-                max_de=[self.max_n_de, self.max_area_de],
+                max_unmerged=self.unmerged_thresholds,
             )
 
         if (
@@ -789,7 +795,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         end_merge_at,
         merged,
         max_buffer=int(1e5),
-        max_de=None,
+        max_unmerged=None,
         merged_all=False,
     ):
         if merged_all:
@@ -811,20 +817,23 @@ class MergedS2s(strax.OverlapWindowPlugin):
         # if the number of type 20 peaklets inside a peak is larger than the threshold
         # or the area of type 20 peaklets inside a peak is larger than the threshold
         # mark the peaklets as type WIDE_XYPOS_S2_TYPE
-        if max_de is not None:
+        if max_unmerged is not None:
             n_de = []
+            area = []
             area_de = []
             for i in range(len(merged_s2s)):
                 sl = slice(start_merge_at[i], end_merge_at[i])
                 n_de.append(np.sum(~merged[sl]))
+                area.append(peaklets["area"][sl][merged[sl]].sum())
                 area_de.append(peaklets["area"][sl][~merged[sl]].sum())
             n_de = np.array(n_de)
+            area = np.array(area)
             area_de = np.array(area_de)
-            merged_s2s["type"] = np.where(
-                (n_de > max_de[0]) | (area_de > max_de[1]),
-                WIDE_XYPOS_S2_TYPE,
-                merged_s2s["type"],
-            )
+            # if the number of type 20 peaklets inside a peak is larger than the threshold
+            mask = n_de > max_unmerged[0]
+            # if the area of type 20 peaklets inside a peak is larger than the (both) threshold(s)
+            mask |= (area_de > max_unmerged[1]) & (area_de > area * max_unmerged[2])
+            merged_s2s["type"] = np.where(mask, WIDE_XYPOS_S2_TYPE, merged_s2s["type"])
 
         if merged_all:
             merged_s2s = strax.sort_by_time(np.concatenate([_merged_s2s, merged_s2s]))
