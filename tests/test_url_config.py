@@ -445,3 +445,8 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(len(p.test_config), 8)
         self.assertEqual(p.test_config[0], 0)
         self.assertEqual(p.test_config[-1], 0)
+
+    def test_not_cmt_check(self):
+        """Expect error when using cmt."""
+        with self.assertRaises(NotImplementedError):
+            straxen.config.check_urls("cmt")
