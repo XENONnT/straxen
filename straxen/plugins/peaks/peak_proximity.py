@@ -263,7 +263,8 @@ class PeakProximity(strax.OverlapWindowPlugin):
         s2_time_shadow_2hits = peaks["type"] == 2
         s2_time_shadow_2hits &= peaks["area"] < 300
         s2_time_shadow_2hits &= s2_time_shadow_term > self.time_shadow[0]
-        return ~(time_shadow_2hits | time_shadow_3hits | s2_time_shadow_2hits)
+        # return ~(time_shadow_2hits | time_shadow_3hits | s2_time_shadow_2hits)
+        return ~(time_shadow_2hits | time_shadow_3hits)
 
     def get_good_exposure_mask(self, peaks):
         mask_good = self.compute_peak_hotspot_veto(peaks)
