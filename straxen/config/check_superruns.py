@@ -50,6 +50,9 @@ def _superrun_configs(self, run_id, targets):
     return configs
 
 
+PLUGIN_ATTR_CONVERT = ["run_id", "algorithm"]
+
+
 def _hashed_url_config(configs):
     """Convert all url into string and hash them."""
     # get all configs for superruns-allowed plugins if they are str
@@ -66,7 +69,7 @@ def _hashed_url_config(configs):
         # can be extracted from plugin for now
         # if later we have more keys need to be converted from plugin
         # to make xedocs work, we need to add them here
-        for k in ["run_id", "algorithm"]:
+        for k in PLUGIN_ATTR_CONVERT:
             if k in extra_kwargs:
                 extra_kwargs[k] = getattr(
                     plugin,
@@ -84,7 +87,13 @@ def _hashed_url_config(configs):
                 protocol, arg, kwargs = arg
             url = straxen.URLConfig.ast_to_url(arg)
         evaluated = straxen.URLConfig.evaluate_dry(url)
-        if not isinstance(evaluated, str):
-            raise ValueError(f"URL {url} is not evaluated to string.")
+        try:
+            strax.hashablize(evaluated)
+        except TypeError as e:
+            raise ValueError(
+                f"Cannot hash url {url} converted from config {key} in superrun safeguard. "
+                f"Because its evaluated value not hashable: {evaluated}. "
+                f"Error: {e}"
+            )
         hash[key] = strax.deterministic_hash(evaluated)
     return hash

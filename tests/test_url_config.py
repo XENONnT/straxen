@@ -1,18 +1,20 @@
 import os
 import json
-import tempfile
-import pandas as pd
-import strax
-import straxen
-import fsspec
-import utilix.rundb
-from straxen.test_utils import nt_test_context, nt_test_run_id
-import unittest
-import pickle
 import random
 import warnings
-import numpy as np
+from bson import json_util
 from datetime import datetime
+import pickle
+import tempfile
+import fsspec
+import unittest
+import pandas as pd
+import numpy as np
+import utilix.rundb
+import strax
+import straxen
+from straxen.test_utils import nt_test_context, nt_test_run_id
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 
 class DummyObject:
@@ -86,14 +88,33 @@ def replace_global_version(config, name=None, **kwargs):
 class ExamplePlugin(strax.Plugin):
     depends_on = ()
     dtype = strax.time_fields
-    provides = ("test_data",)
+    provides = "test_data"
     test_config = straxen.URLConfig(
         default=42,
     )
     cached_config = straxen.URLConfig(default=666, cache=1)
 
-    def compute(self):
-        pass
+
+class AlgorithmPlugin(strax.Plugin):
+    depends_on = "raw_records"
+    dtype = strax.time_fields
+    provides = "test_data"
+    allow_superrun = True
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO,
+    )
+    superrun_test_config_a = straxen.URLConfig(
+        default=(
+            'take://json://{"'
+            + nt_test_run_id
+            + '":0,"_'
+            + nt_test_run_id
+            + '":1}?take=plugin.run_id'
+        ),
+    )
+    superrun_test_config_b = straxen.URLConfig(
+        default='take://json://{"cnf":0,"mlp":1}?take=plugin.default_reconstruction_algorithm',
+    )
 
 
 class TestURLConfig(unittest.TestCase):
@@ -450,3 +471,20 @@ class TestURLConfig(unittest.TestCase):
         """Expect error when using cmt."""
         with self.assertRaises(NotImplementedError):
             straxen.config.check_urls("cmt")
+
+    def test_superrun_safeguard(self):
+        """Test that the superrun safeguard works as expected."""
+        straxen.config.check_superruns.PLUGIN_ATTR_CONVERT += ["take"]
+        st = self.st.new_context()
+        st.register((AlgorithmPlugin,))
+        start = pd.to_datetime(0, unit="ns", utc=True)
+        end = pd.to_datetime(1, unit="ns", utc=True)
+        run_doc = {"name": nt_test_run_id, "start": start, "end": end}
+        with open(st.storage[0]._run_meta_path(str(nt_test_run_id)), "w") as fp:
+            json.dump(run_doc, fp, default=json_util.default)
+        st.define_run("_" + nt_test_run_id, [nt_test_run_id])
+        st.get_components("_" + nt_test_run_id, ("test_data",))
+        with self.assertRaises(ValueError):
+            default = AlgorithmPlugin.takes_config["superrun_test_config_a"].default
+            st.set_config({"superrun_test_config_a": default.replace("run_id", "_run_id")})
+            st.get_components("_" + nt_test_run_id, ("test_data",))
