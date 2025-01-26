@@ -7,7 +7,11 @@ def get_components_wrapper(func):
 
     def wrapper(self, run_id, targets=tuple(), **kwargs):
         is_superrun = run_id.startswith("_")
-        if not is_superrun or not self.context_config["check_superrun_configs"]:
+        if (
+            not is_superrun
+            or not self.context_config["check_superrun_configs"]
+            or kwargs.get("combining", False)
+        ):
             return func(self, run_id=run_id, targets=targets, **kwargs)
 
         configs = self._superrun_configs(run_id, targets)
