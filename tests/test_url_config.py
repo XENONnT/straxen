@@ -495,7 +495,11 @@ class TestURLConfig(unittest.TestCase):
             json.dump(run_doc, fp, default=json_util.default)
         st.define_run("_" + nt_test_run_id, [nt_test_run_id])
         st.get_components("_" + nt_test_run_id, ("test_data",))
+        default = AlgorithmPlugin.takes_config["superrun_test_config_a"].default
+        st.set_config({"superrun_test_config_a": default.replace("run_id", "_run_id")})
+        with self.assertRaises(NotImplementedError):
+            # the raise NotImplementedError is expected from compute method
+            st.get_components("_" + nt_test_run_id, ("test_data",), combining=True)
         with self.assertRaises(ValueError):
-            default = AlgorithmPlugin.takes_config["superrun_test_config_a"].default
-            st.set_config({"superrun_test_config_a": default.replace("run_id", "_run_id")})
+            # the raise ValueError is expected from get_components in the wrapper
             st.get_components("_" + nt_test_run_id, ("test_data",))
