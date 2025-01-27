@@ -64,6 +64,7 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
     )
 
     def setup(self):
+        self.som_data = self.som_files
         self.som_weight_cube = self.som_files["weight_cube"]
         self.som_img = self.som_files["som_img"]
         self.som_norm_factors = self.som_files["norm_factors"]
@@ -91,7 +92,11 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
         _peaklets["type"] = peaklets_classifcation["type"][_is_s1_or_s2]
 
         som_sub_type, x_som, y_som = recall_populations(
-            _peaklets, self.som_weight_cube, self.som_img, self.som_norm_factors
+            _peaklets,
+            self.som_weight_cube,
+            self.som_img,
+            self.som_norm_factors,
+            self.som_data,
         )
         peaklets_classifcation["som_type"][_is_s1_or_s2] = som_type_to_type(
             som_sub_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
@@ -107,7 +112,7 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
         return peaklets_classifcation
 
 
-def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
+def recall_populations(dataset, weight_cube, som_cls_img, norm_factors, som_data):
     """Master function that should let the user provide a weightcube, a reference img as a np.array,
     a dataset and a set of normalization factors.
 
@@ -134,6 +139,9 @@ def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
     assert all(dataset["type"] != 0), "Dataset contains unclassified peaklets"
     # Get the deciles representation of data for recall
     decile_transform_check = data_to_log_decile_log_area_aft(dataset, norm_factors)
+    if "reduce_decile" in som_data.keys():
+        if som_data["reduce_decile"]:
+            decile_transform_check = decile_transform_check[:, 1:]
     # preform a recall of the dataset with the weight cube
     # assign each population color a number (can do from previous function)
     ref_map = generate_color_ref_map(som_cls_img, unique_colors, xdim, ydim)
