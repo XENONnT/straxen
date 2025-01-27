@@ -11,6 +11,11 @@ class URLWarning(UserWarning):
     pass
 
 
+@check_urls.register(r"(.*)(.*cmt.*)")
+def not_cmt_check(url: str):
+    raise NotImplementedError("The cmt protocol is removed. Please use xedocs instead.")
+
+
 @check_urls.register(r"(.*)(.*xedocs.*)")
 def confirm_xedocs_schema_exists_check(url: str):
     import xedocs
@@ -73,12 +78,13 @@ def itp_map_check(url: str):
 
 
 @check_urls.register(r".*posrec_models.*")
-def tf_check(url: str):
-    if not ("tf://" in url):
+def posrec_models_check(url: str):
+    if not ("tf://" in url) and not ("jax://" in url):
         warnings.warn(
             "Warning, you are requesting a position reconstruction model with this URL. However, "
-            "the protocol tf:// was not requested as part of the URL. "
-            f"The tf:// protocol is requiered for position reconstruction corrections. url: {url}",
+            "the protocol tf:// and jax:// were not requested as part of the URL. "
+            "The tf:// or jax://protocol is requiered for position reconstruction corrections. "
+            f"url: {url}",
             URLWarning,
         )
 
@@ -105,7 +111,7 @@ def url_version_check(url: str):
 
 
 @check_urls.register(r".*objects-to-dict.*")
-def tf_dict_attributes(url: str):
+def dict_attributes(url: str):
     if not ("key_attr" in url):
         warnings.warn(
             "Warning, you are requesting a correction in the form of a dictionary with "
