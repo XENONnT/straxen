@@ -1,3 +1,29 @@
+3.0.3 / 2025-01-25
+-------------------
+* Rename "algo" to "alg" because they were mixed by @dachengx in https://github.com/XENONnT/straxen/pull/1523
+* Bump version by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1500
+* [DAQ] Bootstrax dynamic adapt targets for AmBe high rate by @cfuselli in https://github.com/XENONnT/straxen/pull/1492
+* Track position reconstruction algorithm in `EventPatternFit` plugin by @dachengx in https://github.com/XENONnT/straxen/pull/1524
+* Still use `np.bool_` in numba decorated function by @dachengx in https://github.com/XENONnT/straxen/pull/1527
+* First and last channel inside peak(let)s by @dachengx in https://github.com/XENONnT/straxen/pull/1525
+* Handle the case where no hitlets are fully contained in peaklets by @dachengx in https://github.com/XENONnT/straxen/pull/1529
+* Minor replacement `np.argsort` to `strax.stable_argsort` by @dachengx in https://github.com/XENONnT/straxen/pull/1530
+* Automatically copy SOM dtype to peaks by @dachengx in https://github.com/XENONnT/straxen/pull/1531
+* More flexible input of `find_n_competing` function by @dachengx in https://github.com/XENONnT/straxen/pull/1532
+* Fix a numerical error bug in `events_nv` by @dachengx in https://github.com/XENONnT/straxen/pull/1534
+* Skip `test_useless_frontend` if local RSE is not found by @dachengx in https://github.com/XENONnT/straxen/pull/1537
+* Area in CNF position contour by @dachengx in https://github.com/XENONnT/straxen/pull/1538
+* Remove CMT URLs by @jmosbacher in https://github.com/XENONnT/straxen/pull/1235
+* Change dark rate monitoring of the software trigger to seconds by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1535
+* Remove CMT by @dachengx in https://github.com/XENONnT/straxen/pull/1539
+* Replace `10**9` by `straxen.units.s` by @dachengx in https://github.com/XENONnT/straxen/pull/1540
+* Drop python 3.9 by @dachengx in https://github.com/XENONnT/straxen/pull/1541
+* CNF posrec urlconfig fix by @juehang in https://github.com/XENONnT/straxen/pull/1519
+* Bump xedocs version to v0.2.36 by @dachengx in https://github.com/XENONnT/straxen/pull/1543
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.2...v3.0.3
+
+
 3.0.2 / 2025-01-13
 -------------------
 * Collect SOM dtype at one place by @dachengx in https://github.com/XENONnT/straxen/pull/1511

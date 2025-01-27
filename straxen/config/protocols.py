@@ -318,8 +318,6 @@ def open_jax_model(model_path: str, **kwargs):
 @URLConfig.register("runstart")
 def get_run_start(run_id):
     """Protocol which returns start time of a given run as unix time in ns."""
-    import pytz
-
     rundb = utilix.xent_collection()
     doc = rundb.find_one(
         {"number": int(run_id)},
