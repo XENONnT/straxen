@@ -128,20 +128,19 @@ def open_resource(file_name: str, fmt="text"):
         # Retrieve from in-memory cache
         return _resource_cache[cached_name]
     # File resource
-    if fmt in ["npy", "npy_pickle"]:
-        result = np.load(file_name, allow_pickle=fmt == "npy_pickle")
+    if fmt in ["npy", "npy_pickle", "npz", "npz_pickle"]:
+        result = np.load(file_name, allow_pickle="pickle" in fmt)
         if isinstance(result, np.lib.npyio.NpzFile):
             # Slurp the arrays in the file, so the result can be copied,
             # then close the file so its descriptors does not leak.
             result_slurped = {}
             for k, v in result.items():
-                try:
-                    # Attempt to copy the array if it's an array-like object
-                    result_slurped[k] = v[:] if hasattr(v, "__getitem__") else v
-                except Exception as e:
-                    # Log or handle the error if something goes wrong
-                    print(f"Error processing key '{k}': {e}")
-                    result_slurped[k] = v  # Keep the original object
+                if v.shape:
+                    # if numpy array, slurp it
+                    result_slurped[k] = v[:]
+                else:
+                    # if scalar, convert it to a python scalar
+                    result_slurped[k] = v.item()
             result.close()
             result = result_slurped
     elif fmt == "pkl":
