@@ -39,22 +39,30 @@ def get_components_wrapper(func):
 
 
 # Manually decorate context class
-strax.Context = strax.takes_config(
-    strax.Option(
-        name="check_superrun_configs",
-        default=True,
-        type=bool,
-        help="If True, check whether all subruns' config are the same.",
-    ),
-    strax.Option(
-        name="plugin_attr_convert",
-        default=("run_id", "algorithm"),
-        type=(list, tuple),
-        help="If True, check whether all subruns' config are the same.",
-    ),
-)(strax.Context)
-# Overwrite get_components method
-strax.Context.get_components = get_components_wrapper(strax.Context.get_components)
+_strax_context_decorated = True
+if "check_superrun_configs" not in strax.Context.takes_config:
+    strax.Context = strax.takes_config(
+        strax.Option(
+            name="check_superrun_configs",
+            default=True,
+            type=bool,
+            help="If True, check whether all subruns' config are the same.",
+        ),
+    )(strax.Context)
+    _strax_context_decorated = False
+if "plugin_attr_convert" not in strax.Context.takes_config:
+    strax.Context = strax.takes_config(
+        strax.Option(
+            name="plugin_attr_convert",
+            default=("run_id", "algorithm"),
+            type=(list, tuple),
+            help="The attributes that should be get from the plugin.",
+        ),
+    )(strax.Context)
+    _strax_context_decorated = False
+if not _strax_context_decorated:
+    # Overwrite get_components method
+    strax.Context.get_components = get_components_wrapper(strax.Context.get_components)
 
 
 @strax.Context.add_method
