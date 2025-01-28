@@ -15,7 +15,6 @@ import strax
 import straxen
 from straxen.test_utils import nt_test_context, nt_test_run_id
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
-from straxen.config.check_superruns import _hashed_url_config
 
 
 class DummyObject:
@@ -482,12 +481,16 @@ class TestURLConfig(unittest.TestCase):
         for data_type in st._plugin_class_registry:
             if st._plugin_class_registry[data_type].depends_on:
                 st._plugin_class_registry[data_type].allow_superrun = True
-        configs = st._superrun_configs("_" + nt_test_run_id, ("event_info",))
-        print(_hashed_url_config(configs))
+        configs = st.time_dependent_configs(
+            "_" + nt_test_run_id, ("event_info", "events_nv", "events_mv")
+        )
+        st.hashed_url_configs(configs)
 
         # test the safeguard works
-        straxen.config.check_superruns.PLUGIN_ATTR_CONVERT += ["take"]
         st = self.st.new_context()
+        st.set_context_config(
+            {"plugin_attr_convert": st.context_config["plugin_attr_convert"] + ("take",)}
+        )
         st.register((AlgorithmPlugin,))
         start = pd.to_datetime(0, unit="ns", utc=True)
         end = pd.to_datetime(1, unit="ns", utc=True)
