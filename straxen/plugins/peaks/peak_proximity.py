@@ -1,3 +1,4 @@
+from typing import Tuple, Union
 import numpy as np
 import numba
 import strax
@@ -14,7 +15,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
 
     __version__ = "0.4.1"
 
-    depends_on = "peak_basics"
+    depends_on: Union[Tuple[str, ...], str] = "peak_basics"
     dtype = [
         ("n_competing", np.int32, "Number of nearby larger or slightly smaller peaks"),
         (

@@ -230,7 +230,7 @@ class EventBasicsVanilla(strax.Plugin):
         result = np.zeros(len(events), dtype=self.dtype)
         strax.set_nan_defaults(result)
 
-        split_peaks = strax.split_by_containment(peaks, events)
+        split_peaks = strax.split_by_containment(peaks[peaks["triggerable"]], events)
 
         result["time"] = events["time"]
         result["endtime"] = events["endtime"]

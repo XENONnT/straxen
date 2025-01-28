@@ -31,6 +31,9 @@ from .peak_se_score import *
 from . import peak_proximity
 from .peak_proximity import *
 
+from . import peak_triggerable
+from .peak_triggerable import *
+
 from . import peak_nearest_triggering
 from .peak_nearest_triggering import *
 
