@@ -642,6 +642,19 @@ def infer_target(rd: dict) -> dict:
             log.debug(f'Overwriting targets and post processing for {hostname} from daq_db')
             targets = bootstrax_config['modes_definitions'][this_eb_ambe_mode]['targets']
             post_process = bootstrax_config['modes_definitions'][this_eb_ambe_mode]['post_process']
+        
+            if n_fails:
+                # Here we need to do it again, because for this special case we 
+                # really overwrite the targets from scratch!
+                log.debug(f"Removing targets for failures, again")
+                targets = keep_target(targets, remove_target_after_fails, n_fails)
+                post_process = keep_target(post_process, remove_target_after_fails, n_fails)
+                log.debug(f"{targets} and {post_process} remaining")
+
+    elif 'neutron_generator_SKIPNV' in mode: 
+        log.debug('neutron generator mode')
+        targets = [t for t in targets if '_nv' not in t]
+        post_process = [t for t in post_process if '_nv' not in t]
 
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
