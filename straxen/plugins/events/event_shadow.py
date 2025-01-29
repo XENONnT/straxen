@@ -15,7 +15,7 @@ class EventShadow(strax.Plugin):
     """
 
     __version__ = "0.1.4"
-    depends_on = ("event_basics", "peak_basics", "peak_shadow")
+    depends_on = ("event_basics", "triggerable_peak_basics", "peak_shadow")
     provides = "event_shadow"
 
     def infer_dtype(self):

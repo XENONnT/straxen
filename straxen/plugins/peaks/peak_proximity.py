@@ -15,7 +15,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
 
     __version__ = "0.4.1"
 
-    depends_on: Union[Tuple[str, ...], str] = "peak_basics"
+    depends_on: Union[Tuple[str, ...], str] = "triggerable_peak_basics"
     dtype = [
         ("n_competing", np.int32, "Number of nearby larger or slightly smaller peaks"),
         (
@@ -57,9 +57,10 @@ class PeakProximity(strax.OverlapWindowPlugin):
         return self.peak_max_proximity_time
 
     def compute(self, peaks):
-        windows = strax.touching_windows(peaks, peaks, window=self.nearby_window)
+        mask = np.isin(peaks["type"], [1, 2])
+        windows = strax.touching_windows(peaks[mask], peaks, window=self.nearby_window)
         n_left, n_tot = self.find_n_competing(
-            peaks, peaks, windows, fraction=self.min_area_fraction
+            peaks[mask], peaks, windows, fraction=self.min_area_fraction
         )
 
         t_to_prev_peak = np.ones(len(peaks), dtype=np.int64) * self.peak_max_proximity_time

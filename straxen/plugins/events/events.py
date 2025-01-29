@@ -25,7 +25,7 @@ class Events(strax.OverlapWindowPlugin):
 
     __version__ = "0.1.1"
 
-    depends_on = ("peak_basics", "peak_proximity")
+    depends_on = ("triggerable_peak_basics", "peak_proximity")
     provides = "events"
     data_kind = "events"
 
@@ -121,7 +121,6 @@ class Events(strax.OverlapWindowPlugin):
     def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
         _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
-        _is_triggering &= peaks["triggerable"]
         if self.exclude_s1_as_triggering_peaks:
             _is_triggering &= peaks["type"] == 2
         else:

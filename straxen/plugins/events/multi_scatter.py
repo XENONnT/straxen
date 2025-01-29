@@ -12,7 +12,7 @@ class EventInfoMS(strax.Plugin):
     __version__ = "0.0.2"
     depends_on = (
         "event_info",
-        "peak_basics",
+        "triggerable_peak_basics",
         "peak_per_event",
         "peak_corrections",
         "peak_positions",

@@ -1,31 +1,17 @@
 import numpy as np
 import strax
 import straxen
-from .peak_proximity import PeakProximity
+from straxen.plugins.defaults import NON_TRIGGERABLE_TYPE
 
 
-class PeakTriggerable(PeakProximity):
+class TriggerablePeakBasics(strax.Plugin):
     __version__ = "0.0.0"
     depends_on = ("peak_basics", "peak_shadow", "peak_se_score")
-    provides = "peak_proximity"
+    provides = "triggerable_peak_basics"
     save_when = strax.SaveWhen.EXPLICIT
 
-    dtype = [
-        ("n_competing", np.int32, "Number of nearby larger or slightly smaller peaks"),
-        (
-            "n_competing_left",
-            np.int32,
-            "Number of larger or slightly smaller peaks left of the main peak",
-        ),
-        (
-            "t_to_prev_peak",
-            np.int64,
-            "Time between end of previous peak and start of this peak [ns]",
-        ),
-        ("t_to_next_peak", np.int64, "Time between end of this peak and start of next peak [ns]"),
-        ("t_to_nearest_peak", np.int64, "Smaller of t_to_prev_peak and t_to_next_peak [ns]"),
-        ("triggerable", bool, "The peak can pass the anti-AC selection"),
-    ] + strax.time_fields
+    def infer_dtype(self):
+        return self.deps["peak_basics"].dtype_for("peak_basics")
 
     sr = straxen.URLConfig(
         default="science_run://plugin.run_id?&phase=False",
@@ -245,32 +231,11 @@ class PeakTriggerable(PeakProximity):
         )
         hotspot_veto |= peaks["type"] != 2
 
-        # Type selection
-        is_s12 = np.isin(peaks["type"], [1, 2])
-
         mask = time_veto & time_shadow & position_shadow & hotspot_veto
-        mask &= is_s12
 
-        # n_competing calculation
-        # TODO: combine n_competing + HotspotVeto + Ambience
-        windows = strax.touching_windows(peaks[mask], peaks, window=self.nearby_window)
-        n_left, n_tot = self.find_n_competing(
-            peaks[mask], peaks, windows, fraction=self.min_area_fraction
-        )
+        result = np.zeros(len(peaks), dtype=self.dtype)
+        strax.set_nan_defaults(result)
+        strax.copy_to_buffer(peaks, result, "_copy_peak_basics_information")
+        result["type"][~mask] = NON_TRIGGERABLE_TYPE
 
-        t_to_prev_peak = np.ones(len(peaks), dtype=np.int64) * self.peak_max_proximity_time
-        t_to_prev_peak[1:] = peaks["time"][1:] - peaks["endtime"][:-1]
-
-        t_to_next_peak = t_to_prev_peak.copy()
-        t_to_next_peak[:-1] = peaks["time"][1:] - peaks["endtime"][:-1]
-
-        return dict(
-            time=peaks["time"],
-            endtime=strax.endtime(peaks),
-            n_competing=n_tot,
-            n_competing_left=n_left,
-            t_to_prev_peak=t_to_prev_peak,
-            t_to_next_peak=t_to_next_peak,
-            t_to_nearest_peak=np.minimum(t_to_prev_peak, t_to_next_peak),
-            triggerable=mask,
-        )
+        return result

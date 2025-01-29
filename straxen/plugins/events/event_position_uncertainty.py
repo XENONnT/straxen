@@ -37,7 +37,12 @@ class EventPositionContour(strax.Plugin):
 
     __version__ = "0.1.0"
 
-    depends_on = ("event_basics", "event_positions", "peak_positions_cnf", "peak_basics")
+    depends_on = (
+        "event_basics",
+        "event_positions",
+        "triggerable_peak_basics",
+        "peak_positions_cnf",
+    )
 
     provides = "event_position_contour"
     compressor = "zstd"

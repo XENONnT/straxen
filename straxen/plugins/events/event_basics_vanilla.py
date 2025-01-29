@@ -19,7 +19,7 @@ class EventBasicsVanilla(strax.Plugin):
 
     __version__ = "1.3.4"
 
-    depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity")
+    depends_on = ("events", "triggerable_peak_basics", "peak_positions", "peak_proximity")
     provides = "event_basics"
     data_kind = "events"
 
@@ -230,7 +230,7 @@ class EventBasicsVanilla(strax.Plugin):
         result = np.zeros(len(events), dtype=self.dtype)
         strax.set_nan_defaults(result)
 
-        split_peaks = strax.split_by_containment(peaks[peaks["triggerable"]], events)
+        split_peaks = strax.split_by_containment(peaks, events)
 
         result["time"] = events["time"]
         result["endtime"] = events["endtime"]
