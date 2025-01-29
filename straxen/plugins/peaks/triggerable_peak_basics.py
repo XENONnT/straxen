@@ -163,6 +163,10 @@ class TriggerablePeakBasics(strax.Plugin):
 
     @np.errstate(divide="ignore")
     def compute(self, peaks):
+        # Only do something for the background runs
+        if self.run_mode == "bkg":
+            return peaks
+
         # TimeVeto
         # TODO: do not apply S1 shadow on S2
         # or at least do not search for S1 within max drift time
