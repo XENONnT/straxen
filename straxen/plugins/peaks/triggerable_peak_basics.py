@@ -163,9 +163,13 @@ class TriggerablePeakBasics(strax.Plugin):
 
     @np.errstate(divide="ignore")
     def compute(self, peaks):
+        result = np.zeros(len(peaks), dtype=self.dtype)
+        strax.set_nan_defaults(result)
+        strax.copy_to_buffer(peaks, result, "_copy_peak_basics_information")
+
         # Only do something for the background runs
-        if self.run_mode == "bkg":
-            return peaks
+        if self.run_mode != "bkg":
+            return result
 
         # TimeVeto
         # TODO: do not apply S1 shadow on S2
@@ -237,9 +241,6 @@ class TriggerablePeakBasics(strax.Plugin):
 
         mask = time_veto & time_shadow & position_shadow & hotspot_veto
 
-        result = np.zeros(len(peaks), dtype=self.dtype)
-        strax.set_nan_defaults(result)
-        strax.copy_to_buffer(peaks, result, "_copy_peak_basics_information")
         result["type"][~mask & (result["type"] == 1)] = NON_TRIGGERABLE_S1_TYPE
         result["type"][~mask & (result["type"] == 2)] = NON_TRIGGERABLE_S2_TYPE
 
