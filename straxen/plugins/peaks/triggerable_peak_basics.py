@@ -1,7 +1,7 @@
 import numpy as np
 import strax
 import straxen
-from straxen.plugins.defaults import NON_TRIGGERABLE_TYPE
+from straxen.plugins.defaults import NON_TRIGGERABLE_S1_TYPE, NON_TRIGGERABLE_S2_TYPE
 
 
 class TriggerablePeakBasics(strax.Plugin):
@@ -236,6 +236,7 @@ class TriggerablePeakBasics(strax.Plugin):
         result = np.zeros(len(peaks), dtype=self.dtype)
         strax.set_nan_defaults(result)
         strax.copy_to_buffer(peaks, result, "_copy_peak_basics_information")
-        result["type"][~mask] = NON_TRIGGERABLE_TYPE
+        result["type"][~mask & (result["type"] == 1)] = NON_TRIGGERABLE_S1_TYPE
+        result["type"][~mask & (result["type"] == 2)] = NON_TRIGGERABLE_S2_TYPE
 
         return result

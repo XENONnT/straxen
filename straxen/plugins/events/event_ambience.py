@@ -14,7 +14,7 @@ class EventAmbience(strax.Plugin):
     """
 
     __version__ = "0.0.4"
-    depends_on = ("event_basics", "triggerable_peak_basics", "peak_ambience")
+    depends_on = ("event_basics", "peak_ambience")
     provides = "event_ambience"
 
     @property
