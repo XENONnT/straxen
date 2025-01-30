@@ -35,6 +35,8 @@ def get_components_wrapper(func):
                     f"Specifically, the following configs are different: {diff}."
                 )
 
+        return func(self, run_id=run_id, targets=targets, **kwargs)
+
     return wrapper
 
 
