@@ -15,13 +15,14 @@ class EventS2PositionMLP(EventS2PositionBase):
 
     tf_model_mlp = straxen.URLConfig(
         default=(
-            "tf://"
+            "keras3://"
             "resource://"
             "xedocs://posrec_models"
             "?attr=value"
             "&fmt=abs_path"
             "&kind=mlp"
             "&run_id=plugin.run_id"
+            "&readable=True"
             "&version=ONLINE"
         ),
         help='MLP model. Should be opened using the "tf" descriptor. '

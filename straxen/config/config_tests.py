@@ -89,6 +89,18 @@ def posrec_models_check(url: str):
         )
 
 
+@check_urls.register(r".*keras.*")
+def keras_check(url: str):
+    if not ("readable=True" in url):
+        raise ValueError(
+            "Warning, you are requesting a keras model with this URL. However, "
+            "the protocol readable=True was not requested as part of the URL. "
+            "The readable=True protocol is requiered for keras models. "
+            "Because keras load_model only accepts .keras files. "
+            f"url: {url}"
+        )
+
+
 @check_urls.register(r"(.*)(.*xedocs.*)")
 def url_attr_check(url: str):
     if not ("attr" in url):
