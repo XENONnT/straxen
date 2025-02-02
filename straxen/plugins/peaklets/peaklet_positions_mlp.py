@@ -20,13 +20,9 @@ class PeakletPositionsMLP(PeakletPositionsBase):
         default=(
             "tf://"
             "resource://"
-            "xedocs://posrec_models"
-            "?attr=value"
+            "xnt_mlp_SR0_mix_2000031_2000021_20211211.keras"
+            "?readable=True"
             "&fmt=abs_path"
-            "&kind=mlp"
-            "&run_id=plugin.run_id"
-            "&readable=True"
-            "&version=ONLINE"
         ),
         help=(
             'MLP model. Should be opened using the "tf" descriptor. '
