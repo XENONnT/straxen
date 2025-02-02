@@ -101,7 +101,8 @@ def open_neural_net(model_path: str, custom_objects=None, **kwargs):
     """
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
-    import tensorflow as tf
+    import tensorflow as tf  # noqa
+    from tensorflow.keras.models import load_model
 
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"No file at {model_path}")
@@ -117,13 +118,13 @@ def open_neural_net(model_path: str, custom_objects=None, **kwargs):
             runpy.run_path(os.path.join(tmpdirname, "registration.py"))
             for filename in os.listdir(tmpdirname):
                 if filename.endswith(".keras"):
-                    return tf.keras.models.load_model(
+                    return load_model(
                         os.path.join(tmpdirname, filename),
                         custom_objects=custom_objects,
                     )
         raise FileNotFoundError(f"No .keras file found in {model_path}!")
     else:
-        return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+        return load_model(model_path, custom_objects=custom_objects)
 
 
 @URLConfig.register("itp_dict")
