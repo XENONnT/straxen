@@ -89,7 +89,7 @@ def posrec_models_check(url: str):
         )
 
 
-@check_urls.register(r".*keras.*")
+@check_urls.register(r".*tf.*")
 def keras_check(url: str):
     if not ("readable=True" in url):
         raise ValueError(

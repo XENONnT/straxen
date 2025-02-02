@@ -64,7 +64,7 @@ class EventPatternFit(strax.Plugin):
         help="S2 (x, y) optical data-driven model",
         infer_type=False,
         default=(
-            "keras://resource://"
+            "tf://resource://"
             "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.keras.tar.gz"
             "?custom_objects=plugin.s2_map_custom_objects"
             "&readable=True&fmt=abs_path"

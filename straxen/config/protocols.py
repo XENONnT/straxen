@@ -90,7 +90,7 @@ def load_value(name: str, bodega_version=None):
     return nt_numbers[name][bodega_version]["value"]
 
 
-@URLConfig.register("keras")
+@URLConfig.register("tf")
 def open_neural_net(model_path: str, custom_objects=None, **kwargs):
     """Load a keras model from a keras file.
 
