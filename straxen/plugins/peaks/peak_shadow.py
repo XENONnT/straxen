@@ -53,7 +53,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     )
 
     def get_window_size(self):
-        return 10 * self.shadow_time_window_backward
+        return (10 * self.shadow_time_window_backward, 0)
 
     def infer_dtype(self):
         s1_time_shadow_dtype = []
