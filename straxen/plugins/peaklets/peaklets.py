@@ -193,6 +193,9 @@ class Peaklets(strax.Plugin):
 
         self.channel_range = self.channel_map["tpc"]
 
+        self._tight_coincidence_window_left = self.tight_coincidence_window_left
+        self._tight_coincidence_window_right = self.tight_coincidence_window_right
+
     def compute(self, records, start, end):
         hits = strax.find_hits(records, min_amplitude=self.hit_thresholds)
 
@@ -338,8 +341,8 @@ class Peaklets(strax.Plugin):
             sorted_hit_max_times,
             sorted_hit_channels,
             peaklet_max_times,
-            self.tight_coincidence_window_left,
-            self.tight_coincidence_window_right,
+            self._tight_coincidence_window_left,
+            self._tight_coincidence_window_right,
             self.channel_range,
         )
 
