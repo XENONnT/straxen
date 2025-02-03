@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "straxen"
-version = "3.0.3"
+version = "3.1.0"
 description = "Streaming analysis for XENON"
 readme = "README.md"
 authors = [
