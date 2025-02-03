@@ -1,3 +1,20 @@
+3.1.0 / 2025-02-03
+-------------------
+* Check that `cmt://` protocol is not used by @dachengx in https://github.com/XENONnT/straxen/pull/1545
+* Assign xedocs ONLINE to `som_files` by @dachengx in https://github.com/XENONnT/straxen/pull/1547
+* Make sure all subruns have the same configs by @dachengx in https://github.com/XENONnT/straxen/pull/1546
+* Add new protocol and give SOM capabilities to use less deciles by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1514
+* Decorate superrun safeguard as method of `strax.Context` by @dachengx in https://github.com/XENONnT/straxen/pull/1548
+* Remove redundant dependencies by @dachengx in https://github.com/XENONnT/straxen/pull/1549
+* Return components in `get_components` by @dachengx in https://github.com/XENONnT/straxen/pull/1550
+* Be more flexible when changing tight_coincidence window by @dachengx in https://github.com/XENONnT/straxen/pull/1553
+* Allow two-sided overlapping window by @dachengx in https://github.com/XENONnT/straxen/pull/1554
+* Gap of hits in time should be int32 by @dachengx in https://github.com/XENONnT/straxen/pull/1555
+* Update URL config protocol for loading TF models by @reallsx in https://github.com/XENONnT/straxen/pull/1505
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.3...v3.1.0
+
+
 3.0.3 / 2025-01-25
 -------------------
 * Rename "algo" to "alg" because they were mixed by @dachengx in https://github.com/XENONnT/straxen/pull/1523
