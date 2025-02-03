@@ -95,11 +95,11 @@ def veto_event_dtype(
         (("Weighted variance of time [ns]", "center_time_spread"), np.float32),
         (
             ("Minimal amplitude-to-amplitude gap between neighboring hitlets [ns]", "min_gap"),
-            np.int8,
+            np.int32,
         ),
         (
             ("Maximal amplitude-to-amplitude gap between neighboring hitlets [ns]", "max_gap"),
-            np.int8,
+            np.int32,
         ),
     ]
     return dtype
