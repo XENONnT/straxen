@@ -368,7 +368,7 @@ class DAQReader(strax.Plugin):
                 dt = result_arrays[i]["dt"][0]
                 # Convert time to time in ns since unix epoch.
                 # Ensure the offset is a whole digitizer sample
-                result_arrays[i]["time"] += dt * (self.t0 // dt)
+                result_arrays[i]["time"] += dt * (np.int64(self.t0) // dt)
 
             # Ignore data from the 'blank' channels, corresponding to
             # channels that have nothing connected

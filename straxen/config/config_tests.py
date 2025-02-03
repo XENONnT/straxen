@@ -13,7 +13,7 @@ class URLWarning(UserWarning):
 
 @check_urls.register(r"(.*)(.*cmt.*)")
 def not_cmt_check(url: str):
-    raise NotImplementedError("The cmt protocol is removed. Please use xedocs instead.")
+    raise NotImplementedError("Error, the cmt protocol is removed. Please use xedocs instead.")
 
 
 @check_urls.register(r"(.*)(.*xedocs.*)")

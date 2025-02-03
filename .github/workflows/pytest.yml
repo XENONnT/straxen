@@ -70,6 +70,7 @@ jobs:
         run: |
           pip install git+https://github.com/AxFoundation/strax.git --force-reinstall
           pip install .
+          pip install tf-keras scikit-learn --upgrade
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.11.0
@@ -116,6 +117,7 @@ jobs:
         # Make the coverage report and upload
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
+          # Bypass numba to check pure numpy
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]') && env.HAVE_ACCESS_TO_SECRETS != null

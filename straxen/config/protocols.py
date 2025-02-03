@@ -1,23 +1,22 @@
-from .url_config import URLConfig
-
 import os
 import json
 import pytz
 import typing
-import strax
 import fsspec
-import straxen
+import runpy
 import tarfile
 import tempfile
+import shutil
 from typing import Container, Iterable
-
 import numpy as np
-
+from scipy.interpolate import interp1d
 from immutabledict import immutabledict
 
 from utilix import xent_collection
 import utilix
-from scipy.interpolate import interp1d
+import strax
+import straxen
+from .url_config import URLConfig
 
 
 def get_item_or_attr(obj, key, default=None):
@@ -33,7 +32,7 @@ def get_resource(name: str, fmt: str = "text", readable: bool = False, **kwargs)
     if fmt == "abs_path":
         downloader = utilix.mongo_storage.MongoDownloader()
         return downloader.download_single(name, human_readable_file_name=readable)
-    return straxen.get_resource(name, fmt=fmt)
+    return straxen.get_resource(name, fmt=fmt, readable=readable)
 
 
 @URLConfig.register("fsspec")
@@ -93,18 +92,47 @@ def load_value(name: str, bodega_version=None):
 
 
 @URLConfig.register("tf")
-def open_neural_net(model_path: str, custom_objects=None, **kwargs):
-    """Open a tensorflow file and return a keras model."""
+def open_neural_net(model_path: str, custom_objects=None, register=False, **kwargs):
+    """Load a keras model from a keras file.
+
+    If the model is a tar.gz file, it will be extracted and the registration.py file will be
+    imported. This file should contain the registration of custom objects and the model should be
+    saved as a .keras file.
+
+    """
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
     import tensorflow as tf
 
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"No file at {model_path}")
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tar = tarfile.open(model_path, mode="r:gz")
-        tar.extractall(path=tmpdirname)
-        return tf.keras.models.load_model(tmpdirname, custom_objects=custom_objects)
+
+    if register:
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tar = tarfile.open(model_path, mode="r:gz")
+            tar.extractall(path=tmpdirname)
+            # Execute the registration.py file
+            # This file should contain the registration of custom objects
+            # and the model should be saved as a .keras file
+            # Assign the module to a unique name to avoid conflicts
+            runpy.run_path(os.path.join(tmpdirname, "registration.py"))
+            for filename in os.listdir(tmpdirname):
+                if filename.endswith(".keras"):
+                    return tf.keras.models.load_model(
+                        os.path.join(tmpdirname, filename),
+                        custom_objects=custom_objects,
+                    )
+        raise FileNotFoundError(f"No .keras file found in {model_path}!")
+    else:
+        if model_path.endswith(".keras"):
+            return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+        else:
+            # If the model is not a .keras file,
+            # copy it to a temporary directory as .keras file and load it
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                filename = os.path.join(tmpdirname, os.path.basename(model_path) + ".keras")
+                shutil.copy(model_path, filename)
+                return tf.keras.models.load_model(filename, custom_objects=custom_objects)
 
 
 @URLConfig.register("itp_dict")

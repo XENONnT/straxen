@@ -65,9 +65,9 @@ class EventPatternFit(strax.Plugin):
         infer_type=False,
         default=(
             "tf://resource://"
-            "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz"
+            "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.keras.tar.gz"
             "?custom_objects=plugin.s2_map_custom_objects"
-            "&fmt=abs_path"
+            "&fmt=abs_path&register=True"
         ),
     )
 

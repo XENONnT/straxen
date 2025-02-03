@@ -189,7 +189,7 @@ def _circ_angle(x: float, y: float) -> float:
         angle = np.abs(np.arctan(x / y))
         return 3 / 2 * np.pi + angle
     elif x == 0 and y == 0:
-        return np.NaN
+        return np.nan
     else:
         print(x, y)
         raise ValueError("It should be impossible to arrive here, but somehow we managed.")
