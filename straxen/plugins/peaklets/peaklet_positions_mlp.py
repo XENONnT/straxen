@@ -17,17 +17,10 @@ class PeakletPositionsMLP(PeakletPositionsBase):
     gc_collect_after_compute = True
 
     tf_model_mlp = straxen.URLConfig(
-        default=(
-            "tf://"
-            "resource://"
-            "xedocs://posrec_models"
-            "?attr=value"
-            "&fmt=abs_path"
-            "&kind=mlp"
-            "&run_id=plugin.run_id"
-            "&version=ONLINE"
+        default="tf://resource://xnt_mlp_SR0_mix_2000031_2000021_20211211.keras?fmt=abs_path",
+        help=(
+            'MLP model. Should be opened using the "tf" descriptor. '
+            'Set to "None" to skip computation'
         ),
-        help='MLP model. Should be opened using the "tf" descriptor. '
-        'Set to "None" to skip computation',
         cache=3,
     )

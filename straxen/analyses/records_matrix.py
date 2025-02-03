@@ -65,7 +65,7 @@ def records_matrix(
             )
 
     wvm = _records_to_matrix(
-        records, t0=time_range[0], n_channels=config["n_tpc_pmts"], dt=dt, window=window
+        records, t0=time_range[0], n_channels=config["n_tpc_pmts"], dt=int(dt), window=window
     )
     wvm = wvm.astype(np.float32) * to_pe.reshape(1, -1) / dt
 

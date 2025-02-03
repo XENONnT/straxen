@@ -59,6 +59,8 @@ class SetupContextNt(PluginTestCase):
         "gps_sync",
         "veto_intervals_gps_sync",
         "ref_mon_nv",
+        "peak_s1_positions_cnn",
+        "event_s1_positions_cnn",
     )
 
     @classmethod
