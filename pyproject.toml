@@ -31,7 +31,7 @@ straxer = "straxen.scripts.straxer:main"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-strax = ">=2.0.5"
+strax = ">=2.1.0"
 bokeh = "*"
 commentjson = "*"
 gitpython = "*"
