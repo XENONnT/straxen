@@ -18,8 +18,8 @@ class EventS2PositionMLP(EventS2PositionBase):
             "tf://"
             "resource://"
             "xnt_mlp_SR0_mix_2000031_2000021_20211211.keras"
-            "?readable=True"
-            "&fmt=abs_path"
+            "?fmt=abs_path"
+            "&readable=True"
         ),
         help=(
             'MLP model. Should be opened using the "tf" descriptor. '

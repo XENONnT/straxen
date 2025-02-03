@@ -31,7 +31,7 @@ def get_resource(name: str, fmt: str = "text", readable: bool = False, **kwargs)
     if fmt == "abs_path":
         downloader = utilix.mongo_storage.MongoDownloader()
         return downloader.download_single(name, human_readable_file_name=readable)
-    return straxen.get_resource(name, fmt=fmt)
+    return straxen.get_resource(name, fmt=fmt, readable=readable)
 
 
 @URLConfig.register("fsspec")

@@ -13,7 +13,7 @@ class URLWarning(UserWarning):
 
 @check_urls.register(r"(.*)(.*cmt.*)")
 def not_cmt_check(url: str):
-    raise NotImplementedError("The cmt protocol is removed. Please use xedocs instead.")
+    raise NotImplementedError("Error, the cmt protocol is removed. Please use xedocs instead.")
 
 
 @check_urls.register(r"(.*)(.*xedocs.*)")
@@ -93,7 +93,7 @@ def posrec_models_check(url: str):
 def keras_check(url: str):
     if not ("readable=True" in url):
         raise ValueError(
-            "Warning, you are requesting a keras model with this URL. However, "
+            "Error, you are requesting a keras model with this URL. However, "
             "the protocol readable=True was not requested as part of the URL. "
             "The readable=True protocol is requiered for keras models. "
             "Because keras load_model only accepts .keras files. "

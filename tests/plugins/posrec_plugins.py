@@ -31,7 +31,7 @@ def test_posrec_set_path(
     self.assertTrue(os.path.exists(file_name))
 
     # Now let's see if we can get the same results with both contexts
-    set_to_config = f"tf://{file_name}"
+    set_to_config = f"tf://{file_name}?readable=True"
     print(f"Setting option to {set_to_config}")
     st_fixed_path.set_config({config_name: set_to_config})
     default_result = self.st.get_array(self.run_id, target)[field]
