@@ -70,6 +70,7 @@ jobs:
         run: |
           pip install git+https://github.com/AxFoundation/strax.git --force-reinstall
           pip install .
+          pip install tf_keras scikit_learn --upgrade
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.11.0
