@@ -24,7 +24,6 @@ class PeakS1PositionCNN(PeakS1PositionBase):
             "&kind=s1_cnn"
             "&fmt=abs_path"
             "&attr=value"
-            "&readable=True"
         ),
         help=(
             's1 position 3d reconstruction cnn model. Should be opened using the "tf" descriptor. '

@@ -6,6 +6,7 @@ import fsspec
 import runpy
 import tarfile
 import tempfile
+import shutil
 from typing import Container, Iterable
 import numpy as np
 from scipy.interpolate import interp1d
@@ -91,7 +92,7 @@ def load_value(name: str, bodega_version=None):
 
 
 @URLConfig.register("tf")
-def open_neural_net(model_path: str, custom_objects=None, **kwargs):
+def open_neural_net(model_path: str, custom_objects=None, register=False, **kwargs):
     """Load a keras model from a keras file.
 
     If the model is a tar.gz file, it will be extracted and the registration.py file will be
@@ -106,7 +107,7 @@ def open_neural_net(model_path: str, custom_objects=None, **kwargs):
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"No file at {model_path}")
 
-    if model_path.endswith(".tar.gz"):
+    if register:
         with tempfile.TemporaryDirectory() as tmpdirname:
             tar = tarfile.open(model_path, mode="r:gz")
             tar.extractall(path=tmpdirname)
@@ -123,7 +124,15 @@ def open_neural_net(model_path: str, custom_objects=None, **kwargs):
                     )
         raise FileNotFoundError(f"No .keras file found in {model_path}!")
     else:
-        return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+        if model_path.endswith(".keras"):
+            return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+        else:
+            # If the model is not a .keras file,
+            # copy it to a temporary directory as .keras file and load it
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                filename = os.path.join(tmpdirname, os.path.basename(model_path) + ".keras")
+                shutil.copy(model_path, filename)
+                return tf.keras.models.load_model(filename, custom_objects=custom_objects)
 
 
 @URLConfig.register("itp_dict")
