@@ -89,10 +89,8 @@ def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> N
         context.set_config(global_config)
         context.set_context_config({"xedocs_version": filter_kwargs["version"]})
     else:
-        warnings.warn(
-            f"Could not find any context configs matchin {filter_kwargs}",
-            RuntimeWarning,
-            stacklevel=2,
+        raise KeyError(
+            f"Could not find any context configs matching {filter_kwargs} in the xedocs database"
         )
 
 
