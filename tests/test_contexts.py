@@ -37,7 +37,7 @@ def test_xenonnt_online_rucio_local():
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_xennonnt():
+def test_xenonnt():
     st = xenonnt(_database_init=False)
     st.search_field("time")
 
