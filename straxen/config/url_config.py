@@ -61,8 +61,7 @@ class URLConfig(strax.Config):
 
     def __init__(self, cache=0, **kwargs):
         """
-        :param cache: number of values to keep in cache,
-                      if set to True will cache all values
+        :param cache: number of values to keep in cache, if set to True will cache all values
         :param **kwargs: additional keyword arguments accepted by strax.Option
         """
         self.final_type = OMITTED
@@ -483,11 +482,11 @@ class URLConfig(strax.Config):
         example::
 
             from straxen import URLConfig
-            url_string='cmt://electron_drift_velocity?run_id=027000&version=v3'
+            url_string='xedocs://electron_drift_velocity?run_id=027000&version=ONLINE'
             URLConfig.evaluate_dry(url_string)
 
             # or similarly
-            url_string='cmt://electron_drift_velocity?run_id=plugin.run_id&version=v3'
+            url_string='xedocs://electron_drift_velocity?run_id=plugin.run_id&version=ONLINE'
             URLConfig.evaluate_dry(url_string, run_id='027000')
 
         Please note that this has to be done outside of the plugin, so any

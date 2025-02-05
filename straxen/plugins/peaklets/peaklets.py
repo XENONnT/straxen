@@ -150,15 +150,22 @@ class Peaklets(strax.Plugin):
     )
 
     hit_min_amplitude = straxen.URLConfig(
+        default=(
+            "list-to-array://"
+            "xedocs://hit_thresholds"
+            "?as_list=True"
+            "&sort=pmt"
+            "&attr=value"
+            "&detector=tpc"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+        ),
+        help="Minimum hit amplitude in ADC counts above baseline. "
+        "Specify as a tuple of length n_tpc_pmts, or a number,"
+        'or a string like "pmt_commissioning_initial" which means calling'
+        "hitfinder_thresholds.py",
         track=True,
         infer_type=False,
-        default="cmt://hit_thresholds_tpc?version=ONLINE&run_id=plugin.run_id",
-        help=(
-            "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_tpc_pmts, or a number, "
-            "or a tuple like (correction=str, version=str, nT=boolean),"
-            "which means we are using cmt."
-        ),
     )
 
     def infer_dtype(self):
@@ -185,6 +192,9 @@ class Peaklets(strax.Plugin):
         self.hit_thresholds = self.hit_min_amplitude
 
         self.channel_range = self.channel_map["tpc"]
+
+        self._tight_coincidence_window_left = self.tight_coincidence_window_left
+        self._tight_coincidence_window_right = self.tight_coincidence_window_right
 
     def compute(self, records, start, end):
         hits = strax.find_hits(records, min_amplitude=self.hit_thresholds)
@@ -331,8 +341,8 @@ class Peaklets(strax.Plugin):
             sorted_hit_max_times,
             sorted_hit_channels,
             peaklet_max_times,
-            self.tight_coincidence_window_left,
-            self.tight_coincidence_window_right,
+            self._tight_coincidence_window_left,
+            self._tight_coincidence_window_right,
             self.channel_range,
         )
 

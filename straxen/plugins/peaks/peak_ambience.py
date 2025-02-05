@@ -53,7 +53,7 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     )
 
     def get_window_size(self):
-        return 10 * self.ambience_time_window_backward
+        return (10 * self.ambience_time_window_backward, 0)
 
     @property
     def origin_dtype(self):

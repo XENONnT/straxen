@@ -51,15 +51,22 @@ class PeakletsHighEnergy(Peaklets):
     )
 
     hit_min_amplitude_he = straxen.URLConfig(
-        default="cmt://hit_thresholds_he?version=ONLINE&run_id=plugin.run_id",
+        default=(
+            "list-to-array://"
+            "xedocs://hit_thresholds"
+            "?as_list=True"
+            "&sort=pmt"
+            "&attr=value"
+            "&detector=tpc_he"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+        ),
+        help="Minimum hit amplitude in ADC counts above baseline. "
+        "Specify as a tuple of length n_tpc_pmts, or a number,"
+        'or a string like "pmt_commissioning_initial" which means calling'
+        "hitfinder_thresholds.py",
         track=True,
         infer_type=False,
-        help=(
-            "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_tpc_pmts, or a number, "
-            "or a tuple like (correction=str, version=str, nT=boolean),"
-            "which means we are using cmt."
-        ),
     )
 
     # We cannot, we only have the top array, so should not.
@@ -80,6 +87,8 @@ class PeakletsHighEnergy(Peaklets):
         self.to_pe *= self.le_to_he_amplification
         self.hit_thresholds = self.hit_min_amplitude_he
         self.channel_range = self.channel_map["he"]
+        self._tight_coincidence_window_left = self.tight_coincidence_window_left
+        self._tight_coincidence_window_right = self.tight_coincidence_window_right
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)

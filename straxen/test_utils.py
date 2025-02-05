@@ -112,9 +112,13 @@ def nt_test_context(
         "012882-raw_records-z7q2d2ye2t.tar"
     )
     if keep_default_storage:
-        st.storage += [strax.DataDirectory("./strax_test_data", deep_scan=True)]
+        st.storage += [
+            strax.DataDirectory("./strax_test_data", deep_scan=True, provide_run_metadata=True)
+        ]
     else:
-        st.storage = [strax.DataDirectory("./strax_test_data", deep_scan=True)]
+        st.storage = [
+            strax.DataDirectory("./strax_test_data", deep_scan=True, provide_run_metadata=True)
+        ]
     assert st.is_stored(nt_test_run_id, "raw_records"), os.listdir(st.storage[-1].path)
 
     to_remove = list(deregister)

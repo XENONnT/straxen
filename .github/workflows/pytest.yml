@@ -33,14 +33,12 @@ jobs:
     strategy:
       fail-fast: False
       matrix:
-        python-version: [ "3.9", "3.10" ]
-        test: [ 'coveralls', 'pytest', 'pytest_no_database' ]
+        python-version: ["3.10", "3.11"]
+        test: ["coveralls", "pytest", "pytest_no_database"]
         # Drop some not crucial tests for python 3.10 and 3.11
         exclude:
           - python-version: "3.11"
             test: coveralls
-          - python-version: "3.10"
-            test: pytest_no_database
           - python-version: "3.11"
             test: pytest_no_database
 
@@ -57,11 +55,22 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get install -y graphviz
 
-      - name: Install requirements
+      - name: Install test tollkits
+        run: pip install pytest hypothesis coverage coveralls
+
+      - name: Install requirements for Python 3.10
+        if: matrix.python-version == '3.10'
+        run: pip install git+https://github.com/XENONnT/base_environment.git@el7.2025.01.3 --force-reinstall
+
+      - name: Install requirements for Python 3.11
+        if: matrix.python-version == '3.11'
+        run: pip install git+https://github.com/XENONnT/base_environment.git --force-reinstall
+
+      - name: Install strax and straxen
         run: |
-          pip install pytest hypothesis coverage coveralls
-          pip install git+https://github.com/XENONnT/base_environment.git --force-reinstall
           pip install git+https://github.com/AxFoundation/strax.git --force-reinstall
+          pip install .
+          pip install tf-keras scikit-learn --upgrade
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.11.0
@@ -103,10 +112,12 @@ jobs:
         run: |
           coverage run --source=straxen -m pytest --durations 0
           coverage report
+
       - name: Coveralls
         # Make the coverage report and upload
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
+          # Bypass numba to check pure numpy
           NUMBA_DISABLE_JIT: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: matrix.test == 'coveralls' && (github.actor != 'dependabot[bot]') && env.HAVE_ACCESS_TO_SECRETS != null
@@ -128,5 +139,6 @@ jobs:
           bash .github/scripts/create_pre_apply_function.sh $HOME
           coverage run --append --source=straxen -m pytest -v
           coveralls --service=github
+
       - name: goodbye
-        run: echo "tests done, bye bye"
+        run: echo 'tests done, bye bye'

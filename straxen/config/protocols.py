@@ -1,23 +1,22 @@
-from .url_config import URLConfig
-
 import os
 import json
 import pytz
 import typing
-import strax
 import fsspec
-import straxen
+import runpy
 import tarfile
 import tempfile
-from typing import Container, Iterable, Optional
-
+import shutil
+from typing import Container, Iterable
 import numpy as np
-
+from scipy.interpolate import interp1d
 from immutabledict import immutabledict
 
 from utilix import xent_collection
 import utilix
-from scipy.interpolate import interp1d
+import strax
+import straxen
+from .url_config import URLConfig
 
 
 def get_item_or_attr(obj, key, default=None):
@@ -26,26 +25,14 @@ def get_item_or_attr(obj, key, default=None):
     return getattr(obj, key, default)
 
 
-@URLConfig.register("cmt")
-def get_correction(
-    name: str, run_id: Optional[str] = None, version: str = "ONLINE", detector: str = "nt", **kwargs
-):
-    """Get value for name from CMT."""
-
-    if run_id is None:
-        raise ValueError("Attempting to fetch a correction without a run_id.")
-
-    return straxen.get_correction_from_cmt(run_id, (name, version, detector == "nt"))
-
-
 @URLConfig.register("resource")
-def get_resource(name: str, fmt: str = "text", **kwargs):
-    """Fetch a straxen resource Allow a direct download using <fmt='abs_path'> otherwise kwargs are
+def get_resource(name: str, fmt: str = "text", readable: bool = False, **kwargs):
+    """Fetch a straxen resource, allow a direct download using <fmt='abs_path'> otherwise kwargs are
     passed directly to straxen.get_resource."""
     if fmt == "abs_path":
         downloader = utilix.mongo_storage.MongoDownloader()
-        return downloader.download_single(name)
-    return straxen.get_resource(name, fmt=fmt)
+        return downloader.download_single(name, human_readable_file_name=readable)
+    return straxen.get_resource(name, fmt=fmt, readable=readable)
 
 
 @URLConfig.register("fsspec")
@@ -105,18 +92,47 @@ def load_value(name: str, bodega_version=None):
 
 
 @URLConfig.register("tf")
-def open_neural_net(model_path: str, custom_objects=None, **kwargs):
-    """Open a tensorflow file and return a keras model."""
+def open_neural_net(model_path: str, custom_objects=None, register=False, **kwargs):
+    """Load a keras model from a keras file.
+
+    If the model is a tar.gz file, it will be extracted and the registration.py file will be
+    imported. This file should contain the registration of custom objects and the model should be
+    saved as a .keras file.
+
+    """
     # Nested import to reduce loading time of import straxen and it not
     # base requirement
     import tensorflow as tf
 
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"No file at {model_path}")
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tar = tarfile.open(model_path, mode="r:gz")
-        tar.extractall(path=tmpdirname)
-        return tf.keras.models.load_model(tmpdirname, custom_objects=custom_objects)
+
+    if register:
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tar = tarfile.open(model_path, mode="r:gz")
+            tar.extractall(path=tmpdirname)
+            # Execute the registration.py file
+            # This file should contain the registration of custom objects
+            # and the model should be saved as a .keras file
+            # Assign the module to a unique name to avoid conflicts
+            runpy.run_path(os.path.join(tmpdirname, "registration.py"))
+            for filename in os.listdir(tmpdirname):
+                if filename.endswith(".keras"):
+                    return tf.keras.models.load_model(
+                        os.path.join(tmpdirname, filename),
+                        custom_objects=custom_objects,
+                    )
+        raise FileNotFoundError(f"No .keras file found in {model_path}!")
+    else:
+        if model_path.endswith(".keras"):
+            return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+        else:
+            # If the model is not a .keras file,
+            # copy it to a temporary directory as .keras file and load it
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                filename = os.path.join(tmpdirname, os.path.basename(model_path) + ".keras")
+                shutil.copy(model_path, filename)
+                return tf.keras.models.load_model(filename, custom_objects=custom_objects)
 
 
 @URLConfig.register("itp_dict")
@@ -311,3 +327,19 @@ def open_jax_model(model_path: str, **kwargs):
         serialized_jax_object = file_obj.read()
     # Deserialize the JAX object and return its callable function
     return export.deserialize(serialized_jax_object).call
+
+
+@URLConfig.register("runstart")
+def get_run_start(run_id):
+    """Protocol which returns start time of a given run as unix time in ns."""
+    rundb = utilix.xent_collection()
+    doc = rundb.find_one(
+        {"number": int(run_id)},
+        projection={
+            "start": 1,
+        },
+    )
+    start_time = doc["start"]
+    start_time_unix = start_time.replace(tzinfo=pytz.utc).timestamp()
+    start_time_unix = np.int64(start_time_unix) * straxen.units.s
+    return start_time_unix

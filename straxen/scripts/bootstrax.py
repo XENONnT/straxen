@@ -1338,7 +1338,7 @@ def run_strax(
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 
         if targets == strax.to_str_tuple("led_calibration"):
-            # TODO, still true?
+            # TODO: still true?
             # timeout *= 5
             pass
 

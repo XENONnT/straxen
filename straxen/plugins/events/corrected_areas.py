@@ -30,55 +30,56 @@ class CorrectedAreas(strax.Plugin):
 
     # Descriptor configs
     elife = straxen.URLConfig(
-        default="cmt://elife?version=ONLINE&run_id=plugin.run_id", help="electron lifetime in [ns]"
+        default="xedocs://electron_lifetimes?attr=value&run_id=plugin.run_id&version=ONLINE",
+        help="electron lifetime in [ns]",
     )
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
     s1_xyz_map = straxen.URLConfig(
-        default=(
-            "itp_map://resource://cmt://format://"
-            "s1_xyz_map_{alg}?version=ONLINE&run_id=plugin.run_id"
-            "&fmt=json&alg=plugin.default_reconstruction_algorithm"
-        ),
+        default="xedocs://s1_xyz_maps"
+        "?run_id=plugin.run_id"
+        "&algorithm=plugin.default_reconstruction_algorithm&attr=map&version=ONLINE",
         cache=True,
     )
     s2_xy_map = straxen.URLConfig(
-        default=(
-            "itp_map://resource://cmt://format://"
-            "s2_xy_map_{alg}?version=ONLINE&run_id=plugin.run_id"
-            "&fmt=json&alg=plugin.default_reconstruction_algorithm"
-        ),
+        default="xedocs://s2_xy_maps"
+        "?run_id=plugin.run_id"
+        "&algorithm=plugin.default_reconstruction_algorithm&attr=map&version=ONLINE",
         cache=True,
     )
 
     # average SE gain for a given time period. default to the value of this run in ONLINE model
     # thus, by default, there will be no time-dependent correction according to se gain
     avg_se_gain = straxen.URLConfig(
-        default="cmt://avg_se_gain?version=ONLINE&run_id=plugin.run_id",
-        help=(
-            "Nominal single electron (SE) gain in PE / electron extracted. "
-            "Data will be corrected to this value"
-        ),
+        default="xedocs://avg_se_gains?run_id=plugin.run_id&version=ONLINE&attr=value",
+        help="Nominal single electron (SE) gain in PE / electron extracted. "
+        "Data will be corrected to this value",
     )
 
-    # se gain for this run, allowing for using CMT. default to online
+    # se gain for this run, allowing for using xedocs. default to online
     se_gain = straxen.URLConfig(
-        default="cmt://se_gain?version=ONLINE&run_id=plugin.run_id",
+        default="take://objects-to-dict://"
+        "xedocs://se_gains"
+        "?partition=all_tpc&run_id=plugin.run_id&sort=partition"
+        "&as_list=True&key_attr=partition&value_attr=value&take=all_tpc&version=ONLINE",
         help="Actual SE gain for a given run (allows for time dependence)",
     )
 
-    # relative extraction efficiency which can change with time and modeled by CMT.
+    # relative extraction efficiency which can change with time and modeled by xedocs.
     rel_extraction_eff = straxen.URLConfig(
-        default="cmt://rel_extraction_eff?version=ONLINE&run_id=plugin.run_id",
+        default="take://objects-to-dict://"
+        "xedocs://rel_extraction_effs"
+        "?partition=all_tpc&run_id=plugin.run_id&sort=partition"
+        "&as_list=True&key_attr=partition&value_attr=value&take=all_tpc&version=ONLINE",
         help="Relative extraction efficiency for this run (allows for time dependence)",
     )
 
     # relative light yield
     # defaults to no correction
     rel_light_yield = straxen.URLConfig(
-        default="cmt://relative_light_yield?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://relative_light_yield?attr=value&run_id=plugin.run_id&version=ONLINE",
         help="Relative light yield (allows for time dependence)",
     )
 

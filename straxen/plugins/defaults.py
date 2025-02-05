@@ -8,12 +8,34 @@ MV_PREAMBLE = "Muno-Veto Plugin: Same as the corresponding nVETO-PLugin.\n"
 
 NV_HIT_DEFAULTS = {
     "save_outside_hits_nv": (3, 15),
-    "hit_min_amplitude_nv": "cmt://hit_thresholds_nv?version=ONLINE&run_id=plugin.run_id",
+    "hit_min_amplitude_nv": (
+        "list-to-array://"
+        "pad-array://"
+        "xedocs://hit_thresholds"
+        "?pad_left=2000"
+        "&as_list=True"
+        "&sort=pmt"
+        "&attr=value"
+        "&detector=neutron_veto"
+        "&run_id=plugin.run_id"
+        "&version=ONLINE"
+    ),
 }
 
 MV_HIT_DEFAULTS = {
     "save_outside_hits_mv": (2, 5),
-    "hit_min_amplitude_mv": "cmt://hit_thresholds_mv?version=ONLINE&run_id=plugin.run_id",
+    "hit_min_amplitude_mv": (
+        "list-to-array://"
+        "pad-array://"
+        "xedocs://hit_thresholds"
+        "?pad_left=1000"
+        "&as_list=True"
+        "&sort=pmt"
+        "&attr=value"
+        "&detector=muon_veto"
+        "&run_id=plugin.run_id"
+        "&version=ONLINE"
+    ),
 }
 
 FAKE_MERGED_S2_TYPE = -42

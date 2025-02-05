@@ -55,15 +55,17 @@ class EventPositionContour(strax.Plugin):
     )
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
 
     fdc_map = straxen.URLConfig(
+        default="xedocs://fdc_maps"
+        "?algorithm=plugin.default_reconstruction_algorithm&run_id=plugin.run_id"
+        "&attr=map&scale_coordinates=plugin.coordinate_scale&version=ONLINE",
         infer_type=False,
         help="3D field distortion correction map path",
-        default="legacy-fdc://xenon1t_sr0_sr1?run_id=plugin.run_id",
     )
 
     use_fdc_for_contour = straxen.URLConfig(

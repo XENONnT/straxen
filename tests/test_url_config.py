@@ -1,18 +1,20 @@
 import os
 import json
-import tempfile
-import pandas as pd
-import strax
-import straxen
-import fsspec
-import utilix.rundb
-from straxen.test_utils import nt_test_context, nt_test_run_id
-import unittest
-import pickle
 import random
 import warnings
-import numpy as np
+from bson import json_util
 from datetime import datetime
+import pickle
+import tempfile
+import fsspec
+import unittest
+import pandas as pd
+import numpy as np
+import utilix.rundb
+import strax
+import straxen
+from straxen.test_utils import nt_test_context, nt_test_run_id
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 
 class DummyObject:
@@ -86,14 +88,33 @@ def replace_global_version(config, name=None, **kwargs):
 class ExamplePlugin(strax.Plugin):
     depends_on = ()
     dtype = strax.time_fields
-    provides = ("test_data",)
+    provides = "test_data"
     test_config = straxen.URLConfig(
         default=42,
     )
     cached_config = straxen.URLConfig(default=666, cache=1)
 
-    def compute(self):
-        pass
+
+class AlgorithmPlugin(strax.Plugin):
+    depends_on = "raw_records"
+    dtype = strax.time_fields
+    provides = "test_data"
+    allow_superrun = True
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO,
+    )
+    superrun_test_config_a = straxen.URLConfig(
+        default=(
+            'take://json://{"'
+            + nt_test_run_id
+            + '":0,"_'
+            + nt_test_run_id
+            + '":1}?take=plugin.run_id'
+        ),
+    )
+    superrun_test_config_b = straxen.URLConfig(
+        default='take://json://{"cnf":0,"mlp":1}?take=plugin.default_reconstruction_algorithm',
+    )
 
 
 class TestURLConfig(unittest.TestCase):
@@ -116,12 +137,6 @@ class TestURLConfig(unittest.TestCase):
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         self.assertEqual(p.test_config, "0666")
         self.assertIsInstance(p.test_config, str)
-
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
-    def test_cmt_protocol(self):
-        self.st.set_config({"test_config": "cmt://elife?version=v1&run_id=plugin.run_id"})
-        p = self.st.get_single_plugin(nt_test_run_id, "test_data")
-        self.assertTrue(abs(p.test_config - 219203.49884000001) < 1e-2)
 
     def test_json_protocol(self):
         self.st.set_config({"test_config": 'json://{"a":0}'})
@@ -167,7 +182,7 @@ class TestURLConfig(unittest.TestCase):
         # Either g1 is 0, bodega changed or someone broke URLConfigs
         self.assertTrue(p.test_config)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test xedocs.")
     def test_itp_dict(self, ab_value=20, cd_value=21, dump_as="json"):
         """Test that we are getting ~the same value from interpolating at the central date in a
         dict.
@@ -316,21 +331,23 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(filtered2, all_kwargs)
         func2(**filtered2)
 
-    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test CMT.")
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test xedocs.")
     def test_dry_evaluation(self):
         """Check that running a dry evaluation can be done outside of the context of a URL config
         and yield the same result."""
-        plugin_url = "cmt://electron_drift_velocity?run_id=plugin.run_id&version=v3"
+        plugin_url = (
+            "xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE"
+        )
         self.st.set_config({"test_config": plugin_url})
         p = self.st.get_single_plugin(nt_test_run_id, "test_data")
         correct_val = p.test_config
 
         # We can also get it from one of these methods
         dry_val1 = straxen.URLConfig.evaluate_dry(
-            f"cmt://electron_drift_velocity?run_id={nt_test_run_id}&version=v3"
+            f"xedocs://electron_drift_velocities?attr=value&run_id={nt_test_run_id}&version=ONLINE"
         )
         dry_val2 = straxen.URLConfig.evaluate_dry(
-            f"cmt://electron_drift_velocity?version=v3", run_id=nt_test_run_id
+            f"xedocs://electron_drift_velocities?attr=value&version=ONLINE", run_id=nt_test_run_id
         )
 
         # All methods should yield the same
@@ -449,3 +466,44 @@ class TestURLConfig(unittest.TestCase):
         self.assertEqual(len(p.test_config), 8)
         self.assertEqual(p.test_config[0], 0)
         self.assertEqual(p.test_config[-1], 0)
+
+    def test_not_cmt_check(self):
+        """Expect error when using cmt."""
+        with self.assertRaises(NotImplementedError):
+            straxen.config.check_urls("cmt")
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+    def test_superrun_safeguard(self):
+        """Test that the superrun safeguard works as expected."""
+
+        # test all configs can be checked
+        st = self.st.new_context()
+        for data_type in st._plugin_class_registry:
+            if st._plugin_class_registry[data_type].depends_on:
+                st._plugin_class_registry[data_type].allow_superrun = True
+        configs = st.time_dependent_configs(
+            "_" + nt_test_run_id, ("event_info", "events_nv", "events_mv")
+        )
+        st.hashed_url_configs(configs)
+
+        # test the safeguard works
+        st = self.st.new_context()
+        st.set_context_config(
+            {"plugin_attr_convert": st.context_config["plugin_attr_convert"] + ("take",)}
+        )
+        st.register((AlgorithmPlugin,))
+        start = pd.to_datetime(0, unit="ns", utc=True)
+        end = pd.to_datetime(1, unit="ns", utc=True)
+        run_doc = {"name": nt_test_run_id, "start": start, "end": end}
+        with open(st.storage[0]._run_meta_path(str(nt_test_run_id)), "w") as fp:
+            json.dump(run_doc, fp, default=json_util.default)
+        st.define_run("_" + nt_test_run_id, [nt_test_run_id])
+        st.get_components("_" + nt_test_run_id, ("test_data",))
+        default = AlgorithmPlugin.takes_config["superrun_test_config_a"].default
+        st.set_config({"superrun_test_config_a": default.replace("run_id", "_run_id")})
+        with self.assertRaises(NotImplementedError):
+            # the raise NotImplementedError is expected from compute method
+            st.get_components("_" + nt_test_run_id, ("test_data",), combining=True)
+        with self.assertRaises(ValueError):
+            # the raise ValueError is expected from get_components in the wrapper
+            st.get_components("_" + nt_test_run_id, ("test_data",))

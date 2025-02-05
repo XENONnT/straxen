@@ -128,12 +128,19 @@ def open_resource(file_name: str, fmt="text"):
         # Retrieve from in-memory cache
         return _resource_cache[cached_name]
     # File resource
-    if fmt in ["npy", "npy_pickle"]:
-        result = np.load(file_name, allow_pickle=fmt == "npy_pickle")
+    if fmt in ["npy", "npy_pickle", "npz", "npz_pickle"]:
+        result = np.load(file_name, allow_pickle="pickle" in fmt)
         if isinstance(result, np.lib.npyio.NpzFile):
             # Slurp the arrays in the file, so the result can be copied,
             # then close the file so its descriptors does not leak.
-            result_slurped = {k: v[:] for k, v in result.items()}
+            result_slurped = {}
+            for k, v in result.items():
+                if v.shape:
+                    # if numpy array, slurp it
+                    result_slurped[k] = v[:]
+                else:
+                    # if scalar, convert it to a python scalar
+                    result_slurped[k] = v.item()
             result.close()
             result = result_slurped
     elif fmt == "pkl":
@@ -172,7 +179,7 @@ def open_resource(file_name: str, fmt="text"):
 
 
 @export
-def get_resource(x: str, fmt="text"):
+def get_resource(x: str, fmt="text", readable=False):
     """
     Get the resource from an online source to be opened here. We will
         sequentially try the following:
@@ -201,7 +208,7 @@ def get_resource(x: str, fmt="text"):
     elif straxen.uconfig is not None:
         downloader = utilix.mongo_storage.MongoDownloader()
         if x in downloader.list_files():
-            path = downloader.download_single(x)
+            path = downloader.download_single(x, human_readable_file_name=readable)
             return open_resource(path, fmt=fmt)
     # 4. load from URL
     if "://" in x:
