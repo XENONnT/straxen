@@ -83,7 +83,7 @@ def _get_fake_daq_reader():
 
 
 def nt_test_context(
-    target_context="xenonnt_online", deregister=(), keep_default_storage=False, **kwargs
+    target_context="xenonnt", deregister=(), keep_default_storage=False, **kwargs
 ) -> strax.Context:
     """Get a dummy context with full nt-like data simulated data (except aqmon) to allow testing
     plugins.
