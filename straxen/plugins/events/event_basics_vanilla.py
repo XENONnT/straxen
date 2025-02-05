@@ -139,7 +139,7 @@ class EventBasicsVanilla(strax.Plugin):
             ("endtime", np.int64, "end time since unix epoch [ns]"),
             ("area", np.float32, "area, uncorrected [PE]"),
             ("n_channels", np.int16, "count of contributing PMTs"),
-            ("n_hits", np.int16, "count of hits contributing at least one sample to the peak"),
+            ("n_hits", np.int32, "count of hits contributing at least one sample to the peak"),
             ("n_competing", np.int32, "number of competing peaks"),
             ("max_pmt", np.int16, "PMT number which contributes the most PE"),
             ("max_pmt_area", np.float32, "area in the largest-contributing PMT (PE)"),
