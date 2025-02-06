@@ -208,7 +208,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     withdraw_aggressive_merging = straxen.URLConfig(
-        default=True,
+        default=False,
         type=bool,
         help="Whether to withdraw the aggressive merging of the peaklets",
     )
