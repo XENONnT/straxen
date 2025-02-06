@@ -207,12 +207,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         help="Whether to prioritize p-value over area when testing the proposal",
     )
 
-    withdraw_aggressive_merging = straxen.URLConfig(
-        default=False,
-        type=bool,
-        help="Whether to withdraw the aggressive merging of the peaklets",
-    )
-
     merged_s2s_get_window_size_factor = straxen.URLConfig(
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
     )
@@ -376,7 +370,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
             self.rm_sparse_xy,
             self.use_uncertainty_weights,
             self.p_value_prioritized,
-            self.withdraw_aggressive_merging,
             self.gap_thresholds,
             disable=self.disable_progress_bar,
         )
@@ -545,7 +538,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         sparse_xy=True,
         uncertainty_weights=True,
         p_value_prioritized=False,
-        withdraw_aggressive_merging=True,
         gap_thresholds=None,
         diagnosing=False,
         disable=True,
@@ -612,23 +604,36 @@ class MergedS2s(strax.OverlapWindowPlugin):
             p_values = []
             dr_avgs = []
 
+        def gap_small_enough(y, x):
+            log_area = np.log10(y["area"] + x["area"])
+            this_gap = MergedS2s.get_gap(y, x)
+            gap_threshold = thresholds_interpolation(log_area, gap_thresholds)
+            # gap of 90-10% area decile distance should not be larger than the threshold
+            return this_gap < gap_threshold
+
         def can_merge_left(i, peaks):
             # whether peaklet i (from _peak) can be merged to its left unexamined peaklet
-            return (
+            flag = (
                 i - 1 >= 0
                 and unexamined[i - 1]
                 and MergedS2s.get_gap(peaks[i], peaks[i - 1]) < max_gap
                 and MergedS2s.get_duration(peaks[i], peaks[i - 1]) <= max_duration
             )
+            if not flag:
+                return False
+            return gap_small_enough(peaks[i], peaks[i - 1])
 
         def can_merge_right(i, peaks):
             # whether peaklet i (from _peak) can be merged to its right unexamined peaklet
-            return (
+            flag = (
                 i < n_peaks
                 and unexamined[i]
                 and MergedS2s.get_gap(peaks[i - 1], peaks[i]) < max_gap
                 and MergedS2s.get_duration(peaks[i - 1], peaks[i]) <= max_duration
             )
+            if not flag:
+                return False
+            return gap_small_enough(peaks[i - 1], peaks[i])
 
         argsort = strax.stable_argsort(peaks["area"])
         for i in tqdm(argsort[::-1], disable=disable):
@@ -697,16 +702,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                         )
                     else:
                         # this is kept for diagnosing and merged_s2s_he
-                        this_gap = MergedS2s.get_gap(peaks[i], peaks[j])
-                        gap_threshold = thresholds_interpolation(
-                            log_area,
-                            gap_thresholds,
-                        )
-                        # gap of 90-10% area decile distance should not be larger than the threshold
-                        if this_gap < gap_threshold:
-                            p_ = 1.0
-                        else:
-                            p_ = -1.0
+                        p_ = 1.0
                         p_threshold_ = 0.0
                     p.append(p_)
                     p_threshold.append(p_threshold_)
@@ -720,52 +716,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
                     merged_area.append(area[examined][merged[examined]].sum())
 
                 if np.all(p < p_threshold):
-                    if not (
-                        sparse_xy
-                        and withdraw_aggressive_merging
-                        and end_index[i] - start_index[i] > 1
-                    ):
-                        _merging = examined
-                    else:
-                        revise_left = (
-                            can_merge_left(start_index[i], peaks_copy)
-                            and not merged[start_index[i]]
-                        )
-                        revise_right = (
-                            can_merge_right(end_index[i], peaks_copy)
-                            and not merged[end_index[i] - 1]
-                        )
-                        if revise_left or revise_right:
-                            # this means the left(right) most peaklet might be merged
-                            # by an unexamined peaklet left(right) far away in time
-                            start_idx = start_index[i]
-                            while not merged[start_idx] and revise_left:
-                                start_idx += 1
-                            end_idx = end_index[i]
-                            while not merged[end_idx - 1] and revise_right:
-                                end_idx -= 1
-                            assert start_idx < end_idx
-                            # revise the previously merged peaklets back
-                            for revised in (
-                                slice(start_index[i], start_idx),
-                                slice(end_idx, end_index[i]),
-                            ):
-                                merged[revised] = True
-                                peaks[revised] = peaks_copy[revised]
-                                start_index[revised] = start_index_copy[revised]
-                                end_index[revised] = end_index_copy[revised]
-                                left_bounds[revised] = left_bounds_copy[revised]
-                                right_bounds[revised] = right_bounds_copy[revised]
-                            # revise the peaklets really to be merged
-                            _merging = slice(start_idx, end_idx)
-                            start_index[_merging] = start_index_copy[start_idx]
-                            end_index[_merging] = end_index_copy[end_idx - 1]
-                            left_bounds[_merging] = left_bounds_copy[start_idx]
-                            right_bounds[_merging] = right_bounds_copy[end_idx - 1]
-                        else:
-                            _merging = examined
                     # this will not allow merging of the already examined peaklets
-                    unexamined[_merging] = False
+                    unexamined[examined] = False
                 else:
                     # whether test the proposal with larger area first
                     if p_value_prioritized:
