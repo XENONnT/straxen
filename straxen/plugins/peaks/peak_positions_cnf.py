@@ -12,7 +12,7 @@ class PeakPositionsCNF(PeakPositionsBase):
     algorithm = "cnf"
     depends_on = (
         "peaklet_positions_cnf",
-        "peaklet_classification",
+        "enhanced_peaklet_classification",
         "merged_s2s",
         "merged_s2_positions_cnf",
     )

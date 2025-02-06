@@ -12,7 +12,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
     """Look for peaks around a peak to determine how many peaks are in proximity (in time) of a
     peak."""
 
-    __version__ = "0.4.1"
+    __version__ = "0.5.0"
 
     depends_on = "peak_basics"
     dtype = [
@@ -56,9 +56,11 @@ class PeakProximity(strax.OverlapWindowPlugin):
         return self.peak_max_proximity_time
 
     def compute(self, peaks):
-        windows = strax.touching_windows(peaks, peaks, window=self.nearby_window)
+        # only consider S1 and S2 peaks
+        mask = np.isin(peaks["type"], [1, 2])
+        windows = strax.touching_windows(peaks[mask], peaks, window=self.nearby_window)
         n_left, n_tot = self.find_n_competing(
-            peaks, peaks, windows, fraction=self.min_area_fraction
+            peaks[mask], peaks, windows, fraction=self.min_area_fraction
         )
 
         t_to_prev_peak = np.ones(len(peaks), dtype=np.int64) * self.peak_max_proximity_time
