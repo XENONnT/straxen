@@ -51,15 +51,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
     s2_merge_gap_thresholds = straxen.URLConfig(
         default=(
             (1.84, 2.84e04),
-            (2.18, 2.37e04),
-            (2.51, 1.97e04),
-            (2.84, 1.83e04),
-            (3.18, 1.72e04),
-            (3.51, 1.89e04),
-            (3.84, 1.95e04),
-            (4.18, 1.63e04),
+            (2.18, 2.40e04),
+            (2.51, 1.96e04),
+            (2.84, 1.80e04),
+            (3.18, 1.68e04),
+            (3.51, 1.86e04),
+            (3.84, 1.98e04),
+            (4.18, 1.66e04),
             (4.51, 1.21e04),
-            (4.84, 0.00e00),
         ),
         infer_type=False,
         help=(
@@ -67,6 +66,54 @@ class MergedS2s(strax.OverlapWindowPlugin):
             "merging [ns] depending on log10 area of the merged peak\n"
             "where the gap size of the first point is the maximum gap to allow merging."
             "The format is ((log10(area), max_gap), (..., ...), (..., ...))"
+        ),
+    )
+
+    s2_merge_p_thresholds = straxen.URLConfig(
+        default=(
+            (2.18, 1.00e-01),
+            (2.51, 5.67e-02),
+            (2.84, 2.80e-02),
+            (3.18, 2.49e-02),
+            (3.51, 3.76e-02),
+            (3.84, 3.26e-02),
+            (4.18, 7.36e-02),
+            (4.51, 1.00e-01),
+        ),
+        infer_type=False,
+        help=(
+            "Points to define minimum p-value of merging proposal "
+            "depending on log10 area of the merged peak\n"
+            "The format is ((log10(area), p-value), (..., ...), (..., ...))"
+        ),
+    )
+
+    s2_merge_dr_thresholds = straxen.URLConfig(
+        default=(
+            (1.51, 1.40e01),
+            (1.84, 1.83e01),
+            (2.18, 1.97e01),
+            (2.51, 1.24e01),
+            (2.84, 5.75e00),
+        ),
+        type=tuple,
+        help=(
+            "Points to define maximum weighted mean deviation of "
+            "the peaklets from the main cluster [cm]\n"
+            "The format is ((log10(area_top), dr), (..., ...), (..., ...))"
+        ),
+    )
+
+    s2_merge_unmerged_thresholds = straxen.URLConfig(
+        default=(1, 49.5, 0.01),
+        type=tuple,
+        help=(
+            "Max (number, fraction of unmerged, total area of unmerged) "
+            "of type 20 peaklets inside a peak. "
+            "The number of type 20 peaklets should not be larger than the number threshold. "
+            "The area of type 20 peaklets should not be larger than the both area thresholds. "
+            "The fraction threshold is important when S2 is large, "
+            "while the total area threshold is important when S2 is small."
         ),
     )
 
@@ -141,54 +188,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         default=10,
         type=(int, float),
         help="Maximum exponent for the posterior to keep numerical stability",
-    )
-
-    s2_merge_p_thresholds = straxen.URLConfig(
-        default=(
-            (2.18, 1.00e-01),
-            (2.51, 4.21e-02),
-            (2.84, 1.90e-02),
-            (3.18, 1.96e-02),
-            (3.51, 2.08e-02),
-            (3.84, 1.64e-02),
-            (4.18, 2.28e-02),
-            (4.51, 1.00e-01),
-        ),
-        infer_type=False,
-        help=(
-            "Points to define minimum p-value of merging proposal "
-            "depending on log10 area of the merged peak\n"
-            "The format is ((log10(area), p-value), (..., ...), (..., ...))"
-        ),
-    )
-
-    s2_merge_dr_thresholds = straxen.URLConfig(
-        default=(
-            (1.51, 1.40e01),
-            (1.84, 1.83e01),
-            (2.18, 1.97e01),
-            (2.51, 1.24e01),
-            (2.84, 5.75e00),
-        ),
-        type=tuple,
-        help=(
-            "Points to define maximum weighted mean deviation of "
-            "the peaklets from the main cluster [cm]\n"
-            "The format is ((log10(area_top), dr), (..., ...), (..., ...))"
-        ),
-    )
-
-    s2_merge_unmerged_thresholds = straxen.URLConfig(
-        default=(1, 49.5, 0.01),
-        type=tuple,
-        help=(
-            "Max (number, fraction of unmerged, total area of unmerged) "
-            "of type 20 peaklets inside a peak. "
-            "The number of type 20 peaklets should not be larger than the number threshold. "
-            "The area of type 20 peaklets should not be larger than the both area thresholds. "
-            "The fraction threshold is important when S2 is large, "
-            "while the total area threshold is important when S2 is small."
-        ),
     )
 
     use_bayesian_merging = straxen.URLConfig(default=True, type=bool, help="Use Bayesian merging")
