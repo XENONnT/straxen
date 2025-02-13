@@ -1,3 +1,14 @@
+3.1.1 / 2025-02-13
+-------------------
+* `n_hits` should be int32, otherwise overflow by @dachengx in https://github.com/XENONnT/straxen/pull/1558
+* Iterative Bayesian 3D (t, x, y) S2 merging by @dachengx in https://github.com/XENONnT/straxen/pull/1513
+* Swap `xenonnt_online` and `xenonnt` by @dachengx in https://github.com/XENONnT/straxen/pull/1560
+* Optimize S2 time-density merging thresholds by @dachengx in https://github.com/XENONnT/straxen/pull/1559
+* Raise error when the global version can not be find by @dachengx in https://github.com/XENONnT/straxen/pull/1557
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.0...v3.1.1
+
+
 3.1.0 / 2025-02-03
 -------------------
 * Check that `cmt://` protocol is not used by @dachengx in https://github.com/XENONnT/straxen/pull/1545
