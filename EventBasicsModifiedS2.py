@@ -3,7 +3,7 @@ import numpy as np
 import numba
 import straxen
 
-#Modified Event Basics that returns the Main S1 peak and Alternate S2 peak given size of peak area.
+# Modified Event Basics that returns the Main S1 peak and Alternate S2 peak given size of peak area.
 export, __all__ = strax.exporter()
 
 
@@ -32,19 +32,19 @@ class EventBasicsM2(strax.Plugin):
     allow_posts2_s1s = straxen.URLConfig(
         default=False,
         infer_type=False,
-        help="Allow S1s past the main S2 to become the main S1 and S2", #both false, not usable
+        help="Allow S1s past the main S2 to become the main S1 and S2",  # both false, not usable
     )
 
     force_main_before_alt = straxen.URLConfig(
-        default=False ,
+        default=False,
         infer_type=False,
-        help="Make the alternate S1 (and likewise S2) the main S1 if occurs before the main S1.", #this does not work either but this is what i will fix
+        help="Make the alternate S1 (and likewise S2) the main S1 if occurs before the main S1.",  # this does not work either but this is what i will fix
     )
 
     force_alt_s2_in_max_drift_time = straxen.URLConfig(
         default=True,
         infer_type=False,
-        help="Make sure main_s2 is in max drift time starting from main S1", 
+        help="Make sure main_s2 is in max drift time starting from main S1",
     )
 
     event_s1_min_coincidence = straxen.URLConfig(
@@ -250,7 +250,9 @@ class EventBasicsM2(strax.Plugin):
         largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2, number_of_peaks=0)
 
         if not self.allow_posts2_s1s and len(largest_s2s):
-            s1_latest_time = largest_s2s[0]["time"] #also calling on alt s2 time to determine s1 latest time
+            s1_latest_time = largest_s2s[0][
+                "time"
+            ]  # also calling on alt s2 time to determine s1 latest time
         else:
             s1_latest_time = np.inf
 
@@ -273,7 +275,9 @@ class EventBasicsM2(strax.Plugin):
             largest_s2s, s2_idx = largest_s2s[0:2], s2_idx[0:2]
 
         if self.force_main_before_alt:
-            s2_order = np.argsort(largest_s2s["time"]) #is it okay to use the alt time as a basis for main s2?
+            s2_order = np.argsort(
+                largest_s2s["time"]
+            )  # is it okay to use the alt time as a basis for main s2?
             largest_s2s = largest_s2s[s2_order]
             s2_idx = s2_idx[s2_order]
 
@@ -298,7 +302,7 @@ class EventBasicsM2(strax.Plugin):
     @staticmethod
     @numba.njit
     def find_main_alt_s2(largest_s1s, s2_idx, largest_s2s, drift_time_max):
-        """Require alt_s2 happens between main S1 and maximum drift time.""" # Don't think anything needs to be changed since it only ensures that the "alt"(main in this case) is within main s1 and max drift time. 
+        """Require alt_s2 happens between main S1 and maximum drift time."""  # Don't think anything needs to be changed since it only ensures that the "alt"(main in this case) is within main s1 and max drift time.
         if len(largest_s1s) > 0 and len(largest_s2s) > 1:
             # If there is a valid s1-s2 pair and has a second s2, then check alt s2 validity
             s2_after_s1 = largest_s2s["center_time"] > largest_s1s[0]["center_time"]
@@ -310,7 +314,10 @@ class EventBasicsM2(strax.Plugin):
             mask[0] = True
             # Take main and the largest valid alt_S2
             s2_idx, largest_s2s = s2_idx[mask], largest_s2s[mask]
-        return s2_idx[:2][::-1], largest_s2s[:2][::-1] #the mask ensures that the largest peak's center times are within the drift time, and checks all of them to 
+        return (
+            s2_idx[:2][::-1],
+            largest_s2s[:2][::-1],
+        )  # the mask ensures that the largest peak's center times are within the drift time, and checks all of them to
 
     @staticmethod
     @numba.njit
@@ -346,24 +353,19 @@ class EventBasicsM2(strax.Plugin):
                 result["large_s2_before_main_s2"] = np.max(s2peaks_before_ms2["area"])
         return result
 
-    
     @staticmethod
     # @numba.njit <- works but slows if fill_events is not numbafied
     def get_largest_sx_peaks(
-        peaks,
-        s_i,
-        s1_before_time=np.inf,
-        s1_min_coincidence=0,
-        number_of_peaks=2
+        peaks, s_i, s1_before_time=np.inf, s1_min_coincidence=0, number_of_peaks=2
     ):
         """Get the largest S1/S2.
 
         For S1s allow a min coincidence and max time
 
         """
-            
+
         # Find all peaks of this type (S1 or S2)
-        
+
         s_mask = peaks["type"] == s_i
         if s_i == 1:
             s_mask &= peaks["time"] < s1_before_time
@@ -375,7 +377,9 @@ class EventBasicsM2(strax.Plugin):
         if s_i == 2:
             selected_peaks = peaks[s_mask]
             s_index = np.arange(len(peaks))[s_mask]
-            largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:] #set condition for s2 largest peaks
+            largest_peaks = np.argsort(selected_peaks["area"])[
+                -number_of_peaks:
+            ]  # set condition for s2 largest peaks
 
         return selected_peaks[largest_peaks], s_index[largest_peaks]
 
@@ -415,4 +419,3 @@ class EventBasicsM2(strax.Plugin):
             res["s2_index"] = s2_idx[0]
             if len(s2_idx) > 1:
                 res["alt_s2_index"] = s2_idx[1]
-

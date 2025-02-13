@@ -3,7 +3,7 @@ import numpy as np
 import numba
 import straxen
 
-#This first pass at a modified event basics includes a quantile function and possible approach to constructing a best-fit algorithm. 
+# This first pass at a modified event basics includes a quantile function and possible approach to constructing a best-fit algorithm.
 
 export, __all__ = strax.exporter()
 
@@ -33,13 +33,13 @@ class EventBasicsM(strax.Plugin):
     allow_posts2_s1s = straxen.URLConfig(
         default=False,
         infer_type=False,
-        help="Allow S1s past the main S2 to become the main S1 and S2", #both false, not usable
+        help="Allow S1s past the main S2 to become the main S1 and S2",  # both false, not usable
     )
 
     force_main_before_alt = straxen.URLConfig(
-        default=False ,
+        default=False,
         infer_type=False,
-        help="Make the alternate S1 (and likewise S2) the main S1 if occurs before the main S1.", #this does not work either but this is what i will fix
+        help="Make the alternate S1 (and likewise S2) the main S1 if occurs before the main S1.",  # this does not work either but this is what i will fix
     )
 
     force_alt_s2_in_max_drift_time = straxen.URLConfig(
@@ -347,15 +347,10 @@ class EventBasicsM(strax.Plugin):
                 result["large_s2_before_main_s2"] = np.max(s2peaks_before_ms2["area"])
         return result
 
-    
     @staticmethod
     # @numba.njit <- works but slows if fill_events is not numbafied
     def get_largest_sx_peaks(
-        peaks,
-        s_i,
-        s1_before_time=np.inf,
-        s1_min_coincidence=0,
-        number_of_peaks=2
+        peaks, s_i, s1_before_time=np.inf, s1_min_coincidence=0, number_of_peaks=2
     ):
         """Get the largest S1/S2.
 
@@ -364,20 +359,20 @@ class EventBasicsM(strax.Plugin):
         """
 
         def aft_quantile(s2, a, b, c):
-                return a + b / np.sqrt(s2) + c * s2
-            
+            return a + b / np.sqrt(s2) + c * s2
+
         # Find all peaks of this type (S1 or S2)
-        
+
         s_mask = peaks["type"] == s_i
         if s_i == 1:
             s_mask &= peaks["time"] < s1_before_time
             s_mask &= peaks["tight_coincidence"] >= s1_min_coincidence
 
-#This is a possible approach of creating a mask with a strict acceptance limit. This method could be implemented in tangent with the polynomial-based algorithm. 
-      #  if s_i == 2:
+        # This is a possible approach of creating a mask with a strict acceptance limit. This method could be implemented in tangent with the polynomial-based algorithm.
+        #  if s_i == 2:
         #    s_mask &= peaks['area_fraction_top'] <= aft_quantile(peaks['area'], *[0.7968, 1.7915, 7.76e-9])
-         #   s_mask &= peaks['area_fraction_top'] >= aft_quantile(peaks['area'], *[0.7645, -1.914, -1.52e-8]) 
-        
+        #   s_mask &= peaks['area_fraction_top'] >= aft_quantile(peaks['area'], *[0.7645, -1.914, -1.52e-8])
+
         selected_peaks = peaks[s_mask]
         s_index = np.arange(len(peaks))[s_mask]
         largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:][::-1]
@@ -419,4 +414,3 @@ class EventBasicsM(strax.Plugin):
             res["s2_index"] = s2_idx[0]
             if len(s2_idx) > 1:
                 res["alt_s2_index"] = s2_idx[1]
-

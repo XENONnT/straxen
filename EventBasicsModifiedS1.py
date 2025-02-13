@@ -3,7 +3,7 @@ import numpy as np
 import numba
 import straxen
 
-#Modified Event Basics that returns the Alternate S1 peak and Main S2 peak given size of peak area.
+# Modified Event Basics that returns the Alternate S1 peak and Main S2 peak given size of peak area.
 
 export, __all__ = strax.exporter()
 
@@ -138,7 +138,7 @@ class EventBasicsMS1(strax.Plugin):
 
     @staticmethod
     def _get_si_dtypes(peak_properties):
-        """Get properties for S1/S2 from peaks directly.""" #leave as is since this just defines the peaks by s1 or s2 and labeled them main or alternate
+        """Get properties for S1/S2 from peaks directly."""  # leave as is since this just defines the peaks by s1 or s2 and labeled them main or alternate
         si_dtype = []
         for s_i in [1, 2]:
             # Peak indices
@@ -251,7 +251,7 @@ class EventBasicsMS1(strax.Plugin):
         largest_s2s, s2_idx = self.get_largest_sx_peaks(peaks, s_i=2, number_of_peaks=0)
 
         if not self.allow_posts2_s1s and len(largest_s2s):
-            s1_latest_time = largest_s2s[0]["time"] #just putting s1 limit, no need to change 
+            s1_latest_time = largest_s2s[0]["time"]  # just putting s1 limit, no need to change
         else:
             s1_latest_time = np.inf
 
@@ -325,7 +325,7 @@ class EventBasicsMS1(strax.Plugin):
                     largest_s2s[0]["center_time"] - largest_s1s[1]["center_time"]
                 )
                 result["alt_s1_delay"] = (
-                    largest_s1s[1]["center_time"] - largest_s1s[0]["center_time"] #change?
+                    largest_s1s[1]["center_time"] - largest_s1s[0]["center_time"]  # change?
                 )
             if len(largest_s2s) > 1:
                 result["alt_s2_interaction_drift_time"] = (
@@ -364,15 +364,17 @@ class EventBasicsMS1(strax.Plugin):
             s_mask &= peaks["tight_coincidence"] >= s1_min_coincidence
 
             selected_peaks = peaks[s_mask]
-            s_index = np.arange(len(peaks))[s_mask] #do i need to make edits to this?
+            s_index = np.arange(len(peaks))[s_mask]  # do i need to make edits to this?
             largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:]
-            #largest_peaks= largest_peaks[1:]: a method tried
-            #remove the reverse string because I want the alt as index 0, main as index 1
+            # largest_peaks= largest_peaks[1:]: a method tried
+            # remove the reverse string because I want the alt as index 0, main as index 1
             return selected_peaks[largest_peaks], s_index[largest_peaks]
 
         selected_peaks = peaks[s_mask]
         s_index = np.arange(len(peaks))[s_mask]
-        largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:][::-1] #this is for s2
+        largest_peaks = np.argsort(selected_peaks["area"])[-number_of_peaks:][
+            ::-1
+        ]  # this is for s2
         return selected_peaks[largest_peaks], s_index[largest_peaks]
 
     # If only we could numbafy this... Unfortunatly we cannot.
@@ -388,7 +390,9 @@ class EventBasicsMS1(strax.Plugin):
         """For one event, write all the peak_fields (e.g. "area") of the peak (largest_s_i) into
         their associated field in the event (e.g. s1_area), main_or_alt_index differentiates between
         main (index 0) and alt (index 1)"""
-        index_not_in_list_of_largest_peaks = main_or_alt_index >= len(largest_s_i) #largest s1 should be modified given the get largest peaks change
+        index_not_in_list_of_largest_peaks = main_or_alt_index >= len(
+            largest_s_i
+        )  # largest s1 should be modified given the get largest peaks change
         if index_not_in_list_of_largest_peaks:
             # There is no such peak. E.g. main_or_alt_index == 1 but largest_s_i = ["Main S1"]
             # Asking for index 1 doesn't work on a len 1 list of peaks.
@@ -406,7 +410,9 @@ class EventBasicsMS1(strax.Plugin):
         if len(s1_idx):
             res["s1_index"] = s1_idx[0]
             if len(s1_idx) > 1:
-                res["alt_s1_index"] = s1_idx[1] #the alt s1 value is now the 0th index of get largest peaks, so I switched them
+                res["alt_s1_index"] = s1_idx[
+                    1
+                ]  # the alt s1 value is now the 0th index of get largest peaks, so I switched them
         if len(s2_idx):
             res["s2_index"] = s2_idx[0]
             if len(s2_idx) > 1:
