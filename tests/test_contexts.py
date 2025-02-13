@@ -3,7 +3,7 @@ build the dependencies in the context correctly) See issue #233 and PR #236."""
 
 import unittest
 import straxen
-from straxen.contexts import xenonnt_led, xenonnt_online
+from straxen.contexts import xenonnt, xenonnt_online, xenonnt_led
 
 
 ##
@@ -11,9 +11,8 @@ from straxen.contexts import xenonnt_led, xenonnt_online
 ##
 
 
-@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_xenonnt_online():
-    st = xenonnt_online(_database_init=False)
+def test_xenonnt():
+    st = xenonnt(_database_init=False)
     st.search_field("time")
 
 
@@ -38,7 +37,7 @@ def test_xenonnt_online_rucio_local():
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_xennonnt():
+def test_xennonnt_online():
     st = xenonnt_online(_database_init=False)
     st.search_field("time")
 
