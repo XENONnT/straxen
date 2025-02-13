@@ -3,7 +3,7 @@ build the dependencies in the context correctly) See issue #233 and PR #236."""
 
 import unittest
 import straxen
-from straxen.contexts import xenonnt_led, xenonnt_online
+from straxen.contexts import xenonnt, xenonnt_online, xenonnt_led
 
 
 ##
@@ -12,7 +12,7 @@ from straxen.contexts import xenonnt_led, xenonnt_online
 
 
 def test_xenonnt():
-    st = xenonnt_online(_database_init=False)
+    st = xenonnt(_database_init=False)
     st.search_field("time")
 
 
