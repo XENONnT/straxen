@@ -125,7 +125,7 @@ class TestBasics(unittest.TestCase):
 
     def test_load_context_defaults(self):
         """Don't fail immediately if we start a context due to Rucio."""
-        st = straxen.contexts.xenonnt_online(
+        st = straxen.contexts.xenonnt(
             minimum_run_number=10_000,
             maximum_run_number=10_010,
         )

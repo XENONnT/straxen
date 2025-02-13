@@ -70,43 +70,6 @@ common_config = dict(
 )
 
 
-@strax.Context.add_method
-def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> None:
-    import xedocs
-
-    if isinstance(db, str):
-        func = getattr(xedocs.databases, db)
-        db_kwargs = straxen.filter_kwargs(func, kwargs)
-        db = func(**db_kwargs)
-
-    filter_kwargs = {k: v for k, v in kwargs.items() if k in db.context_configs.schema.__fields__}
-
-    docs = db.context_configs.find_docs(**filter_kwargs)
-
-    global_config = {doc.config_name: doc.value for doc in docs}
-
-    if len(global_config):
-        context.set_config(global_config)
-        context.set_context_config({"xedocs_version": filter_kwargs["version"]})
-    else:
-        warnings.warn(
-            f"Could not find any context configs matchin {filter_kwargs}",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-
-
-def xenonnt(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
-    """XENONnT context."""
-    if not _from_cutax and xedocs_version != "global_ONLINE":
-        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
-
-    st = straxen.contexts.xenonnt_online(**kwargs)
-    st.apply_xedocs_configs(version=xedocs_version, **kwargs)
-
-    return st
-
-
 def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     """Check the hostname to determine which rucio local path to use. Note that access to
     /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node.
@@ -135,7 +98,7 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     return _include_rucio_local, __rucio_local_path
 
 
-def xenonnt_online(
+def xenonnt(
     output_folder: str = "./strax_data",
     we_are_the_daq: bool = False,
     minimum_run_number: int = 7157,
@@ -282,7 +245,7 @@ def xenonnt_online(
 
 
 def xenonnt_led(**kwargs):
-    st = xenonnt_online(**kwargs)
+    st = xenonnt(**kwargs)
     st.set_context_config(
         {
             "check_available": ("raw_records", "led_calibration"),
@@ -302,4 +265,41 @@ def xenonnt_led(**kwargs):
         ]
     )
     st.set_config({"coincidence_level_recorder_nv": 1})
+    return st
+
+
+@strax.Context.add_method
+def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> None:
+    import xedocs
+
+    if isinstance(db, str):
+        func = getattr(xedocs.databases, db)
+        db_kwargs = straxen.filter_kwargs(func, kwargs)
+        db = func(**db_kwargs)
+
+    filter_kwargs = {k: v for k, v in kwargs.items() if k in db.context_configs.schema.__fields__}
+
+    docs = db.context_configs.find_docs(**filter_kwargs)
+
+    global_config = {doc.config_name: doc.value for doc in docs}
+
+    if len(global_config):
+        context.set_config(global_config)
+        context.set_context_config({"xedocs_version": filter_kwargs["version"]})
+    else:
+        warnings.warn(
+            f"Could not find any context configs matchin {filter_kwargs}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+
+def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
+    """XENONnT context."""
+    if not _from_cutax and xedocs_version != "global_ONLINE":
+        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
+
+    st = straxen.contexts.xenonnt(**kwargs)
+    st.apply_xedocs_configs(version=xedocs_version, **kwargs)
+
     return st

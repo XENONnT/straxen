@@ -21,7 +21,7 @@ class TestSelectRuns(unittest.TestCase):
 
         """
         self.assertTrue(check_n_runs >= 1)
-        st = straxen.contexts.xenonnt_online(use_rucio=False)
+        st = straxen.contexts.xenonnt(use_rucio=False)
         run_col = st.storage[0].collection
 
         # Find the latest run in the runs collection

@@ -185,7 +185,7 @@ class SCInterfaceTest(unittest.TestCase):
         See also: xenon:xenon1t:slowcontrol:webservicenew
 
         """
-        st = straxen.contexts.xenonnt_online()
+        st = straxen.contexts.xenonnt()
         self.sc.context = st
         res = self.sc.get_scada_values(
             parameters={"test": "XE1T.CRY_PT101_PCHAMBER_AI.PI"},
