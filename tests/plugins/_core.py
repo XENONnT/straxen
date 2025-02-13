@@ -71,6 +71,7 @@ class SetupContextNt(PluginTestCase):
         class. Only after running all the tests, we run the cleanup.
 
         """
+        # TODO: xenonnt_online should be used here
         cls.st = straxen.test_utils.nt_test_context("xenonnt")
         cls.run_id = nt_test_run_id
 
