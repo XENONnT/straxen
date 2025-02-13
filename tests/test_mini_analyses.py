@@ -49,7 +49,8 @@ class TestMiniAnalyses(unittest.TestCase):
         class
 
         """
-        cls.st = nt_test_context()
+        # TODO: xenonnt_online should be used here
+        cls.st = nt_test_context("xenonnt")
         # For al the WF plotting, we might need records, let's make those
         cls.st.make(nt_test_run_id, "records")
         cls.first_peak = cls.st.get_array(nt_test_run_id, "peak_basics")[0]

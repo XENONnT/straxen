@@ -17,7 +17,7 @@ class TestBasics(unittest.TestCase):
 
         print("Downloading test data (if needed)")
         cls.run_id = nt_test_run_id
-        cls.st = nt_test_context()
+        cls.st = nt_test_context("xenonnt")
 
     @classmethod
     def tearDownClass(cls):

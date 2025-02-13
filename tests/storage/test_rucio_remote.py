@@ -14,7 +14,7 @@ class TestRucioRemote(unittest.TestCase):
 
     def get_context(self, download_heavy: bool) -> strax.Context:
         os.makedirs(self.staging_dir, exist_ok=True)
-        context = straxen.contexts.xenonnt_online(
+        context = straxen.contexts.xenonnt(
             output_folder=os.path.join(self.staging_dir, "output"),
             include_rucio_remote=True,
             download_heavy=download_heavy,

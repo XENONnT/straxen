@@ -147,10 +147,10 @@ def get_context():
     """Need to init a context without initializing the runs_db as that requires the appropriate
     passwords.
 
-    :return: straxen context that mimics the xenonnt_online context without the rundb init
+    :return: straxen context that mimics the xenonnt context without the rundb init
 
     """
-    st = straxen.contexts.xenonnt_online(_database_init=False)
+    st = straxen.contexts.xenonnt(_database_init=False)
     st.context_config["forbid_creation_of"] = straxen.daqreader.DAQReader.provides
     return st
 
@@ -168,7 +168,7 @@ def build_datastructure_doc():
     # Make graph for each suffix ('' referring to TPC)
     for suffix in tree_suffices:
         title = titles[suffix]
-        out = page_header.format(title=title, context="xenonnt_online")
+        out = page_header.format(title=title, context="xenonnt")
 
         print(f"------------ {suffix} ------------")
         os.makedirs(this_dir + f"/graphs{suffix}", exist_ok=True)
