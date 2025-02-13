@@ -119,7 +119,7 @@ class AlgorithmPlugin(strax.Plugin):
 
 class TestURLConfig(unittest.TestCase):
     def setUp(self):
-        st = nt_test_context()
+        st = nt_test_context("xenonnt")
         st.register(ExamplePlugin)
         self.st = st
 

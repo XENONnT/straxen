@@ -20,7 +20,7 @@ class PluginTest(SetupContextNt, PluginTestAccumulator):
 
 
 # Very important step! We add a test for each of the plugins
-for _target in set(straxen.test_utils.nt_test_context()._plugin_class_registry.values()):
+for _target in set(straxen.test_utils.nt_test_context("xenonnt")._plugin_class_registry.values()):
     # Only run one test per plugin (even if it provides multiple targets)
     _target = strax.to_str_tuple(_target.provides)[0]
     if _target in PluginTest.exclude_plugins:
