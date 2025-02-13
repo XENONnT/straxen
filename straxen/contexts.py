@@ -244,30 +244,6 @@ def xenonnt(
     return st
 
 
-def xenonnt_led(**kwargs):
-    st = xenonnt(**kwargs)
-    st.set_context_config(
-        {
-            "check_available": ("raw_records", "led_calibration"),
-            "free_options": list(common_config.keys()),
-        }
-    )
-    # Return a new context with only raw_records and led_calibration registered
-    st = st.new_context(replace=True, config=st.config, storage=st.storage, **st.context_config)
-    st.register(
-        [
-            straxen.DAQReader,
-            straxen.LEDCalibration,
-            straxen.nVETORecorder,
-            straxen.nVETOPulseProcessing,
-            straxen.nVETOHitlets,
-            straxen.nVetoExtTimings,
-        ]
-    )
-    st.set_config({"coincidence_level_recorder_nv": 1})
-    return st
-
-
 @strax.Context.add_method
 def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> None:
     import xedocs
@@ -302,4 +278,28 @@ def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
     st = straxen.contexts.xenonnt(**kwargs)
     st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
+    return st
+
+
+def xenonnt_led(**kwargs):
+    st = xenonnt_online(**kwargs)
+    st.set_context_config(
+        {
+            "check_available": ("raw_records", "led_calibration"),
+            "free_options": list(common_config.keys()),
+        }
+    )
+    # Return a new context with only raw_records and led_calibration registered
+    st = st.new_context(replace=True, config=st.config, storage=st.storage, **st.context_config)
+    st.register(
+        [
+            straxen.DAQReader,
+            straxen.LEDCalibration,
+            straxen.nVETORecorder,
+            straxen.nVETOPulseProcessing,
+            straxen.nVETOHitlets,
+            straxen.nVetoExtTimings,
+        ]
+    )
+    st.set_config({"coincidence_level_recorder_nv": 1})
     return st
