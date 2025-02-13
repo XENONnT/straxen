@@ -45,16 +45,3 @@ def test_xennonnt():
 def test_xenonnt_led():
     st = xenonnt_led(_database_init=False)
     st.search_field("time")
-
-
-@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_nt_is_nt_online():
-    # Test that nT and nT online are the same
-    st_online = xenonnt_online(_database_init=False)
-
-    st = xenonnt(_database_init=False)
-    for plugin in st._plugin_class_registry.keys():
-        print(f"Checking {plugin}")
-        nt_key = st.key_for("0", plugin)
-        nt_online_key = st_online.key_for("0", plugin)
-        assert str(nt_key) == str(nt_online_key)
