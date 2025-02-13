@@ -656,6 +656,12 @@ def infer_target(rd: dict) -> dict:
         targets = [t for t in targets if '_nv' not in t]
         post_process = [t for t in post_process if '_nv' not in t]
 
+    # FIX VETO INTERVALS AND REMOVE THESE UGLY LINES (QUICK FIX)
+    elif 'neutron_generator_TPC_NV_linked_busy_v10' in mode:
+        log.debug('neutron generator mode')
+        targets = [t for t in targets if 'veto_intervals' not in t]
+        post_process = [t for t in post_process if 'veto_intervals' not in t]
+    
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
 
