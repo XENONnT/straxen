@@ -189,7 +189,7 @@ class DummyEventBasics(strax.Plugin):
 
 class TestAqmonProcessing(TestCase):
     def setUp(self) -> None:
-        st = nt_test_context()
+        st = nt_test_context("xenonnt")
         # I'm going to deregister all plugins, since I don't want to
         # get a thousand warnings that some config is not used, make
         # sure to mark all configs as "free options".

@@ -191,6 +191,7 @@ class TestBasics(unittest.TestCase):
             rucio_local.find(self.test_keys[0])
         # Do a small test that we did not break everything by having a useless fontend
         st = straxen.test_utils.nt_test_context(
+            "xenonnt_online",
             minimum_run_number=10_000,
             maximum_run_number=10_005,
             include_rucio_local=True,
