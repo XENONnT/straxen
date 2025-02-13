@@ -43,6 +43,7 @@ def test_xennonnt():
     st.search_field("time")
 
 
+@unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_xenonnt_led():
     st = xenonnt_led(_database_init=False)
     st.search_field("time")
