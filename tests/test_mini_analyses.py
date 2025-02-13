@@ -49,7 +49,9 @@ class TestMiniAnalyses(unittest.TestCase):
         class
 
         """
-        cls.st = nt_test_context("xenonnt_online")
+        # TODO: global_v17 is used to do the hack,
+        # later when online is updated, we should remove this
+        cls.st = nt_test_context("xenonnt_online", xedocs_version="global_v17")
         # For al the WF plotting, we might need records, let's make those
         cls.st.make(nt_test_run_id, "records")
         cls.first_peak = cls.st.get_array(nt_test_run_id, "peak_basics")[0]
