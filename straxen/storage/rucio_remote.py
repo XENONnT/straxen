@@ -165,6 +165,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             self.dset_cache[dset_did] = rse
 
         metadata_did = strax.RUN_METADATA_PATTERN % dset_did
+        warn(f"Downloading {metadata_did} from {rse}")
         downloaded = admix.download(
             metadata_did,
             location=self.staging_dir,
@@ -200,13 +201,14 @@ class RucioRemoteBackend(strax.FileSytemBackend):
                 warn(error_msg)
                 raise strax.DataNotAvailable
             scope, name = dset_did.split(":")
-            chunk_did = f"{scope}:{chunk_file}"
             if dset_did in self.dset_cache:
                 rse = self.dset_cache[dset_did]
             else:
                 rse = self._get_rse(dset_did)
                 self.dset_cache[dset_did] = rse
 
+            chunk_did = f"{scope}:{chunk_file}"
+            warn(f"Downloading {chunk_did} from {rse}")
             downloaded = admix.download(
                 chunk_did, rse=rse, location=self.staging_dir, stage=self.stage
             )
