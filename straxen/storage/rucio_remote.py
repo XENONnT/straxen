@@ -36,9 +36,11 @@ class RucioRemoteFrontend(strax.StorageFrontend):
     def __init__(
         self,
         download_heavy=False,
-        stage=False,
         staging_dir="./strax_data",
         rses_only=tuple(),
+        tries=3,
+        num_threads=1,
+        stage=False,
         *args,
         **kwargs,
     ):
@@ -103,7 +105,16 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     # for caching RSE locations
     dset_cache: Dict[str, str] = {}
 
-    def __init__(self, staging_dir, download_heavy=False, stage=False, rses_only=tuple(), **kwargs):
+    def __init__(
+        self,
+        staging_dir,
+        download_heavy=False,
+        rses_only=tuple(),
+        tries=3,
+        num_threads=1,
+        stage=False,
+        **kwargs,
+    ):
         """
         :param staging_dir: Path (a string) where to save data. Must be
             a writable location.
@@ -125,10 +136,12 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             except OSError:
                 raise PermissionError(mess)
         super().__init__(**kwargs)
-        self.staging_dir = staging_dir
         self.download_heavy = download_heavy
-        self.stage = stage
+        self.staging_dir = staging_dir
         self.rses_only = strax.to_str_tuple(rses_only)
+        self.tries = tries
+        self.num_threads = num_threads
+        self.stage = stage
 
     def _get_rse(self, dset_did, **filters):
         """Determine the appropriate Rucio Storage Element (RSE) for a dataset.
@@ -153,7 +166,12 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
         metadata_did = strax.RUN_METADATA_PATTERN % dset_did
         downloaded = admix.download(
-            metadata_did, rse=rse, location=self.staging_dir, stage=self.stage
+            metadata_did,
+            location=self.staging_dir,
+            rse=rse,
+            tries=self.tries,
+            num_threads=self.num_threads,
+            stage=self.stage,
         )
         if len(downloaded) != 1:
             raise ValueError(f"{metadata_did} should be a single file. We found {len(downloaded)}.")
