@@ -35,9 +35,9 @@ class RucioRemoteFrontend(strax.StorageFrontend):
 
     def __init__(
         self,
-        download_heavy=False,
         staging_dir="./strax_data",
         rses_only=tuple(),
+        download_heavy=False,
         tries=3,
         num_threads=1,
         stage=False,
@@ -58,7 +58,12 @@ class RucioRemoteFrontend(strax.StorageFrontend):
         if HAVE_ADMIX:
             self.backends = [
                 RucioRemoteBackend(
-                    staging_dir, download_heavy=download_heavy, stage=stage, rses_only=rses_only
+                    staging_dir=staging_dir,
+                    rses_only=rses_only,
+                    download_heavy=download_heavy,
+                    tries=tries,
+                    num_threads=num_threads,
+                    stage=stage,
                 ),
             ]
         else:
@@ -108,8 +113,8 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     def __init__(
         self,
         staging_dir,
-        download_heavy=False,
         rses_only=tuple(),
+        download_heavy=False,
         tries=3,
         num_threads=1,
         stage=False,
@@ -136,9 +141,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             except OSError:
                 raise PermissionError(mess)
         super().__init__(**kwargs)
-        self.download_heavy = download_heavy
         self.staging_dir = staging_dir
         self.rses_only = strax.to_str_tuple(rses_only)
+        self.download_heavy = download_heavy
         self.tries = tries
         self.num_threads = num_threads
         self.stage = stage
