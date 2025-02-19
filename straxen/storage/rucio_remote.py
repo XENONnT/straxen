@@ -58,7 +58,12 @@ class RucioRemoteFrontend(strax.StorageFrontend):
         if HAVE_ADMIX:
             self.backends = [
                 RucioRemoteBackend(
-                    staging_dir, download_heavy=download_heavy, stage=stage, rses_only=rses_only
+                    staging_dir,
+                    rses_only=rses_only,
+                    download_heavy=download_heavy,
+                    tries=tries,
+                    num_threads=num_threads,
+                    stage=stage,
                 ),
             ]
         else:
