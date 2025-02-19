@@ -58,7 +58,8 @@ class Events(strax.OverlapWindowPlugin):
     )
 
     trigger_max_ambience = straxen.URLConfig(
-        default=2.5e-6,
+        # default=2.5e-6,
+        default=1.25e-7,
         type=float,
         help="Peaks must have less ambience score to cause events",
     )
@@ -127,7 +128,8 @@ class Events(strax.OverlapWindowPlugin):
     def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
         # _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
-        _is_triggering &= peaks["ambience_1d_score"] <= self.trigger_max_ambience
+        # _is_triggering &= peaks["ambience_1d_score"] <= self.trigger_max_ambience
+        _is_triggering &= peaks["ambience_2d_score"] <= self.trigger_max_ambience
         _is_triggering &= np.isin(peaks["type"], [1, 2])
         # have to consider the peak with type 20
         if self.exclude_s1_as_triggering_peaks:

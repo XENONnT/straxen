@@ -56,7 +56,14 @@ class PeakNearestTriggering(Events):
                         f"ambience_1d_score {common_descr} {direction}",
                         f"{direction}_ambience_1d_score",
                     ),
-                    np.int32,
+                    np.float32,
+                ),
+                (
+                    (
+                        f"ambience_2d_score {common_descr} {direction}",
+                        f"{direction}_ambience_2d_score",
+                    ),
+                    np.float32,
                 ),
                 ((f"area {common_descr} {direction} [PE]", f"{direction}_area"), np.float32),
             ]
@@ -122,6 +129,7 @@ class PeakNearestTriggering(Events):
             "type",
             "n_competing",
             "ambience_1d_score",
+            "ambience_2d_score",
             "area",
         ]:
             result["left_" + field] = np.where(
