@@ -196,9 +196,8 @@ class Peaklets(strax.Plugin):
         self._tight_coincidence_window_left = self.tight_coincidence_window_left
         self._tight_coincidence_window_right = self.tight_coincidence_window_right
 
-        safe_break_in_pulses = (
-            self.deps["records"].deps["raw_records"].config["safe_break_in_pulses"]
-        )
+        _dep = self.deps[self.depends_on[0]]
+        safe_break_in_pulses = _dep.deps[_dep.depends_on[0]].config["safe_break_in_pulses"]
         if self.peaklet_gap_threshold > safe_break_in_pulses:
             raise ValueError(
                 "peaklet_gap_threshold in peaklets building is larger than "
