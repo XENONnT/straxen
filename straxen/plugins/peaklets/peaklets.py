@@ -196,10 +196,12 @@ class Peaklets(strax.Plugin):
         self._tight_coincidence_window_left = self.tight_coincidence_window_left
         self._tight_coincidence_window_right = self.tight_coincidence_window_right
 
-        if self.peaklet_gap_threshold > strax.DEFAULT_CHUNK_SPLIT_NS:
+        if self.peaklet_gap_threshold > strax.DEFAULT_CHUNK_SPLIT_NS:  # 1000 ns
             raise ValueError(
-                "peaklet_gap_threshold in peaklets building is larger than "
-                "safe_break_in_pulses in raw_records building. "
+                f"peaklet_gap_threshold {self.peaklet_gap_threshold} ns "
+                "in peaklets building is larger than "
+                f"safe_break_in_pulses {strax.DEFAULT_CHUNK_SPLIT_NS} ns "
+                "in raw_records building. "
                 "This is inconsistent because raw_records can not be split "
                 "if the nearby hits are too close."
             )
