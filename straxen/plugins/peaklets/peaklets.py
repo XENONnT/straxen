@@ -196,6 +196,17 @@ class Peaklets(strax.Plugin):
         self._tight_coincidence_window_left = self.tight_coincidence_window_left
         self._tight_coincidence_window_right = self.tight_coincidence_window_right
 
+        safe_break_in_pulses = (
+            self.deps["records"].deps["raw_records"].config["safe_break_in_pulses"]
+        )
+        if self.peaklet_gap_threshold > safe_break_in_pulses:
+            raise ValueError(
+                "peaklet_gap_threshold in peaklets building is larger than "
+                "safe_break_in_pulses in raw_records building. "
+                "This is inconsistent because raw_records can not be split "
+                "if the nearby hits are too close."
+            )
+
     def compute(self, records, start, end):
         hits = strax.find_hits(records, min_amplitude=self.hit_thresholds)
 
