@@ -123,7 +123,8 @@ class DAQReader(strax.Plugin):
     data_kind = immutabledict(zip(provides, provides))
     depends_on: Tuple = tuple()
     parallel = "process"
-    chunk_target_size_mb = 500
+    rechunk_on_load = True
+    chunk_source_size_mb = strax.DEFAULT_CHUNK_SIZE_MB  # 200 MB
     rechunk_on_save = immutabledict(
         raw_records=False,
         raw_records_he=False,
@@ -133,6 +134,7 @@ class DAQReader(strax.Plugin):
         raw_records_aux_mv=True,
         raw_records_mv=False,
     )
+    chunk_target_size_mb = 500
     compressor = "lz4"
     __version__ = "0.0.0"
     input_timeout = 300
