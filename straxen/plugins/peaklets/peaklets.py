@@ -39,6 +39,9 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
+    rechunk_on_load = True
+    chunk_source_size_mb = 100
+
     __version__ = "1.2.2"
 
     peaklet_gap_threshold = straxen.URLConfig(
