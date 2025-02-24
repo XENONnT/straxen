@@ -27,7 +27,7 @@ class IndividualPeakMonitor(strax.Plugin):
     depends_on = ("peak_basics", "peak_positions_mlp")
     provides = "individual_peak_monitor"
     data_kind = "individual_peak_monitor"
-    __version__ = "0.0.2"
+    __version__ = "0.0.1"
 
     def infer_dtype(self):
         dtype = [
