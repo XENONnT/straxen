@@ -27,7 +27,7 @@ class IndividualPeakMonitor(strax.Plugin):
     depends_on = ("peak_basics", "peak_positions_mlp")
     provides = "individual_peak_monitor"
     data_kind = "individual_peak_monitor"
-    __version__ = "0.0.1"
+    __version__ = "0.0.2"
 
     def infer_dtype(self):
         dtype = [
@@ -36,6 +36,7 @@ class IndividualPeakMonitor(strax.Plugin):
             (("Reconstructed mlp peak y-position", "y_mlp"), np.float32),
             (("Width (in ns) of the central 50% area of the peak", "range_50p_area"), np.float32),
             (("Fraction of original peaks array length that is saved", "weight"), np.float32),
+            (("Number of PMTs contributing to the peak", "n_channels"), np.int16),
         ] + strax.time_fields
         return dtype
 
@@ -58,6 +59,7 @@ class IndividualPeakMonitor(strax.Plugin):
         res["area"] = data["area"]
         res["range_50p_area"] = data["range_50p_area"]
         res["endtime"] = data["endtime"]
+        res["n_channels"] = data["n_channels"]
 
         if len(data):
             res["weight"] = len(peaks) / len(data)
