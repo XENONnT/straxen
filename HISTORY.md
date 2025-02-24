@@ -1,3 +1,13 @@
+3.1.2 / 2025-02-24
+-------------------
+* Set the number of tries and threads of remote rucio by @dachengx in https://github.com/XENONnT/straxen/pull/1564
+* Pass `tries` and `num_threads` to `RucioRemoteBackend` by @dachengx in https://github.com/XENONnT/straxen/pull/1565
+* Be compatible with https://github.com/AxFoundation/strax/pull/975 by @dachengx in https://github.com/XENONnT/straxen/pull/1566
+* Load 100 MB peaklets per `compute` by @dachengx in https://github.com/XENONnT/straxen/pull/1567
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.1...v3.1.2
+
+
 3.1.1 / 2025-02-13
 -------------------
 * `n_hits` should be int32, otherwise overflow by @dachengx in https://github.com/XENONnT/straxen/pull/1558
