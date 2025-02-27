@@ -154,6 +154,7 @@ def xenonnt_online(
     include_rucio_local: bool = False,
     # Frontend options
     download_heavy: bool = False,
+    remove_heavy: bool = False,
     _auto_append_rucio_local: bool = True,
     _rucio_path: str = "/dali/lgrandi/rucio/",
     _rucio_local_path: Optional[str] = None,
@@ -182,6 +183,7 @@ def xenonnt_online(
         wants to do a fuzzy search in the data the runs database is out of sync with rucio
     :param download_heavy: bool, whether or not to allow downloads of heavy data (raw_records*, less
         the aqmon)
+    :param remove_heavy: bool, whether or not to remove the heavy data after reading
     :param _auto_append_rucio_local: bool, whether or not to automatically append the rucio local
         path
     :param _rucio_path: str, path of rucio
@@ -251,6 +253,7 @@ def xenonnt_online(
         rucio_frontend = straxen.RucioRemoteFrontend(
             staging_dir=os.path.join(output_folder, "rucio"),
             download_heavy=download_heavy,
+            remove_heavy=remove_heavy,
         )
         st.storage += [rucio_frontend]
 
