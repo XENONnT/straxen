@@ -199,8 +199,8 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
         chunk_file = chunk_info["filename"]
         chunk_path = os.path.abspath(os.path.join(base_dir, chunk_file))
+        number, datatype, hsh = parse_rucio_did(dset_did)
         if not os.path.exists(chunk_path):
-            number, datatype, hsh = parse_rucio_did(dset_did)
             if datatype in self.heavy_types and not self.download_heavy:
                 error_msg = (
                     "For space reasons we don't want to have everyone "
