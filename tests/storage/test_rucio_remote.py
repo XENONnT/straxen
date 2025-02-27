@@ -12,12 +12,13 @@ class TestRucioRemote(unittest.TestCase):
         self.run_id = "009104"
         self.staging_dir = "./test_rucio_remote"
 
-    def get_context(self, download_heavy: bool) -> strax.Context:
+    def get_context(self, download_heavy: bool, remove_heavy: bool) -> strax.Context:
         os.makedirs(self.staging_dir, exist_ok=True)
         context = straxen.contexts.xenonnt(
             output_folder=os.path.join(self.staging_dir, "output"),
             include_rucio_remote=True,
             download_heavy=download_heavy,
+            remove_heavy=remove_heavy,
             _rucio_path=self.staging_dir,
             _raw_paths=[os.path.join(self.staging_dir, "raw")],
             _database_init=False,
@@ -31,20 +32,32 @@ class TestRucioRemote(unittest.TestCase):
 
     @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def test_download_no_heavy(self):
-        st = self.get_context(download_heavy=False)
+        st = self.get_context(download_heavy=False, remove_heavy=False)
         with self.assertRaises(strax.DataNotAvailable):
             rr = self.try_load(st, "raw_records")
             assert False, len(rr)
 
     @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def test_download_with_heavy(self):
-        st = self.get_context(download_heavy=True)
+        st = self.get_context(download_heavy=True, remove_heavy=False)
         rr = self.try_load(st, "raw_records")
         assert len(rr)
 
     @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
+    def test_download_with_remove(self):
+        st = self.get_context(download_heavy=True, remove_heavy=True)
+        rr = self.try_load(st, "raw_records")
+        assert len(rr)
+        # The is_stored is still loadable after removing the chunks
+        assert st.is_stored(self.run_id, "raw_records")
+        # Make sure the only remaining file is metadata
+        folder = os.path.join(self.staging_dir, "output", "rucio")
+        key_for = str(st.key_for(self.run_id, "raw_records"))
+        assert len(os.listdir(os.path.join(folder, key_for))) == 1
+
+    @unittest.skipIf(not straxen.HAVE_ADMIX, "Admix is not installed")
     def test_download_with_heavy_and_high_level(self):
-        st = self.get_context(download_heavy=True)
+        st = self.get_context(download_heavy=True, remove_heavy=False)
         pc = self.try_load(st, "pulse_counts")
         assert len(pc)
 

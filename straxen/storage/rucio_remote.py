@@ -38,6 +38,7 @@ class RucioRemoteFrontend(strax.StorageFrontend):
         staging_dir="./strax_data",
         rses_only=tuple(),
         download_heavy=False,
+        remove_heavy=False,
         tries=3,
         num_threads=1,
         stage=False,
@@ -46,6 +47,7 @@ class RucioRemoteFrontend(strax.StorageFrontend):
     ):
         """
         :param download_heavy: option to allow downloading of heavy data through RucioRemoteBackend
+        :param remove_heavy: option to remove heavy data from the RucioRemoteBackend after reading
         :param args: Passed to strax.StorageFrontend
         :param kwargs: Passed to strax.StorageFrontend
         :param rses_only: tuple, limits RSE selection to these options if provided
@@ -61,6 +63,7 @@ class RucioRemoteFrontend(strax.StorageFrontend):
                     staging_dir=staging_dir,
                     rses_only=rses_only,
                     download_heavy=download_heavy,
+                    remove_heavy=remove_heavy,
                     tries=tries,
                     num_threads=num_threads,
                     stage=stage,
@@ -115,6 +118,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         staging_dir,
         rses_only=tuple(),
         download_heavy=False,
+        remove_heavy=False,
         tries=3,
         num_threads=1,
         stage=False,
@@ -125,6 +129,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             a writable location.
         :param download_heavy: Whether or not to allow downloads of the
             heaviest data (raw_records*, less aqmon and MV)
+        :param remove_heavy: Whether or not to remove the heaviest data after reading
         :param kwargs: Passed to strax.FileSystemBackend
         :param rses_only: tuple, limits RSE selection to these options if provided
         """
@@ -144,6 +149,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         self.staging_dir = staging_dir
         self.rses_only = strax.to_str_tuple(rses_only)
         self.download_heavy = download_heavy
+        self.remove_heavy = remove_heavy
         self.tries = tries
         self.num_threads = num_threads
         self.stage = stage
@@ -193,8 +199,8 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         base_dir = os.path.join(self.staging_dir, did_to_dirname(dset_did))
         chunk_file = chunk_info["filename"]
         chunk_path = os.path.abspath(os.path.join(base_dir, chunk_file))
+        number, datatype, hsh = parse_rucio_did(dset_did)
         if not os.path.exists(chunk_path):
-            number, datatype, hsh = parse_rucio_did(dset_did)
             if datatype in self.heavy_types and not self.download_heavy:
                 error_msg = (
                     "For space reasons we don't want to have everyone "
@@ -227,7 +233,15 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         if not os.path.exists(chunk_path):
             raise FileNotFoundError(f"No chunk file found at {chunk_path}")
 
-        return strax.load_file(chunk_path, dtype=dtype, compressor=compressor)
+        data = strax.load_file(chunk_path, dtype=dtype, compressor=compressor)
+
+        if self.remove_heavy and datatype in self.heavy_types:
+            warn(
+                f"Removing {chunk_path} after reading since it's heavy data. "
+                "This is a one-time operation."
+            )
+            os.remove(chunk_path)
+        return data
 
     def _saver(self, dirname, metadata, **kwargs):
         raise NotImplementedError(
