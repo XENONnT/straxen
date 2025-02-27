@@ -235,7 +235,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
 
         data = strax.load_file(chunk_path, dtype=dtype, compressor=compressor)
 
-        if self.remove_heavy and dtype in self.heavy_types:
+        if self.remove_heavy and datatype in self.heavy_types:
             warn(
                 f"Removing {chunk_path} after reading since it's heavy data. "
                 "This is a one-time operation."
