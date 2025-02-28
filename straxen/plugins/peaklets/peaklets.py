@@ -42,6 +42,10 @@ class Peaklets(strax.Plugin):
     rechunk_on_load = True
     chunk_source_size_mb = 100
 
+    # To reduce the number of chunks, we increase the target size
+    # This would not harm memory usage, because we rechunk on load
+    chunk_target_size_mb = 2000
+
     __version__ = "1.2.2"
 
     peaklet_gap_threshold = straxen.URLConfig(
