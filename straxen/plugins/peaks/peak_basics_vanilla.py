@@ -85,7 +85,7 @@ class PeakBasicsVanilla(strax.Plugin):
             r[q] = p[q]
         r["endtime"] = p["time"] + p["dt"] * p["length"]
         r["n_channels"] = (p["area_per_channel"] > 0).sum(axis=1)
-        r["top_n_channels"] = (p["area_per_channel"][: self.n_top_pmts] > 0).sum(axis=1)
+        r["top_n_channels"] = (p["area_per_channel"][:, : self.n_top_pmts] > 0).sum(axis=1)
         r["n_hits"] = p["n_hits"]
         r["range_50p_area"] = p["width"][:, 5]
         r["range_90p_area"] = p["width"][:, 9]
