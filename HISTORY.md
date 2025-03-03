@@ -1,3 +1,12 @@
+3.1.3 / 2025-03-2
+-------------------
+* Add option to delete heavy chunk automatically after reading by @dachengx in https://github.com/XENONnT/straxen/pull/1570
+* Remove `event_n_channel`, add `top_n_channels` to `peak_basics` by @dachengx in https://github.com/XENONnT/straxen/pull/1571
+* Set targeted chunk size of peaklet as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1572
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.2...v3.1.3
+
+
 3.1.2 / 2025-02-24
 -------------------
 * Set the number of tries and threads of remote rucio by @dachengx in https://github.com/XENONnT/straxen/pull/1564

@@ -1,5 +1,5 @@
 # mypy: disable-error-code="no-redef"
-__version__ = "3.1.2"
+__version__ = "3.1.3"
 
 from utilix import uconfig
 from .common import *
