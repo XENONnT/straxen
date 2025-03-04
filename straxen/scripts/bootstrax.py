@@ -48,6 +48,7 @@ from straxen.daq_core import now
 
 # Patch for targeted (uncompressed) chunk size
 straxen.Peaklets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
+straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 
 parser = argparse.ArgumentParser(description="XENONnT online processing manager")
 parser.add_argument(
