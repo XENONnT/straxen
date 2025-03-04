@@ -32,6 +32,9 @@ class nVETOHitlets(strax.Plugin):
 
     parallel = "process"
     rechunk_on_save = True
+    # To reduce the number of chunks, we increase the target size
+    # This would not harm memory usage, because we rechunk on load
+    chunk_target_size_mb = 2000
     compressor = "zstd"
 
     depends_on = "records_nv"
