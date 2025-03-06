@@ -10,6 +10,7 @@ export, __all__ = strax.exporter()
 
 # More info about the acquisition monitor can be found here:
 # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenon1t:alexelykov:acquisition_monitor
+# and here: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:robingb:v1495_firmware_upgrade_v10
 
 
 @export
@@ -26,9 +27,9 @@ class AqmonChannels(IntEnum):
     # HighEnergyVeto
     HEV_STOP = 802
     HEV_START = 803
-    # To avoid confusion with HEV, these are the high energy boards
-    BUSY_HE_STOP = 804
-    BUSY_HE_START = 805
+    # Trigger from NG
+    NEUTRON_GENERATOR_STOP = 804
+    NEUTRON_GENERATOR_START = 805
     # Low energy boards (main chain)
     BUSY_STOP = 806
     BUSY_START = 807
@@ -48,7 +49,7 @@ class AqmonHits(strax.Plugin):
     """
 
     save_when = strax.SaveWhen.TARGET
-    __version__ = "1.1.2"
+    __version__ = "1.2.0"
     hit_min_amplitude_aqmon = straxen.URLConfig(
         default=(
             # Analogue signals
@@ -62,8 +63,8 @@ class AqmonHits(strax.Plugin):
                     int(AqmonChannels.GPS_SYNC_AM),
                     int(AqmonChannels.HEV_STOP),
                     int(AqmonChannels.HEV_START),
-                    int(AqmonChannels.BUSY_HE_STOP),
-                    int(AqmonChannels.BUSY_HE_START),
+                    int(AqmonChannels.NEUTRON_GENERATOR_STOP),
+                    int(AqmonChannels.NEUTRON_GENERATOR_START),
                     int(AqmonChannels.BUSY_STOP),
                     int(AqmonChannels.BUSY_START),
                 ),
