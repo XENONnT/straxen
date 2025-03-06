@@ -23,15 +23,22 @@ export, __all__ = strax.exporter()
 
 @export
 class VetoIntervals(strax.ExhaustPlugin):
-    """Find pairs of veto start and veto stop signals and the veto.
+    """
+    For all available vetos/triggers/tags in the run, reconstruct the
+    "veto"-intervals by matching the respective start and stop signals.
+    For this, we check with the AqMonChannelOccupancy-class what veto/trigger/tag
+    is provided on which channel.
+    The anti-veto is reconstructed from the neutron-generator trigger if required.
 
-    duration between them:
-     - busy_* <= V1495 busy veto for tpc channels
-     - busy_he_* <= V1495 busy veto for high energy tpc channels
-     - hev_* <= DDC10 hardware high energy veto
-     - straxen_deadtime <= special case of deadtime introduced by the
-       DAQReader-plugin
-
+    Possible occupancies are:
+     - busy                : busy veto for tpc channels (high and low energy channels)
+     - hev                 : DDC10 hardware high energy veto
+     - hev_tag             : indicator on when the HEV would have been active, but the veto was not used
+     - neutron_generator   : trigger of neutron generator (NG) active indicating it fired
+     - ng_anti_veto        : trigger-like veto based on NG trigger
+     - fractional_lifetime : periodic veto that enables data taking during harsh conditions (water tank empty)
+     - LED trigger         : indicating when the LED trigger was active (if enabled)
+     - straxen_deadtime    : special case of deadtime introduced by the DAQReader-plugin
     """
 
     __version__ = "2.0.0"
