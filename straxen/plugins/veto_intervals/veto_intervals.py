@@ -1,6 +1,8 @@
+from copy import copy
 import typing
 import numpy as np
 import strax
+import straxen
 
 from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 
@@ -32,7 +34,7 @@ class VetoIntervals(strax.ExhaustPlugin):
 
     """
 
-    __version__ = "1.1.1"
+    __version__ = "2.0.0"
     depends_on = "aqmon_hits"
     provides = "veto_intervals"
     data_kind = "veto_intervals"
@@ -46,17 +48,29 @@ class VetoIntervals(strax.ExhaustPlugin):
         return dtype
 
     def setup(self):
-        self.veto_names = ["busy_", "busy_he_", "hev_"]
-        self.channel_map = {aq_ch.name.lower(): int(aq_ch) for aq_ch in AqmonChannels}
+        self.aqmon_channel_occupancy = straxen.AqMonChannelOccupancy(self.run_id)
 
     def compute(self, aqmon_hits, start, end):
         # Allocate a nice big buffer and throw away the part we don't need later
-        result = np.zeros(len(aqmon_hits) * len(self.veto_names), self.dtype)
+        result = np.zeros(len(aqmon_hits) * len(self.aqmon_channel_occupancy.veto_names), self.dtype)
         vetos_seen = 0
 
-        for veto_name in self.veto_names:
-            veto_hits_start = channel_select(aqmon_hits, self.channel_map[veto_name + "start"])
-            veto_hits_stop = channel_select(aqmon_hits, self.channel_map[veto_name + "stop"])
+        for veto_name in self.aqmon_channel_occupancy.veto_names:
+            # default
+            if not ((veto_name == "anti_veto") and self.aqmon_channel_occupancy.reconstruct_anti_veto_from_ng):
+                veto_hits_start = channel_select(aqmon_hits, self.aqmon_channel_occupancy.channel_map[veto_name + "_start"])
+                veto_hits_stop  = channel_select(aqmon_hits, self.aqmon_channel_occupancy.channel_map[veto_name + "_stop"])
+
+            else:  # reconstruct anti-veto-intervals from neutron-generator trigger
+                delay_ns = int(self.aqmon_channel_occupancy.anti_veto_delay_µs * 1e3)
+                duration_ns = int(self.aqmon_channel_occupancy.anti_veto_duration_µs * 1e3)
+
+                veto_hits_start = channel_select(aqmon_hits, self.aqmon_channel_occupancy.channel_map["neutron_generator_start"])
+                veto_hits_start["time"] += delay_ns
+
+                veto_hits_stop  = copy(veto_hits_start)
+                veto_hits_stop["time"] += duration_ns
+
 
             veto_hits_start, veto_hits_stop = self.handle_starts_and_stops_outside_of_run(
                 veto_hits_start=veto_hits_start,
@@ -66,10 +80,12 @@ class VetoIntervals(strax.ExhaustPlugin):
                 veto_name=veto_name,
             )
             n_vetos = len(veto_hits_start)
+            if (veto_name == "empty") and n_vetos > 0:
+                raise RuntimeError(f"Channel should be empty, but found {n_vetos=}")
 
             result["time"][vetos_seen : vetos_seen + n_vetos] = veto_hits_start["time"]
             result["endtime"][vetos_seen : vetos_seen + n_vetos] = veto_hits_stop["time"]
-            result["veto_type"][vetos_seen : vetos_seen + n_vetos] = veto_name + "veto"
+            result["veto_type"][vetos_seen : vetos_seen + n_vetos] = veto_name
 
             vetos_seen += n_vetos
 
