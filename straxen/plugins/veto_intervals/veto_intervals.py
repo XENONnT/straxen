@@ -23,12 +23,10 @@ export, __all__ = strax.exporter()
 
 @export
 class VetoIntervals(strax.ExhaustPlugin):
-    """
-    For all available vetos/triggers/tags in the run, reconstruct the
-    "veto"-intervals by matching the respective start and stop signals.
-    For this, we check with the AqMonChannelOccupancy-class what veto/trigger/tag
-    is provided on which channel.
-    The anti-veto is reconstructed from the neutron-generator trigger if required.
+    """For all available vetos/triggers/tags in the run, reconstruct the "veto"-intervals by
+    matching the respective start and stop signals. For this, we check with the
+    AqMonChannelOccupancy-class what veto/trigger/tag is provided on which channel. The anti-veto is
+    reconstructed from the neutron-generator trigger if required.
 
     Possible occupancies are:
      - busy                : busy veto for tpc channels (high and low energy channels)
@@ -39,6 +37,7 @@ class VetoIntervals(strax.ExhaustPlugin):
      - fractional_lifetime : periodic veto that enables data taking during harsh conditions (water tank empty)
      - LED trigger         : indicating when the LED trigger was active (if enabled)
      - straxen_deadtime    : special case of deadtime introduced by the DAQReader-plugin
+
     """
 
     __version__ = "2.0.0"
@@ -59,25 +58,35 @@ class VetoIntervals(strax.ExhaustPlugin):
 
     def compute(self, aqmon_hits, start, end):
         # Allocate a nice big buffer and throw away the part we don't need later
-        result = np.zeros(len(aqmon_hits) * len(self.aqmon_channel_occupancy.veto_names), self.dtype)
+        result = np.zeros(
+            len(aqmon_hits) * len(self.aqmon_channel_occupancy.veto_names), self.dtype
+        )
         vetos_seen = 0
 
         for veto_name in self.aqmon_channel_occupancy.veto_names:
             # default
-            if not ((veto_name == "anti_veto") and self.aqmon_channel_occupancy.reconstruct_anti_veto_from_ng):
-                veto_hits_start = channel_select(aqmon_hits, self.aqmon_channel_occupancy.channel_map[veto_name + "_start"])
-                veto_hits_stop  = channel_select(aqmon_hits, self.aqmon_channel_occupancy.channel_map[veto_name + "_stop"])
+            if not (
+                (veto_name == "anti_veto")
+                and self.aqmon_channel_occupancy.reconstruct_anti_veto_from_ng
+            ):
+                veto_hits_start = channel_select(
+                    aqmon_hits, self.aqmon_channel_occupancy.channel_map[veto_name + "_start"]
+                )
+                veto_hits_stop = channel_select(
+                    aqmon_hits, self.aqmon_channel_occupancy.channel_map[veto_name + "_stop"]
+                )
 
             else:  # reconstruct anti-veto-intervals from neutron-generator trigger
                 delay_ns = int(self.aqmon_channel_occupancy.anti_veto_delay_µs * 1e3)
                 duration_ns = int(self.aqmon_channel_occupancy.anti_veto_duration_µs * 1e3)
 
-                veto_hits_start = channel_select(aqmon_hits, self.aqmon_channel_occupancy.channel_map["neutron_generator_start"])
+                veto_hits_start = channel_select(
+                    aqmon_hits, self.aqmon_channel_occupancy.channel_map["neutron_generator_start"]
+                )
                 veto_hits_start["time"] += delay_ns
 
-                veto_hits_stop  = copy(veto_hits_start)
+                veto_hits_stop = copy(veto_hits_start)
                 veto_hits_stop["time"] += duration_ns
-
 
             veto_hits_start, veto_hits_stop = self.handle_starts_and_stops_outside_of_run(
                 veto_hits_start=veto_hits_start,
