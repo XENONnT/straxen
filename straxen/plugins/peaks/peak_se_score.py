@@ -60,6 +60,13 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         help="Place holder for Parameter B in the position resolution function.",
     )
 
+    n_se_score_group = straxen.URLConfig(
+        default=1e7,
+        type=(int, float),
+        track=False,
+        help="Number of SEs to be grouped for less time usage.",
+    )
+
     def get_window_size(self):
         # This method is required by the OverlapWindowPlugin class
         return 2 * (self.se_time_search_window_left + self.se_time_search_window_right)
@@ -98,7 +105,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         Parameters:
         :peaks (np.ndarray): Array of peaks.
         :se_peaks (np.ndarray): Array of single electron peaks.
-        :se_indices (np.ndarray): Array of indices for SE that are
+        :se_indices (np.ndarray): Array of ind for SE that are
         in temporal proximity to each peak.
         :para_a (float): Parameter 'a' used in the calculation of position resolution.
         :para_b (float): Parameter 'b' used in the calculation of position resolution.
@@ -106,23 +113,27 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         :return: np.ndarray: Array of probabilities of nearby SE events for each peak.
 
         """
-        se_nearby_probability = np.zeros(len(peaks))
-        for index, peak_i in enumerate(peaks):
-            indices = se_indices[index]
-            se_in_time = se_peaks[indices[0] : indices[1]]
-            peak_area_top = peak_i["area"] * peak_i["area_fraction_top"]
-            se_area_top = se_in_time["area"] * se_in_time["area_fraction_top"]
-            peak_position_resolution = para_a / np.sqrt(peak_area_top) + para_b
-            se_position_resolution = para_a / np.sqrt(se_area_top) + para_b
-            combined_position_resolution = np.sqrt(
-                se_position_resolution**2 + peak_position_resolution**2
-            )
-            d_squre = (se_in_time["x"] - peak_i["x"]) ** 2 + (se_in_time["y"] - peak_i["y"]) ** 2
-            # 2D Gaussian with zero off-diagonal covairance matirx elements
-            constant = 1 / (2 * np.pi * combined_position_resolution**2)
-            exponent = np.exp(-1 / 2 * (d_squre / combined_position_resolution**2))
-            _se_nearby_prob = constant * exponent
-            se_nearby_probability[index] = np.sum(_se_nearby_prob)
+        pk_area_top = peaks["area"] * peaks["area_fraction_top"]
+        pk_resolution = para_a / np.sqrt(pk_area_top) + para_b
+        se_area_top = se_peaks["area"] * se_peaks["area_fraction_top"]
+        se_resolution = para_a / np.sqrt(se_area_top) + para_b
+
+        n_se = se_indices[:, 1] - se_indices[:, 0]
+        indices = np.repeat(np.arange(len(peaks)), n_se)
+        pk_x = np.repeat(peaks["x"], n_se)
+        se_x = np.hstack([se_peaks["x"][ind[0] : ind[1]] for ind in se_indices])
+        assert len(indices) == len(pk_x) == len(se_x)
+        pk_y = np.repeat(peaks["y"], n_se)
+        se_y = np.hstack([se_peaks["y"][ind[0] : ind[1]] for ind in se_indices])
+        pk_resolution_expanded = np.repeat(pk_resolution, n_se)
+        se_resolution_expanded = np.hstack([se_resolution[ind[0] : ind[1]] for ind in se_indices])
+
+        combined_resolution = np.sqrt(se_resolution_expanded**2 + pk_resolution_expanded**2)
+        d_squre = (pk_x - se_x) ** 2 + (pk_y - se_y) ** 2
+        # 2D Gaussian with zero off-diagonal covairance matirx elements
+        constant = 1 / (2 * np.pi * combined_resolution**2)
+        exponent = np.exp(-1 / 2 * (d_squre / combined_resolution**2))
+        se_nearby_probability = np.bincount(indices, weights=constant * exponent)
         return se_nearby_probability
 
     def compute_se_score(self, peaks, _peaks):
@@ -130,20 +141,40 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         # select single electrons
         mask = self.select_se(peaks)
         se_peaks = peaks[mask]
-        # get single electron indices in peak vicinity
+
+        # get single electron ind in peak vicinity
         split_peaks = np.zeros(len(_peaks), dtype=strax.time_fields)
         split_peaks["time"] = _peaks["center_time"] - self.se_time_search_window_left
         split_peaks["endtime"] = _peaks["center_time"] + self.se_time_search_window_right
         se_indices = strax.touching_windows(se_peaks, split_peaks)
-        # get se score
-        _se_nearby_probability = self.get_se_count_and_pdf_sum(
-            _peaks,
-            se_peaks,
-            se_indices,
-            self._para_a,
-            self._para_b,
-        )
-        return _se_nearby_probability
+
+        # group SE indices
+        if self.n_se_score_group <= 0:
+            raise ValueError(
+                "The size of SE group should be larger than 0, but got {self.n_se_score_group}."
+            )
+        n_se = se_indices[:, 1] - se_indices[:, 0]
+        n_seen = 0
+        se_group = [0]
+        for i, n in enumerate(n_se):
+            n_seen += n
+            if n_seen > self.n_se_score_group:
+                se_group.append(i + 1)
+                n_seen = 0
+        if len(n_se) not in se_group:
+            se_group.append(len(n_se))
+
+        # get SE score
+        se_nearby_probability = np.zeros(len(peaks))
+        for i, j in zip(se_group[:-1], se_group[1:]):
+            se_nearby_probability[i:j] = self.get_se_count_and_pdf_sum(
+                _peaks[i:j],
+                se_peaks,
+                strax.touching_windows(se_peaks, split_peaks[i:j]),
+                self._para_a,
+                self._para_b,
+            )
+        return se_nearby_probability
 
     def compute(self, peaks):
         # sort peaks by center_time
