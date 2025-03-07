@@ -74,6 +74,11 @@ class TestDAQReader(unittest.TestCase):
                     self.st.is_stored(run_id, target),
                 )
 
+    @unittest.mock.patch.object(
+        straxen.AqMonChannelOccupancy,
+        "get_v1495_config",
+        straxen.AqMonChannelOccupancy.get_fake_config
+        )
     def test_insert_deadtime(self):
         """In the DAQ reader, we need a mimimium quiet period to say where we can start/end a chunk.
 
