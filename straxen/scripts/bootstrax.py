@@ -281,7 +281,7 @@ remove_target_after_fails = {
 hostname = socket.getfqdn()
 
 versions = straxen.print_versions(
-    modules="strax straxen utilix daqnt numpy tensorflow numba".split(),
+    modules="strax straxen utilix daqnt numpy numba".split(),
     include_git=True,
     return_string=True,
 )
