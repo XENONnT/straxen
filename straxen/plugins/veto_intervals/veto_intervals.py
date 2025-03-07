@@ -31,10 +31,10 @@ class VetoIntervals(strax.ExhaustPlugin):
     Possible occupancies are:
      - busy                : busy veto for tpc channels (high and low energy channels)
      - hev                 : DDC10 hardware high energy veto
-     - hev_tag             : indicator on when the HEV would have been active, but the veto was not used
+     - hev_tag             : indicator on when the HEV would be active, but the veto was not used
      - neutron_generator   : trigger of neutron generator (NG) active indicating it fired
      - ng_anti_veto        : trigger-like veto based on NG trigger
-     - fractional_lifetime : periodic veto that enables data taking during harsh conditions (water tank empty)
+     - fractional_lifetime : periodic veto that enables data taking w/ high rates (water tank empty)
      - LED trigger         : indicating when the LED trigger was active (if enabled)
      - straxen_deadtime    : special case of deadtime introduced by the DAQReader-plugin
 

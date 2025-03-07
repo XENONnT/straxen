@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 
 # More info about the acquisition monitor can be found here:
 # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenon1t:alexelykov:acquisition_monitor
-# and here: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:robingb:v1495_firmware_upgrade_v10
+# and: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:robingb:v1495_firmware_upgrade_v10
 
 
 @export

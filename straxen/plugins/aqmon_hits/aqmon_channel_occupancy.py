@@ -3,20 +3,27 @@ from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 
 
 class AqMonChannelOccupancy:
-    """For V1495 Firmware v10, from Feb. '25 Determines the meaning of the Acquisition Monitor
+    """For V1495 Firmware v10, from Feb. '25
+    Determines the meaning of the Acquisition Monitor
     Channels originating from the V1495 depending on its config in the DAQ. These are start and stop
-    signals of veto- or other.
-
-    intervals. The channels have a name according to its primary usage, but the meaning can differ.
+    signals of veto- or other intervals. The channels have a name according to its primary usage,
+    but the meaning can differ.
       * 'Busy' channels always only provide the busy veto
-      * 'Neutron Generator' (NG) channels can provide LED-trigger or Neutron Generator trigger/indicator (or nothing),
-                            and for backwards compatibilty (older runs) 'busy_he'
-      * 'High Energy Veto' (HEV) channels can provide HEV, HEV-tag, Fractional Lifetime veto, Anti Veto
+      * 'Neutron Generator' (NG) channels can provide
+                            a) LED-trigger
+                            b) Neutron Generator trigger/indicator
+                            c) nothing
+                            d) 'busy_he' for backwards compatibilty (older runs)
+      * 'High Energy Veto' (HEV) channels can provide
+                            a) HEV
+                            b) HEV-tag
+                            c) Fractional Lifetime veto
+                            d) Anti Veto
 
-      HEV-tag means, that we have the information of the HEV, whether it makes a veto decision or not, but we DO NOT
-      veto the system.
-      More info: https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:robingb:v1495_firmware_upgrade_v10
-
+    HEV-tag means, that we have the information of the HEV, whether it makes a veto decision or not,
+    but we DO NOT veto the system.
+    More info:
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:robingb:v1495_firmware_upgrade_v10
     """
 
     neutron_generator_channel_options = {
