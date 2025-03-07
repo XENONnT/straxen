@@ -62,19 +62,19 @@ class AqMonChannelOccupancy:
         """For testing."""
         print("Using fake config")
         self.config = {
-            "is_hev_on": True,
+            "is_hev_on": False,
             "is_frac_lt_mode_on": False,
             "is_led_start_stop_activ": False,
-            "is_anti_veto_active": True,
-            "anti_veto_delay_us": 1,
-            "anti_veto_duration_us": 2,
+            "is_anti_veto_active": False,
+            "anti_veto_delay_us": 0,
+            "anti_veto_duration_us": 0,
             "fractional_lifetime_veto_on_us": 0,
             "fractional_lifetime_veto_off_us": 0,
             "_use_legacy_port_hev": True,
             "_use_regular_port_trg": False,
             "_use_legacy_port_trg": False,
-            "_use_NG_input": True,
-            "firmware_version": 10,
+            "_use_NG_input": False,
+            "firmware_version": 9,
         }
 
     def extract_settings(self):
