@@ -228,6 +228,11 @@ class TestAqmonProcessing(TestCase):
         events = self.st.get_array(self.run_id, "event_basics")
         self.assertTrue(len(events))
 
+    @unittest.mock.patch.object(
+        straxen.AqMonChannelOccupancy,
+        "get_v1495_config",
+        straxen.AqMonChannelOccupancy.get_fake_config
+        )
     def test_veto_intervals(self, options=None):
         if options is not None:
             self.st.set_config(options)
@@ -238,9 +243,19 @@ class TestAqmonProcessing(TestCase):
         self.assertTrue(np.sum(self.TOTAL_DEADTIME))
         self.assertEqual(np.sum(veto_intervals["veto_interval"]), np.sum(self.TOTAL_DEADTIME))
 
+    @unittest.mock.patch.object(
+        straxen.AqMonChannelOccupancy,
+        "get_v1495_config",
+        straxen.AqMonChannelOccupancy.get_fake_config
+        )
     def test_veto_intervals_with_missing_on(self):
         self.test_veto_intervals(dict(start_with_channel_on=False))
 
+    @unittest.mock.patch.object(
+        straxen.AqMonChannelOccupancy,
+        "get_v1495_config",
+        straxen.AqMonChannelOccupancy.get_fake_config
+        )
     def test_make_veto_proximity(self):
         """I'm not going to do something fancy here, just checking if we can run the code."""
         veto_intervals = self.st.get_array(self.run_id, "veto_intervals")
