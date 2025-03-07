@@ -134,12 +134,12 @@ class PeakSEScore(strax.OverlapWindowPlugin):
         split_peaks = np.zeros(len(_peaks), dtype=strax.time_fields)
         split_peaks["time"] = _peaks["center_time"] - self.se_time_search_window_left
         split_peaks["endtime"] = _peaks["center_time"] + self.se_time_search_window_right
-        split_result = strax.touching_windows(se_peaks, split_peaks)
+        se_indices = strax.touching_windows(se_peaks, split_peaks)
         # get se score
         _se_nearby_probability = self.get_se_count_and_pdf_sum(
             _peaks,
             se_peaks,
-            split_result,
+            se_indices,
             self._para_a,
             self._para_b,
         )
