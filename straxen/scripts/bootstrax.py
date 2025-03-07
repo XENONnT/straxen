@@ -1369,7 +1369,14 @@ def run_strax(
             )
             log.info(f"Making {run_id}-{targets}")
             log.debug(f"With {strax_config}, n-cores {cores}")
-            st.make(run_id, targets, allow_multiple=True, config=strax_config, max_workers=cores)
+            st.make(
+                run_id, 
+                targets, 
+                allow_multiple=True, 
+                config=strax_config, 
+                max_workers=cores,
+                processor="threaded_mailbox"
+            )
 
             if len(post_processing):
                 for post_target in post_processing:
@@ -1388,6 +1395,7 @@ def run_strax(
                             config=strax_config,
                             progress_bar=True,
                             max_workers=cores,
+                            processor="threaded_mailbox"
                         )
                     else:
                         log.info(f"Not making {post_target}, it is already stored")
