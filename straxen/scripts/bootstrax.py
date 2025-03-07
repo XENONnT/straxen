@@ -49,6 +49,10 @@ from straxen.daq_core import now
 # Patch for targeted (uncompressed) chunk size
 straxen.Peaklets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
+# Don't do the rechunk on load for raw_records and peaklets
+# It's something we do for offline reprocessing
+straxen.DAQReader.rechunk_on_load = False
+straxen.Peaklets.rechunk_on_load = False
 
 parser = argparse.ArgumentParser(description="XENONnT online processing manager")
 parser.add_argument(
@@ -277,7 +281,7 @@ remove_target_after_fails = {
 hostname = socket.getfqdn()
 
 versions = straxen.print_versions(
-    modules="strax straxen utilix daqnt numpy tensorflow numba".split(),
+    modules="strax straxen utilix daqnt numpy numba".split(),
     include_git=True,
     return_string=True,
 )
@@ -1369,7 +1373,14 @@ def run_strax(
             )
             log.info(f"Making {run_id}-{targets}")
             log.debug(f"With {strax_config}, n-cores {cores}")
-            st.make(run_id, targets, allow_multiple=True, config=strax_config, max_workers=cores)
+            st.make(
+                run_id,
+                targets,
+                allow_multiple=True,
+                config=strax_config,
+                max_workers=cores,
+                processor="threaded_mailbox",
+            )
 
             if len(post_processing):
                 for post_target in post_processing:
@@ -1388,6 +1399,7 @@ def run_strax(
                             config=strax_config,
                             progress_bar=True,
                             max_workers=cores,
+                            processor="threaded_mailbox",
                         )
                     else:
                         log.info(f"Not making {post_target}, it is already stored")
