@@ -1,4 +1,13 @@
-3.1.3 / 2025-03-2
+3.1.4 / 2025-03-09
+-------------------
+* Set targeted chunk size of hitlets_nv as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1574
+* Still use smaller chunk size in bootstrax by @dachengx in https://github.com/XENONnT/straxen/pull/1575
+* Add offline reprocessing storage path in `/project` by @dachengx in https://github.com/XENONnT/straxen/pull/1579
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.3...v3.1.4
+
+
+3.1.3 / 2025-03-02
 -------------------
 * Add option to delete heavy chunk automatically after reading by @dachengx in https://github.com/XENONnT/straxen/pull/1570
 * Remove `event_n_channel`, add `top_n_channels` to `peak_basics` by @dachengx in https://github.com/XENONnT/straxen/pull/1571
