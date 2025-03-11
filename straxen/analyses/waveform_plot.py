@@ -84,7 +84,13 @@ def plot_peaks(
     peaks = strax.sort_by_time(peaks)
 
     for p in peaks:
-        plot_peak(p, t0=t_reference, color={-1:'black', 0:'gray',1:'b',2:'g',3:'purple',20:'orange',22:'teal'}[p["type"]])
+        plot_peak(
+            p,
+            t0=t_reference,
+            color={-1: "black", 0: "gray", 1: "b", 2: "g", 3: "purple", 20: "orange", 22: "teal"}[
+                p["type"]
+            ],
+        )
 
     if xaxis == "since_start":
         seconds_range_xaxis(seconds_range, t0=seconds_range[0])
