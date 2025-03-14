@@ -18,7 +18,7 @@ class VetoProximity(strax.ExhaustPlugin):
 
     """
 
-    __version__ = "2.2.0"
+    __version__ = "2.3.0"
     # Strictly speaking, we could depend on 'events', but then you couldn't
     # change the event_window_fields to e.g. s1_time and s2_endtime.
     depends_on = ("event_basics", "veto_intervals")
@@ -34,7 +34,7 @@ class VetoProximity(strax.ExhaustPlugin):
         ),
     )
 
-    veto_names = ["busy", "busy_he", "hev", "straxen_deadtime"]
+    veto_names = ["busy", "busy_he", "hev", "straxen_deadtime", "fractional_lifetime", "anti_veto"]
 
     def infer_dtype(self):
         dtype = []
@@ -95,7 +95,7 @@ class VetoProximity(strax.ExhaustPlugin):
         result_buffer[f"time_to_previous_{veto_name}"] = np.iinfo(DTYPE_VETO_INTERVALS).max
         result_buffer[f"time_to_next_{veto_name}"] = np.iinfo(DTYPE_VETO_INTERVALS).max
 
-        selected_intervals = veto_intervals[veto_intervals["veto_type"] == f"{veto_name}_veto"]
+        selected_intervals = veto_intervals[veto_intervals["veto_type"] == f"{veto_name}"]
         if not len(selected_intervals):
             return
 
