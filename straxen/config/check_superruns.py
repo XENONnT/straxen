@@ -56,7 +56,7 @@ if "plugin_attr_convert" not in strax.Context.takes_config:
     strax.Context = strax.takes_config(
         strax.Option(
             name="plugin_attr_convert",
-            default=("run_id", "algorithm"),
+            default=("run_id", "algorithm", "sr"),
             type=(list, tuple),
             help="The attributes that should be get from the plugin.",
         ),
@@ -101,7 +101,7 @@ def hashed_url_configs(self, configs):
         # if later we have more keys need to be converted from plugin
         # to make xedocs work, we need to add them here
         for k in self.context_config["plugin_attr_convert"]:
-            if k in extra_kwargs:
+            if k in extra_kwargs and straxen.URLConfig.NAMESPACE_SEP in extra_kwargs[k]:
                 extra_kwargs[k] = getattr(
                     plugin,
                     extra_kwargs[k].partition(straxen.URLConfig.NAMESPACE_SEP)[-1],
