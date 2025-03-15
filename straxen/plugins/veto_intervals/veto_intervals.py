@@ -163,7 +163,7 @@ class VetoIntervals(strax.ExhaustPlugin):
 
         message = (
             f"Got inconsistent number of {veto_name} starts "
-            f"{len(veto_hits_start)}) / stops ({len(veto_hits_stop)})."
+            f"({len(veto_hits_start)}) / stops ({len(veto_hits_stop)})."
         )
         if len(extra_start):
             message += " Despite the fact that we inserted one extra start at the beginning of the run."  # noqa
