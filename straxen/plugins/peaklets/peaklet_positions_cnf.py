@@ -227,7 +227,7 @@ class PeakletPositionsCNF(PeakletPositionsBase):
             return result
 
         # Prepare input data for the flow model
-        area_per_channel_top = peaklets["area_per_channel"][peaklet_mask, 0 : self.n_top_pmts]
+        area_per_channel_top = peaklets["area_per_channel"][peaklet_mask, : self.n_top_pmts]
         total_top_areas = np.sum(area_per_channel_top, axis=1)
         with np.errstate(divide="ignore", invalid="ignore"):
             flow_data = np.concatenate(
