@@ -17,7 +17,7 @@ class EventBasicsVanilla(strax.Plugin):
 
     """
 
-    __version__ = "1.3.4"
+    __version__ = "1.3.5"
 
     depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity", "peak_ambience_")
     provides = "event_basics"
@@ -139,6 +139,7 @@ class EventBasicsVanilla(strax.Plugin):
             ("endtime", np.int64, "end time since unix epoch [ns]"),
             ("area", np.float32, "area, uncorrected [PE]"),
             ("n_channels", np.int16, "count of contributing PMTs"),
+            ("top_n_channels", np.int16, "count of contributing top PMTs"),
             ("n_hits", np.int32, "count of hits contributing at least one sample to the peak"),
             ("n_competing", np.int32, "number of competing peaks"),
             ("ambience_1d_score", np.float32, "ambience score only in time"),

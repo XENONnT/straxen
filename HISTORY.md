@@ -1,3 +1,31 @@
+3.1.4 / 2025-03-09
+-------------------
+* Set targeted chunk size of hitlets_nv as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1574
+* Still use smaller chunk size in bootstrax by @dachengx in https://github.com/XENONnT/straxen/pull/1575
+* Add offline reprocessing storage path in `/project` by @dachengx in https://github.com/XENONnT/straxen/pull/1579
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.3...v3.1.4
+
+
+3.1.3 / 2025-03-02
+-------------------
+* Add option to delete heavy chunk automatically after reading by @dachengx in https://github.com/XENONnT/straxen/pull/1570
+* Remove `event_n_channel`, add `top_n_channels` to `peak_basics` by @dachengx in https://github.com/XENONnT/straxen/pull/1571
+* Set targeted chunk size of peaklet as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1572
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.2...v3.1.3
+
+
+3.1.2 / 2025-02-24
+-------------------
+* Set the number of tries and threads of remote rucio by @dachengx in https://github.com/XENONnT/straxen/pull/1564
+* Pass `tries` and `num_threads` to `RucioRemoteBackend` by @dachengx in https://github.com/XENONnT/straxen/pull/1565
+* Be compatible with https://github.com/AxFoundation/strax/pull/975 by @dachengx in https://github.com/XENONnT/straxen/pull/1566
+* Load 100 MB peaklets per `compute` by @dachengx in https://github.com/XENONnT/straxen/pull/1567
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.1...v3.1.2
+
+
 3.1.1 / 2025-02-13
 -------------------
 * `n_hits` should be int32, otherwise overflow by @dachengx in https://github.com/XENONnT/straxen/pull/1558

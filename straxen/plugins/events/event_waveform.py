@@ -73,13 +73,6 @@ class EventWaveform(strax.Plugin):
                     pfields_["dt"][0],
                 )
             ]
-
-        # populating S1 n channel properties
-        dtype += [
-            (("Main S1 count of contributing PMTs", "s1_n_channels"), np.int16),
-            (("Main S1 top count of contributing PMTs", "s1_top_n_channels"), np.int16),
-        ]
-
         dtype += strax.time_fields
         return dtype
 
@@ -93,7 +86,6 @@ class EventWaveform(strax.Plugin):
             for type_ in ["s1", "s2", "alt_s1", "alt_s2"]:
                 type_index = event[f"{type_}_index"]
                 if type_index != -1:
-                    type_area_per_channel = sp["area_per_channel"][type_index]
                     result[f"{type_}_length"][event_i] = sp["length"][type_index]
                     result[f"{type_}_data"][event_i] = sp["data"][type_index]
                     if self._have_data("data_top"):
@@ -101,10 +93,4 @@ class EventWaveform(strax.Plugin):
                     if self._have_data("data_start"):
                         result[f"{type_}_data_start"][event_i] = sp["data_start"][type_index]
                     result[f"{type_}_dt"][event_i] = sp["dt"][type_index]
-
-                    if type_ == "s1":
-                        result["s1_n_channels"][event_i] = (type_area_per_channel > 0).sum()
-                        result["s1_top_n_channels"][event_i] = (
-                            type_area_per_channel[: self.n_top_pmts] > 0
-                        ).sum()
         return result
