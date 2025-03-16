@@ -57,6 +57,7 @@ def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_
 
     source = bklt.ColumnDataSource(
         data={
+            "type": peaks["type"],
             "xs": x_p,  # Coordinates for peak patches
             "ys": y_p,
             "x": peaks["x"],  # XY-Pos in PMZ Hitpattern
@@ -118,12 +119,13 @@ def peak_tool_tip(peak_type):
 
     """
 
+    tool_tip = dict()
+    tool_tip["type"] = ("type", "@type")
+
     # Add static time parameters:
-    tool_tip = {
-        "time_static": ("time [ns]", "@time"),
-        "center_time": ("center_time [ns]", "@center_time"),
-        "endtime": ("endtime [ns]", "@endtime"),
-    }
+    tool_tip["time_static"] = ("time [ns]", "@time")
+    tool_tip["center_time"] = ("center_time [ns]", "@center_time")
+    tool_tip["endtime"] = ("endtime [ns]", "@endtime")
 
     # Now ns/µs parameters for S1 and S2
     tool_tip["dt"] = ("dt [ns/sample]", "@dt")
