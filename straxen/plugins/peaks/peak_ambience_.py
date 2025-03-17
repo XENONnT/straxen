@@ -10,8 +10,12 @@ from straxen.plugins.defaults import FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE
 class PeakAmbience_(strax.OverlapWindowPlugin):
     __version__ = "0.0.0"
     save_when = strax.SaveWhen.EXPLICIT
-    depends_on = ("peak_basics", "peak_positions", "cut_time_veto_peak")
+    depends_on = ("peak_basics", "peak_positions", "cut_time_veto_peak", "lone_hits")
     provides = "peak_ambience_"
+
+    gain_model = straxen.URLConfig(
+        infer_type=False, help="PMT gain model. Specify as URL or explicit value"
+    )
 
     ambience_time_window_ = straxen.URLConfig(
         default=int(1e7),
@@ -91,16 +95,18 @@ class PeakAmbience_(strax.OverlapWindowPlugin):
         return dtype
 
     def setup(self):
+        self.to_pe = self.gain_model
+
         self.drift_time_max = int(self.max_drift_length / self.electron_drift_velocity)
 
-    def compute(self, peaks):
+    def compute(self, peaks, lone_hits):
         argsort = strax.stable_argsort(peaks["center_time"])
         _peaks = strax.stable_sort(peaks, order="center_time")
         result = np.zeros(len(peaks), self.dtype)
-        _quick_assign(argsort, result, self.compute_ambience(peaks, _peaks))
+        _quick_assign(argsort, result, self.compute_ambience(peaks, lone_hits, _peaks))
         return result
 
-    def compute_ambience(self, peaks, current_peak):
+    def compute_ambience(self, peaks, lone_hits, current_peak):
         roi = np.zeros(len(current_peak), dtype=strax.time_fields)
         roi["time"] = current_peak["center_time"] - self.ambience_time_window_
         if self.ambience_two_sides:
@@ -129,6 +135,33 @@ class PeakAmbience_(strax.OverlapWindowPlugin):
             min_area_fraction=self.ambience_min_area_fraction,
             divide_r=False,
         )
+
+        area_lh = lone_hits["area"] * self.to_pe[lone_hits["channel"]]
+        primary_lh = area_lh < self.ambience_max_peak
+        dtype = np.dtype(
+            [
+                ("time", np.int64),
+                ("endtime", np.int64),
+                ("center_time", np.int64),
+                ("area", np.float32),
+                ("x", np.float32),
+                ("y", np.float32),
+            ]
+        )
+        lh = np.zeros(primary_lh.sum(), dtype=dtype)
+        lh["time"] = lone_hits["time"][primary_lh]
+        lh["endtime"] = strax.endtime(lone_hits)[primary_lh]
+        lh["center_time"] = lh["time"]
+        lh["area"] = area_lh[primary_lh]
+        ambience_1d_score_lh = self.peaks_ambience(
+            current_peak,
+            lh,
+            strax.touching_windows(lh, roi),
+            self.ambience_exponents,
+            min_area_fraction=self.ambience_min_area_fraction,
+            divide_r=False,
+        )
+        result["ambience_1d_score"] += ambience_1d_score_lh
 
         if self.ambience_exclude_scintillation:
             primary &= peaks["type"] == 2
