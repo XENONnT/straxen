@@ -61,7 +61,7 @@ class PeakNearestTriggering(Events):
         return 10 * self.shadow_time_window_backward
 
     def compute(self, peaks):
-        argsort = strax.stable_argsort(peaks["center_time"])
+        argsort = strax.stable_argsort(peaks, order="center_time")
         _peaks = strax.stable_sort(peaks, order="center_time")
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_triggering(peaks, _peaks))
