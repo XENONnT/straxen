@@ -2,35 +2,28 @@ import numpy as np
 import strax
 
 
-class EventAmbience(strax.Plugin):
-    """Save Ambience of the main S1 and main S2 in the event.
-
-    References:
-        * v0.0.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience
-
-    """
-
-    __version__ = "0.0.4"
-    depends_on = ("event_basics", "peak_ambience")
-    provides = "event_ambience"
+class EventAmbience_(strax.Plugin):
+    __version__ = "0.0.0"
+    depends_on = ("event_basics", "peak_ambience_")
+    provides = "event_ambience_"
 
     @property
     def origin_dtype(self):
-        return ["lh_before", "s0_before", "s1_before", "s2_before", "s2_near"]
+        return ["ambience_1d_score", "ambience_2d_score"]
 
     def infer_dtype(self):
         dtype = []
-        for ambience in self.origin_dtype:
+        for ambience, label in zip(self.origin_dtype, ["only in time", "in (time, space)"]):
             dtype.append(
                 (
-                    (f"Number of {' '.join(ambience.split('_'))} main S1", f"s1_n_{ambience}"),
-                    np.int16,
+                    (f"Strength of ambient peaks {label} of main S1", f"s1_{ambience}"),
+                    np.float32,
                 )
             )
             dtype.append(
                 (
-                    (f"Number of {' '.join(ambience.split('_'))} main S2", f"s2_n_{ambience}"),
-                    np.int16,
+                    (f"Strength of ambient peaks {label} of main S2", f"s2_{ambience}"),
+                    np.float32,
                 )
             )
         dtype += strax.time_fields
@@ -46,7 +39,7 @@ class EventAmbience(strax.Plugin):
             for idx, main_peak in zip([event["s1_index"], event["s2_index"]], ["s1_", "s2_"]):
                 if idx >= 0:
                     for ambience in self.origin_dtype:
-                        result[f"{main_peak}n_{ambience}"][event_i] = sp[f"n_{ambience}"][idx]
+                        result[f"{main_peak}{ambience}"][event_i] = sp[ambience][idx]
 
         # 3. Set time and endtime for events
         result["time"] = events["time"]

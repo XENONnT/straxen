@@ -15,7 +15,7 @@ class PeakNearestTriggering(Events):
     direction of peaks."""
 
     __version__ = "0.0.0"
-    depends_on = ("peak_basics", "peak_proximity")
+    depends_on = ("peak_basics", "peak_proximity", "peak_ambience_")
     provides = "peak_nearest_triggering"
     data_kind = "peaks"
     save_when = strax.SaveWhen.EXPLICIT
@@ -51,6 +51,20 @@ class PeakNearestTriggering(Events):
                 ),
                 ((f"type {common_descr} {direction}", f"{direction}_type"), np.int8),
                 ((f"n_competing {common_descr} {direction}", f"{direction}_n_competing"), np.int32),
+                (
+                    (
+                        f"ambience_1d_score {common_descr} {direction}",
+                        f"{direction}_ambience_1d_score",
+                    ),
+                    np.float32,
+                ),
+                (
+                    (
+                        f"ambience_2d_score {common_descr} {direction}",
+                        f"{direction}_ambience_2d_score",
+                    ),
+                    np.float32,
+                ),
                 ((f"area {common_descr} {direction} [PE]", f"{direction}_area"), np.float32),
             ]
         dtype += strax.time_fields
@@ -62,7 +76,7 @@ class PeakNearestTriggering(Events):
 
     def compute(self, peaks):
         argsort = strax.stable_argsort(peaks["center_time"])
-        _peaks = strax.stable_sort(peaks, order="center_time")
+        _peaks = peaks[argsort].copy()
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_triggering(peaks, _peaks))
         return result
@@ -108,7 +122,16 @@ class PeakNearestTriggering(Events):
             _peaks["center_time"][right_indices] - current_peak["center_time"],
             self.shadow_time_window_backward,
         )
-        for field in ["time", "endtime", "center_time", "type", "n_competing", "area"]:
+        for field in [
+            "time",
+            "endtime",
+            "center_time",
+            "type",
+            "n_competing",
+            "ambience_1d_score",
+            "ambience_2d_score",
+            "area",
+        ]:
             result["left_" + field] = np.where(
                 left_indices != -1, _peaks[field][left_indices], result["left_" + field]
             )

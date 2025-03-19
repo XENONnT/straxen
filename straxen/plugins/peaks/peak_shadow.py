@@ -146,16 +146,16 @@ class PeakShadow(strax.OverlapWindowPlugin):
 
     def compute(self, peaks):
         argsort = strax.stable_argsort(peaks["center_time"])
-        _peaks = strax.stable_sort(peaks, order="center_time")
+        _peaks = peaks[argsort].copy()
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_shadow(peaks, _peaks))
         return result
 
     def compute_shadow(self, peaks, current_peak):
         # 1. Define time window for each peak, we will find previous peaks within these time windows
-        roi_shadow = np.zeros(len(current_peak), dtype=strax.time_fields)
-        roi_shadow["time"] = current_peak["center_time"] - self.shadow_time_window_backward
-        roi_shadow["endtime"] = current_peak["center_time"]
+        roi = np.zeros(len(current_peak), dtype=strax.time_fields)
+        roi["time"] = current_peak["center_time"] - self.shadow_time_window_backward
+        roi["endtime"] = current_peak["center_time"]
 
         # 2. Calculate S2 position shadow, S2 time shadow, and S1 time shadow
         result = np.zeros(len(current_peak), self.dtype)
@@ -164,7 +164,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
             type_str = key.split("_")[0]
             stype = 2 if "s2" in key else 1
             mask_pre = (peaks["type"] == stype) & (peaks["area"] > self.shadow_threshold[key])
-            split_peaks = strax.touching_windows(peaks[mask_pre], roi_shadow)
+            split_peaks = strax.touching_windows(peaks[mask_pre], roi)
             array = np.zeros(len(current_peak), np.dtype(self.shadowdtype))
 
             # Initialization
