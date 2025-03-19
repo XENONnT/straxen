@@ -76,7 +76,7 @@ class PeakNearestTriggering(Events):
 
     def compute(self, peaks):
         argsort = strax.stable_argsort(peaks["center_time"])
-        _peaks = strax.stable_sort(peaks, order="center_time")
+        _peaks = peaks[argsort].copy()
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_triggering(peaks, _peaks))
         return result

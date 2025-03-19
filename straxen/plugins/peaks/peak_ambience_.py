@@ -101,7 +101,7 @@ class PeakAmbience_(strax.OverlapWindowPlugin):
 
     def compute(self, peaks, lone_hits):
         argsort = strax.stable_argsort(peaks["center_time"])
-        _peaks = strax.stable_sort(peaks, order="center_time")
+        _peaks = peaks[argsort].copy()
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_ambience(peaks, lone_hits, _peaks))
         return result
