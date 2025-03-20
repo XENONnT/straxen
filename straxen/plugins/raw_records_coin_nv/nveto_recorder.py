@@ -117,7 +117,7 @@ class nVETORecorder(strax.Plugin):
 
         return {k: v for k, v in zip(self.provides, dtypes)}
 
-    def compute(self, raw_records_nv, start, end, chunk_i):
+    def compute(self, raw_records_nv, start, end):
 
         if not len(raw_records_nv):
             rr = raw_records_nv

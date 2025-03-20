@@ -39,6 +39,13 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
+    rechunk_on_load = True
+    chunk_source_size_mb = 100
+
+    # To reduce the number of chunks, we increase the target size
+    # This would not harm memory usage, because we rechunk on load
+    chunk_target_size_mb = 2000
+
     __version__ = "1.2.2"
 
     peaklet_gap_threshold = straxen.URLConfig(
@@ -195,6 +202,16 @@ class Peaklets(strax.Plugin):
 
         self._tight_coincidence_window_left = self.tight_coincidence_window_left
         self._tight_coincidence_window_right = self.tight_coincidence_window_right
+
+        if self.peaklet_gap_threshold > strax.DEFAULT_CHUNK_SPLIT_NS:  # 1000 ns
+            raise ValueError(
+                f"peaklet_gap_threshold {self.peaklet_gap_threshold} ns "
+                "in peaklets building is larger than "
+                f"safe_break_in_pulses {strax.DEFAULT_CHUNK_SPLIT_NS} ns "
+                "in raw_records building. "
+                "This is inconsistent because raw_records can not be split "
+                "if the nearby hits are too close."
+            )
 
     def compute(self, records, start, end):
         hits = strax.find_hits(records, min_amplitude=self.hit_thresholds)

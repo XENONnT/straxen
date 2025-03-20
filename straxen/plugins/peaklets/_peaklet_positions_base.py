@@ -91,7 +91,7 @@ class PeakletPositionsBase(strax.Plugin):
             return result
 
         # Getting actual position reconstruction
-        area_per_channel_top = peaklets["area_per_channel"][peak_mask, 0 : self.n_top_pmts]
+        area_per_channel_top = peaklets["area_per_channel"][peak_mask, : self.n_top_pmts]
         with np.errstate(divide="ignore", invalid="ignore"):
             area_per_channel_top = area_per_channel_top / np.max(
                 area_per_channel_top, axis=1

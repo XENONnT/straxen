@@ -92,7 +92,7 @@ class EventS2PositionBase(strax.Plugin):
             if not np.sum(peak_mask):
                 continue
 
-            _top_pattern = events[p_type + "_area_per_channel"][peak_mask, 0 : self.n_top_pmts]
+            _top_pattern = events[p_type + "_area_per_channel"][peak_mask, : self.n_top_pmts]
             with np.errstate(divide="ignore", invalid="ignore"):
                 _top_pattern = _top_pattern / np.max(_top_pattern, axis=1).reshape(-1, 1)
 

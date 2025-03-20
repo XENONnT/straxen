@@ -486,7 +486,7 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
     if not fig:
         fig = straxen.bokeh_utils.default_fig(width=1600, height=400, y_axis_type=yscale)
 
-    for i in range(0, 3):
+    for i in np.unique(peaks["type"]):
         _ind = np.where(peaks["type"] == i)[0]
         if not len(_ind):
             continue
@@ -498,19 +498,20 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
             keep_amplitude_per_sample=False,
         )
 
+        _i = i if i < len(colors) else 0
         fig.patches(
             source=source,
-            fill_color=colors[i],
+            fill_color=colors[_i],
             fill_alpha=0.2,
-            line_color=colors[i],
+            line_color=colors[_i],
             line_width=0.5,
-            legend_label=LEGENDS[i],
-            name=LEGENDS[i],
+            legend_label=LEGENDS[_i],
+            name=LEGENDS[_i],
         )
 
         tt = straxen.bokeh_utils.peak_tool_tip(i)
         tt = [v for k, v in tt.items() if k != "time_dynamic"]
-        fig.add_tools(bokeh.models.HoverTool(name=LEGENDS[i], tooltips=tt))
+        fig.add_tools(bokeh.models.HoverTool(name=LEGENDS[_i], tooltips=tt))
         fig.add_tools(bokeh.models.WheelZoomTool(dimensions="width", name="wheel"))
         fig.toolbar.active_scroll = [t for t in fig.tools if t.name == "wheel"][0]
 
