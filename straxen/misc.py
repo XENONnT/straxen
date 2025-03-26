@@ -116,9 +116,10 @@ def print_versions(
         # Only activate local-module detection if container paths are present
         module_values = sys.modules.values()
         in_container = any(
-            mod and getattr(mod, "__file__", "").startswith("/opt/XENONnT/")
+            mod and (getattr(mod, "__file__", "") or "").startswith("/opt/XENONnT/")
             for mod in module_values
         )
+
         if in_container:
             for mod_name, mod in list(sys.modules.items()):
                 mod_version = getattr(mod, "__version__", None)
