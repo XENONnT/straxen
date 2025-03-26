@@ -111,15 +111,22 @@ def print_versions(
         versions["path"] = [sys.executable]
         versions["git"] = [None]
 
-    local_modules = []
+    local_modules = []    
     if include_all_local:
-        for mod_name, mod in list(sys.modules.items()):
-            mod_version = getattr(mod, "__version__", None)
-            mod_file = getattr(mod, "__file__", "")
-            if mod_version and mod_file and not mod_file.startswith("/opt/XENONnT/"):
-                # include top-level module only
-                local_modules.append(mod_name.split(".")[0])
+        # Only activate local-module detection if container paths are present
+        module_values = sys.modules.values()
+        in_container = any(
+            mod and getattr(mod, '__file__', '').startswith('/opt/XENONnT/')
+            for mod in module_values
+        )
+        if in_container:
+            for mod_name, mod in list(sys.modules.items()):
+                mod_version = getattr(mod, '__version__', None)
+                mod_file = getattr(mod, '__file__', '')
+                if mod_version and mod_file and not mod_file.startswith("/opt/XENONnT/"):
+                    local_modules.append(mod_name.split(".")[0])
 
+    
     modules = list(set(modules) | set(local_modules))
     for m in strax.to_str_tuple(modules):
         result = _version_info_for_module(m, include_git=include_git)
