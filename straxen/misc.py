@@ -92,6 +92,7 @@ def print_versions(
     include_python=True,
     return_string=False,
     include_git=True,
+    include_all_local=True
 ):
     """Print versions of modules installed.
 
@@ -99,6 +100,7 @@ def print_versions(
         print_versions(modules=('numpy', 'dddm',))
     :param return_string: optional. Instead of printing the message, return a string
     :param include_git: Include the current branch and latest commit hash
+    :param include_all_local: Include all local modules (not in /opt/XENONnT/).
     :return: optional, the message that would have been printed
 
     """
@@ -108,6 +110,17 @@ def print_versions(
         versions["version"] = [python_version()]
         versions["path"] = [sys.executable]
         versions["git"] = [None]
+        
+    local_modules = []
+    if include_all_local:
+        for mod_name, mod in sys.modules.items():
+            mod_version = getattr(mod, '__version__', None)
+            mod_file = getattr(mod, '__file__', '')
+            if mod_version and mod_file and not mod_file.startswith("/opt/XENONnT/"):
+                # include top-level module only
+                local_modules.append(mod_name.split('.')[0])  
+
+    modules = list(set(modules) | set(local_modules))
     for m in strax.to_str_tuple(modules):
         result = _version_info_for_module(m, include_git=include_git)
         if result is None:
