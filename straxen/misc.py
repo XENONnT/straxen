@@ -113,7 +113,7 @@ def print_versions(
 
     local_modules = []
     if include_all_local:
-        for mod_name, mod in sys.modules.items():
+        for mod_name, mod in list(sys.modules.items()):
             mod_version = getattr(mod, "__version__", None)
             mod_file = getattr(mod, "__file__", "")
             if mod_version and mod_file and not mod_file.startswith("/opt/XENONnT/"):
