@@ -147,7 +147,8 @@ def _version_info_for_module(module_name, include_git):
         return
     git = None
     version = mod.__dict__.get("__version__", None)
-    module_path = mod.__dict__.get("__path__", [None])[0]
+    module_path_list = mod.__dict__.get("__path__") or [None]
+    module_path = module_path_list[0]
     if include_git:
         try:
             repo = Repo(module_path, search_parent_directories=True)
