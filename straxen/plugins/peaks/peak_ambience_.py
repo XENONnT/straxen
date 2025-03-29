@@ -10,7 +10,7 @@ from straxen.plugins.defaults import FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE
 class PeakAmbience_(strax.OverlapWindowPlugin):
     __version__ = "0.0.0"
     save_when = strax.SaveWhen.EXPLICIT
-    depends_on = ("peak_basics", "peak_positions", "cut_time_veto_peak", "lone_hits")
+    depends_on = ("peak_basics", "peak_positions", "lone_hits")
     provides = "peak_ambience_"
 
     gain_model = straxen.URLConfig(
@@ -24,7 +24,6 @@ class PeakAmbience_(strax.OverlapWindowPlugin):
     )
 
     ambience_peak_selection = straxen.URLConfig(
-        # default='(type==2)&cut_time_veto_peak',
         default="type==2",
         type=(str, None),
         help="Selection string for ambience peaks",
