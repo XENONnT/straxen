@@ -57,18 +57,14 @@ def event_display_interactive(
     :param yscale: Defines scale for main/alt S1 == 0, main/alt S2 == 1,
         waveform plot == 2. Please note, that the log scale can lead to funny
         glyph renders for small values.
-    :param log: If true color sclae is used for hitpattern plots.
+    :param log: If true color scale is used for hitpattern plots.
 
     example::
 
         from IPython.core.display import display, HTML
         display(HTML("<style>.container { width:80% !important; }</style>"))
         import bokeh.plotting as bklt
-        fig = st.event_display_interactive(
-                         run_id,
-                         time_range=(event['time'],
-                                     event['endtime'])
-                         )
+        fig = st.event_display_interactive(run_id, time_range=(event['time'], event['endtime']))
         bklt.show(fig)
 
     :raises:
@@ -128,13 +124,14 @@ def event_display_interactive(
         s2_keys,
         labels,
         colors,
-        yscale[:2],
+        yscale=yscale[:2],
     )
 
     # PMT arrays:
     if not only_main_peaks:
         # Plot all keys into both arrays:
         top_array_keys = s2_keys + s1_keys
+        # Plot S1 first then S2 in the bottom array:
         bottom_array_keys = s1_keys + s2_keys
     else:
         top_array_keys = s2_keys
@@ -164,7 +161,7 @@ def event_display_interactive(
         # If specified by the user only plot main/alt S1/S2
         peaks = peaks[~m_other_peaks]
 
-    waveform = plot_event(peaks, signal, labels, events[0], colors, yscale[-1])
+    waveform = plot_event(peaks, signal, labels, events[0], colors, yscale=yscale[-1])
 
     # Create tile:
     title = _make_event_title(events[0], run_id)
@@ -253,7 +250,15 @@ def event_display_interactive(
     return event_display
 
 
-def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors, yscale=("linear", "linear")):
+def plot_detail_plot_s1_s2(
+    signal,
+    s1_keys,
+    s2_keys,
+    labels,
+    colors,
+    title=["Main/Alt S1", "Main/Alt S2"],
+    yscale=("linear", "linear"),
+):
     """Function to plot the main/alt S1/S2 peak details.
 
     :param signal: Dictionary containing the peak information.
@@ -268,11 +273,11 @@ def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors, yscale=("li
     # First we create figure then we loop over figures and plots and
     # add drawings:
     fig_s1 = straxen.bokeh_utils.default_fig(
-        title="Main/Alt S1",
+        title=title[0],
         y_axis_type=yscale[0],
     )
     fig_s2 = straxen.bokeh_utils.default_fig(
-        title="Main/Alt S2",
+        title=title[1],
         y_axis_type=yscale[1],
     )
 
@@ -398,6 +403,132 @@ def plot_event(peaks, signal, labels, event, colors, yscale="linear"):
     waveform.x_range.start = max(-0.1 * length, (event["time"] - start) / 10**3)
     waveform.x_range.end = min(1.1 * length, (event["endtime"] - start) / 10**3)
     return waveform
+
+
+@straxen.mini_analysis(
+    requires=("peaks", "peak_basics", "peak_positions"),
+    default_time_selection="touching",
+    warn_beyond_sec=10,
+)
+def peaks_display_interactive(
+    peaks,
+    to_pe,
+    run_id,
+    context,
+    center_times=[],
+    bottom_pmt_array=True,
+    plot_all_pmts=False,
+    colors=("gray", "blue", "green"),
+    yscale=("linear", "linear", "linear"),
+    log=True,
+):
+    """Interactive events display for XENONnT. Plots detailed waveform, bottom and top PMT hit
+    pattern for selected center time.
+
+    :param bottom_pmt_array: If true plots bottom PMT array hit-pattern.
+    :param colors: Colors to be used for peaks. Order is as peak types, 0 = Unknown, 1 = S1, 2 = S2.
+        Can be any colors accepted by bokeh.
+    :param yscale: Defines scale for main/alt S1 == 0, main/alt S2 == 1, waveform plot == 2. Please
+        note, that the log scale can lead to funny glyph renders for small values.
+    :param log: If true color scale is used for hitpattern plots.
+    :return: bokeh.plotting.figure instance.
+
+    """
+    st = context
+
+    if len(yscale) != 3:
+        raise ValueError(f'"yscale" needs three entries, but you passed {len(yscale)}.')
+
+    if not hasattr(st, "_BOKEH_CONFIGURED_NOTEBOOK"):
+        st._BOKEH_CONFIGURED_NOTEBOOK = True
+        # Configure show to show notebook:
+        from bokeh.io import output_notebook
+
+        output_notebook()
+
+    signal = {}
+    s1_keys = []
+    s2_keys = []
+    labels = {}
+    found_s1 = False
+    found_s2 = False
+    for ind, center_time in enumerate(np.unique(center_times)):
+        _p = peaks[peaks["center_time"] == center_time]
+        if not _p.shape[0]:
+            raise ValueError(f"Could not find peak at center time {center_time}.")
+        p = _p[0]
+        if np.isin(p["type"], [0, 1]):
+            key = f"s{p['type']}_{ind}"
+            if found_s1:
+                key = f"alt_{key}"
+            found_s1 = True
+            s1_keys.append(key)
+        else:
+            key = f"s{p['type']}_{ind}"
+            if found_s2:
+                key = f"alt_{key}"
+            found_s2 = True
+            s2_keys.append(key)
+        signal[key] = _p
+        labels[key] = f"{ind}"
+
+    # Detail plots for selected peaks
+    fig_s1, fig_s2 = plot_detail_plot_s1_s2(
+        signal,
+        s1_keys,
+        s2_keys,
+        labels,
+        colors,
+        title=["S0 / S1", "S2 and others"],
+        yscale=yscale[:2],
+    )
+
+    # PMT arrays:
+    # Plot all keys into both arrays:
+    top_array_keys = s2_keys + s1_keys
+    # Plot S1 first then S2 in the bottom array:
+    bottom_array_keys = s1_keys + s2_keys
+
+    fig_top, fig_bottom = plot_pmt_arrays_and_positions(
+        top_array_keys,
+        bottom_array_keys,
+        signal,
+        to_pe,
+        labels,
+        plot_all_pmts,
+        log=log,
+    )
+
+    event = np.zeros(1, dtype=strax.time_fields)
+    event["time"] = peaks[0]["time"]
+    event["endtime"] = strax.endtime(peaks)[-1]
+    waveform = plot_event(peaks, signal, labels, event[0], colors, yscale[-1])
+
+    # Put everything together:
+    if bottom_pmt_array:
+        upper_row = [fig_s1, fig_s2, fig_top, fig_bottom]
+    else:
+        upper_row = [fig_s1, fig_s2, fig_top]
+
+    upper_row = bokeh.layouts.Row(
+        children=upper_row,
+        sizing_mode="scale_width",
+    )
+
+    plots = bokeh.layouts.gridplot(
+        children=[upper_row, waveform],
+        sizing_mode="scale_width",
+        ncols=1,
+        merge_tools=True,
+        toolbar_location="above",
+    )
+    event_display = bokeh.layouts.Column(
+        children=[plots],
+        sizing_mode="scale_width",
+        max_width=1600,
+    )
+
+    return event_display
 
 
 def plot_peak_detail(
