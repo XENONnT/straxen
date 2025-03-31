@@ -154,6 +154,11 @@ def xenonnt(
     :return: strax.Context
 
     """
+    if "xedocs_version" in kwargs:
+        raise ValueError(
+            "Please use xenonnt_* instead of xenonnt if you want to specify xedocs_version"
+        )
+
     context_options = {**straxen.contexts.common_opts, **kwargs}
 
     st = strax.Context(config=straxen.contexts.common_config, **context_options)
@@ -248,6 +253,17 @@ def xenonnt(
     )
 
     return st
+
+
+if "xedocs_version" not in strax.Context.takes_config:
+    strax.Context = strax.takes_config(
+        strax.Option(
+            name="xedocs_version",
+            default=None,
+            type=str,
+            help="The version of the xedocs database to use",
+        ),
+    )(strax.Context)
 
 
 @strax.Context.add_method
