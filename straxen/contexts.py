@@ -155,7 +155,7 @@ def xenonnt(
 
     """
     if "xedocs_version" in kwargs:
-        raise ValueError(
+        warnings.warn(
             "Please use xenonnt_* instead of xenonnt if you want to specify xedocs_version"
         )
 
