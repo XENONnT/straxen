@@ -137,6 +137,20 @@ class TestMiniAnalyses(unittest.TestCase):
             time_within=self.first_event,
         )
 
+    def test_peaks_display_interactive(self):
+        center_times = []
+        for c in [
+            self.first_event["s1_center_time"],
+            self.first_event["s2_center_time"],
+        ]:
+            if c != -1:
+                center_times.append(c)
+        self.st.peaks_display_interactive(
+            nt_test_run_id,
+            time_within=self.first_event,
+            center_times=center_times,
+        )
+
     def test_plot_peaks_aft_histogram(self):
         self.st.plot_peaks_aft_histogram(nt_test_run_id)
 
