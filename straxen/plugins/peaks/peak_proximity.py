@@ -49,6 +49,12 @@ class PeakProximity(strax.OverlapWindowPlugin):
         help="Peaks starting within this time window (on either side) in ns count as nearby.",
     )
 
+    proximity_exponents = straxen.URLConfig(
+        default=(-1.0, -1.0),
+        type=(list, tuple),
+        help="The exponent of (delta t, delta r) when calculating proximity score",
+    )
+
     def get_window_size(self):
         return 10 * self.proximity_window
 
@@ -74,6 +80,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
             current_peak,
             peaks[mask],
             strax.touching_windows(peaks[mask], roi),
+            self.proximity_exponents,
             min_area_fraction=self.proximity_min_area_fraction,
         )
 
@@ -113,6 +120,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
         peaks,
         pre_peaks,
         touching_windows,
+        exponents,
         min_area_fraction=0.0,
     ):
         sum_array = np.zeros(len(peaks), np.float32)
@@ -123,7 +131,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
             for idx in range(indices[0], indices[1]):
                 creating_peak = pre_peaks[idx]
                 dt = suspicious_peak["center_time"] - creating_peak["center_time"]
-                if (dt == 0) or (creating_peak["area"] <= 0):
+                if (dt <= 0) or (creating_peak["area"] <= 0):
                     continue
                 if creating_peak["area"] < min_area_fraction * suspicious_peak["area"]:
                     continue
@@ -134,7 +142,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
                     # the peaks are at the same position
                     sum_array[p_i] = np.inf
                     continue
-                score = creating_peak["area"] / np.abs(dt) / r
+                score = creating_peak["area"] * dt ** exponents[0] * r ** exponents[1]
                 score /= suspicious_peak["area"]
                 sum_array[p_i] += score
         return sum_array
