@@ -15,7 +15,7 @@ class PeakNearestTriggering(Events):
     direction of peaks."""
 
     __version__ = "0.0.0"
-    depends_on = ("peak_basics", "peak_proximity", "peak_ambience_")
+    depends_on = ("peak_basics", "peak_proximity")
     provides = "peak_nearest_triggering"
     data_kind = "peaks"
     save_when = strax.SaveWhen.EXPLICIT
@@ -52,17 +52,7 @@ class PeakNearestTriggering(Events):
                 ((f"type {common_descr} {direction}", f"{direction}_type"), np.int8),
                 ((f"n_competing {common_descr} {direction}", f"{direction}_n_competing"), np.int32),
                 (
-                    (
-                        f"ambience_1d_score {common_descr} {direction}",
-                        f"{direction}_ambience_1d_score",
-                    ),
-                    np.float32,
-                ),
-                (
-                    (
-                        f"ambience_2d_score {common_descr} {direction}",
-                        f"{direction}_ambience_2d_score",
-                    ),
+                    (f"proximity_score {common_descr} {direction}", f"{direction}_proximity_score"),
                     np.float32,
                 ),
                 ((f"area {common_descr} {direction} [PE]", f"{direction}_area"), np.float32),
@@ -128,8 +118,7 @@ class PeakNearestTriggering(Events):
             "center_time",
             "type",
             "n_competing",
-            "ambience_1d_score",
-            "ambience_2d_score",
+            "proximity_score",
             "area",
         ]:
             result["left_" + field] = np.where(

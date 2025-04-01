@@ -12,10 +12,7 @@ class Events(strax.OverlapWindowPlugin):
     An event is defined by peak(s) in fixed range of time around a peak
     which satisfies certain conditions:
         1. The triggering peak must have a certain area.
-        2. The triggering peak must have less than
-           "trigger_max_competing" peaks. (A competing peak must have a
-           certain area fraction of the triggering peak and must be in a
-           window close to the main peak)
+        2. The triggering peak must have less than "trigger_max_proximity".
 
     Note:
         The time range which defines an event gets chopped at the chunk
@@ -25,7 +22,7 @@ class Events(strax.OverlapWindowPlugin):
 
     __version__ = "0.1.1"
 
-    depends_on = ("peak_basics", "peak_proximity", "peak_ambience_")
+    depends_on = ("peak_basics", "peak_proximity")
     provides = "events"
     data_kind = "events"
 
@@ -46,19 +43,12 @@ class Events(strax.OverlapWindowPlugin):
     )
 
     trigger_min_area = straxen.URLConfig(
-        default=100,
+        default=120,
         type=(int, float),
         help="Peaks must have more area (PE) than this to cause events",
     )
 
-    trigger_max_competing = straxen.URLConfig(
-        default=7,
-        type=int,
-        help="Peaks must have FEWER nearby larger or slightly smaller peaks to cause events",
-    )
-
-    trigger_max_ambience = straxen.URLConfig(
-        # default=2.5e-6,
+    trigger_max_proximity = straxen.URLConfig(
         default=1.25e-7,
         type=float,
         help="Peaks must have less ambience score to cause events",
@@ -84,12 +74,6 @@ class Events(strax.OverlapWindowPlugin):
         default=straxen.tpc_z,
         type=(int, float),
         help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
-    )
-
-    exclude_s1_as_triggering_peaks = straxen.URLConfig(
-        default=True,
-        type=bool,
-        help="If true exclude S1s as triggering peaks.",
     )
 
     event_s1_min_coincidence = straxen.URLConfig(
@@ -127,17 +111,9 @@ class Events(strax.OverlapWindowPlugin):
 
     def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
-        # _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
-        # _is_triggering &= peaks["ambience_1d_score"] <= self.trigger_max_ambience
-        _is_triggering &= peaks["ambience_2d_score"] <= self.trigger_max_ambience
+        _is_triggering &= peaks["type"] == 2
+        _is_triggering &= peaks["proximity_score"] <= self.trigger_max_proximity
         _is_triggering &= np.isin(peaks["type"], [1, 2])
-        # have to consider the peak with type 20
-        if self.exclude_s1_as_triggering_peaks:
-            _is_triggering &= peaks["type"] == 2
-        else:
-            is_not_s1 = peaks["type"] != 1
-            has_tc_large_enough = peaks["tight_coincidence"] >= self.event_s1_min_coincidence
-            _is_triggering &= is_not_s1 | has_tc_large_enough
         return _is_triggering
 
     def compute(self, peaks, start, end):

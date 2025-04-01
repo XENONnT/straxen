@@ -20,12 +20,7 @@ def exclude_s1_as_triggering_peaks_config(self: PluginTestCase, trigger_min_area
     # Change the config to allow s1s to be triggering, also drastically
     # decrease the trigger_min_area to allow small s1s to be triggering
     st = self.st.new_context()
-    st.set_config(
-        dict(
-            exclude_s1_as_triggering_peaks=0,
-            trigger_min_area=trigger_min_area,
-        )
-    )
+    st.set_config(dict(trigger_min_area=trigger_min_area))
     events = st.get_array(self.run_id, "event_basics", progress_bar=False)
     new_min_coincidence = int(np.max(events["s1_tight_coincidence"]) - 1)
 

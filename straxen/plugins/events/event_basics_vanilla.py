@@ -19,7 +19,7 @@ class EventBasicsVanilla(strax.Plugin):
 
     __version__ = "1.3.5"
 
-    depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity", "peak_ambience_")
+    depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity")
     provides = "event_basics"
     data_kind = "events"
 
@@ -141,9 +141,8 @@ class EventBasicsVanilla(strax.Plugin):
             ("n_channels", np.int16, "count of contributing PMTs"),
             ("top_n_channels", np.int16, "count of contributing top PMTs"),
             ("n_hits", np.int32, "count of hits contributing at least one sample to the peak"),
+            ("proximity_score", np.float32, "proximity score in (time, space)"),
             ("n_competing", np.int32, "number of competing peaks"),
-            ("ambience_1d_score", np.float32, "ambience score only in time"),
-            ("ambience_2d_score", np.float32, "ambience score in (time, space)"),
             ("max_pmt", np.int16, "PMT number which contributes the most PE"),
             ("max_pmt_area", np.float32, "area in the largest-contributing PMT (PE)"),
             ("range_50p_area", np.float32, "width, 50% area [ns]"),

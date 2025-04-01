@@ -19,7 +19,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
 
     """
 
-    __version__ = "0.1.6"
+    __version__ = "0.2.0"
 
     depends_on = ("peak_basics", "peak_positions")
     provides = "peak_shadow"
@@ -70,7 +70,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
             dtype.append(
                 (
                     (
-                        f"previous large {type_str} casted largest {tp_desc} shadow [PE/ns]",
+                        f"Previous large {type_str} casted largest {tp_desc} shadow [PE/ns]",
                         f"shadow_{key}",
                     ),
                     np.float32,
@@ -80,7 +80,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 (
                     (
                         (
-                            f"time difference to the previous large {type_str} peak casting largest"
+                            f"Time difference to the previous large {type_str} peak casting largest"
                             f" {tp_desc} shadow [ns]"
                         ),
                         f"dt_{key}",
@@ -93,7 +93,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 dtype.append(
                     (
                         (
-                            f"x of previous large s2 peak casting largest {tp_desc} shadow [cm]",
+                            f"X of previous large s2 peak casting largest {tp_desc} shadow [cm]",
                             f"x_{key}",
                         ),
                         np.float32,
@@ -102,7 +102,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 dtype.append(
                     (
                         (
-                            f"y of previous large s2 peak casting largest {tp_desc} shadow [cm]",
+                            f"Y of previous large s2 peak casting largest {tp_desc} shadow [cm]",
                             f"y_{key}",
                         ),
                         np.float32,
@@ -113,7 +113,16 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 dtype.append(
                     (
                         (
-                            f"time difference to the nearest previous large {type_str} [ns]",
+                            f"The nearest previous large {type_str} [ns]",
+                            f"nearest_{type_str}",
+                        ),
+                        np.float32,
+                    )
+                )
+                dtype.append(
+                    (
+                        (
+                            f"Time difference to the nearest previous large {type_str} [ns]",
                             f"nearest_dt_{type_str}",
                         ),
                         np.int64,
@@ -141,7 +150,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
         dtype = []
         dtype += [("shadow", np.float32), ("dt", np.int64)]
         dtype += [("x", np.float32), ("y", np.float32)]
-        dtype += [("nearest_dt", np.int64)]
+        dtype += [("nearest", np.float32), ("nearest_dt", np.int64)]
         return dtype
 
     def compute(self, peaks):
@@ -166,19 +175,19 @@ class PeakShadow(strax.OverlapWindowPlugin):
             mask_pre = (peaks["type"] == stype) & (peaks["area"] > self.shadow_threshold[key])
             split_peaks = strax.touching_windows(peaks[mask_pre], roi)
             array = np.zeros(len(current_peak), np.dtype(self.shadowdtype))
+            strax.set_nan_defaults(array)
 
             # Initialization
-            array["x"] = np.nan
-            array["y"] = np.nan
             array["dt"] = self.shadow_time_window_backward
+            array["nearest_dt"] = self.shadow_time_window_backward
             # The default value for shadow is set to be the lowest possible value
             if "time" in key:
                 array["shadow"] = (
                     self.shadow_threshold[key] * array["dt"] ** self.shadow_deltatime_exponent
                 )
             else:
+                # Assign the position shadow to be zero
                 array["shadow"] = 0
-            array["nearest_dt"] = self.shadow_time_window_backward
 
             # Calculating shadow, the Major of the plugin.
             # Only record the previous peak casting the largest shadow
@@ -198,9 +207,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
             if "s2" in key:  # Only previous S2 peaks have (x,y)
                 names += ["x", "y"]
             if "time" in key:  # Only time shadow gives the nearest large peak
-                names += ["nearest_dt"]
+                names += ["nearest", "nearest_dt"]
             for name in names:
-                if name == "nearest_dt":
+                if "nearest" in name:
                     result[f"{name}_{type_str}"] = array[name]
                 else:
                     result[f"{name}_{key}"] = array[name]
@@ -242,7 +251,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 if dt <= 0:
                     continue
                 # First we record the time difference to the nearest previous peak
-                result["nearest_dt"][p_i] = min(result["nearest_dt"][p_i], dt)
+                if dt < result["nearest_dt"][p_i]:
+                    result["nearest_dt"][p_i] = dt
+                    result["nearest"][p_i] = casting_peak["area"]
                 # Calculate time shadow
                 new_shadow = casting_peak["area"] * dt**exponent
                 if pos_corr:

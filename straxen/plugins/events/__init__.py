@@ -19,9 +19,6 @@ from .event_shadow import *
 from . import event_se_score
 from .event_se_score import *
 
-from . import event_ambience_
-from .event_ambience_ import *
-
 from . import veto_proximity
 from .veto_proximity import *
 

@@ -28,9 +28,6 @@ from .peak_shadow import *
 from . import peak_se_score
 from .peak_se_score import *
 
-from . import peak_ambience_
-from .peak_ambience_ import *
-
 from . import peak_proximity
 from .peak_proximity import *
 

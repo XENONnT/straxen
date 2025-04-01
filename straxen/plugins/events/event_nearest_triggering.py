@@ -63,6 +63,13 @@ class EventNearestTriggering(strax.Plugin):
                     ),
                     (
                         (
+                            f"proximity_score {common_descr} {direction} of {main_peak_desc}",
+                            f"{main_peak}{direction}_proximity_score",
+                        ),
+                        np.float32,
+                    ),
+                    (
+                        (
                             f"area {common_descr} {direction} of {main_peak_desc} [PE]",
                             f"{main_peak}{direction}_area",
                         ),
@@ -92,6 +99,7 @@ class EventNearestTriggering(strax.Plugin):
                             "center_time",
                             "type",
                             "n_competing",
+                            "proximity_score",
                             "area",
                         ]:
                             res_i[f"{main_peak}{direction}_{field}"] = sp[f"{direction}_{field}"][
