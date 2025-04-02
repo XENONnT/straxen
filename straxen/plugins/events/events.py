@@ -113,7 +113,6 @@ class Events(strax.OverlapWindowPlugin):
         _is_triggering = peaks["area"] > self.trigger_min_area
         _is_triggering &= peaks["type"] == 2
         _is_triggering &= peaks["proximity_score"] <= self.trigger_max_proximity
-        _is_triggering &= np.isin(peaks["type"], [1, 2])
         return _is_triggering
 
     def compute(self, peaks, start, end):
