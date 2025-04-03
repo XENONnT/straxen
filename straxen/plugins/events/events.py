@@ -55,7 +55,7 @@ class Events(strax.OverlapWindowPlugin):
     )
 
     trigger_max_proximity = straxen.URLConfig(
-        default=1.0e-7,
+        default=1.0e-3,
         type=(int, float),
         help="Peaks must have less proximity score to cause events",
     )

@@ -28,6 +28,12 @@ class PeakProximity(strax.OverlapWindowPlugin):
         ("n_competing", np.int32, "Number of nearby larger or slightly smaller peaks"),
     ] + strax.time_fields
 
+    proximity_type = straxen.URLConfig(
+        default=2,
+        type=(int, list),
+        help="(List of) type(s) of peaks to consider for proximity score",
+    )
+
     proximity_min_area_fraction = straxen.URLConfig(
         default=0.5,
         infer_type=False,
@@ -71,10 +77,12 @@ class PeakProximity(strax.OverlapWindowPlugin):
         result["time"] = current_peak["time"]
         result["endtime"] = current_peak["endtime"]
 
+        # only consider S1 and S2 peaks
+        mask = np.isin(peaks["type"], self.proximity_type)
+
         roi = np.zeros(len(current_peak), dtype=strax.time_fields)
         roi["time"] = current_peak["center_time"] - self.proximity_window
         roi["endtime"] = current_peak["center_time"].copy()
-        mask = peaks["type"] == 2
         result["proximity_score"] = self.peaks_proximity(
             current_peak,
             peaks[mask],
@@ -87,8 +95,6 @@ class PeakProximity(strax.OverlapWindowPlugin):
         roi = np.zeros(len(current_peak), dtype=strax.time_fields)
         roi["time"] = current_peak["center_time"] - self.proximity_window
         roi["endtime"] = current_peak["center_time"] + self.proximity_window
-        # only consider S1 and S2 peaks
-        mask = np.isin(peaks["type"], [1, 2])
         result["n_competing_left"], result["n_competing"] = self.find_n_competing(
             current_peak,
             peaks[mask],
@@ -132,6 +138,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
             for idx in range(indices[0], indices[1]):
                 creating_peak = pre_peaks[idx]
                 dt = suspicious_peak["center_time"] - creating_peak["center_time"]
+                dt /= 1e6  # convert from ns to ms
                 if (dt <= 0) or (creating_peak["area"] <= 0):
                     continue
                 if creating_peak["area"] < min_area_fraction * suspicious_peak["area"]:
