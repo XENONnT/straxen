@@ -44,9 +44,15 @@ class PeakProximity(strax.OverlapWindowPlugin):
     )
 
     proximity_exponents = straxen.URLConfig(
-        default=(1.0, -1.0, -1.0),
+        default=(1.0, -1.0, 1.0),
         type=(list, tuple),
         help="The exponent of (delta t, delta r) when calculating proximity score",
+    )
+
+    proximity_sigma = straxen.URLConfig(
+        default=20.0,
+        type=(int, float),
+        help="The parameter of HalfCauchy, which is a function of S2 area",
     )
 
     def get_window_size(self):
@@ -74,6 +80,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
             peaks[mask],
             strax.touching_windows(peaks[mask], roi),
             self.proximity_exponents,
+            self.proximity_sigma,
             min_area_fraction=self.proximity_min_area_fraction,
         )
 
@@ -114,6 +121,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
         pre_peaks,
         touching_windows,
         exponents,
+        proximity_sigma,
         min_area_fraction=0.0,
     ):
         sum_array = np.zeros(len(peaks), np.float32)
@@ -136,6 +144,15 @@ class PeakProximity(strax.OverlapWindowPlugin):
                     sum_array[p_i] = np.inf
                     continue
                 r = creating_peak["area"] / suspicious_peak["area"]
-                score = r ** exponents[0] * dt ** exponents[1] * dr ** exponents[2]
+                sigma = proximity_sigma * np.sqrt(
+                    1 / creating_peak["area"] + 1 / suspicious_peak["area"]
+                )
+                pdf = half_cauchy_pdf(dr, sigma)
+                score = r ** exponents[0] * dt ** exponents[1] * pdf ** exponents[2]
                 sum_array[p_i] += score
         return sum_array
+
+
+@numba.njit
+def half_cauchy_pdf(x, scale=1.0):
+    return 2.0 / (np.pi * scale * (1 + (x / scale) ** 2))
