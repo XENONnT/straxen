@@ -479,7 +479,7 @@ def peaks_display_interactive(
         s2_keys,
         labels,
         colors,
-        title=["S0 / S1", "S2 and others"],
+        title=["S0 and S1", "S2 and others"],
         yscale=yscale[:2],
     )
 
@@ -682,10 +682,10 @@ def plot_pmt_array(
         raise ValueError("Can plot PMT array only for a single peak at a time.")
 
     tool_tip = [
-        ("Plot", "$name"),
-        ("Channel", "@pmt"),
-        ("X-Position [cm]", "$x"),
-        ("Y-Position [cm]", "$y"),
+        ("plot", "$name"),
+        ("channel", "@pmt"),
+        ("x [cm]", "$x"),
+        ("y [cm]", "$y"),
         ("area [pe]", "@area"),
     ]
 
@@ -743,9 +743,11 @@ def plot_pmt_array(
         fill_alpha=1,
         line_color="black",
         legend_label=label,
-        name=label + "_pmt_array",
+        name=label + " PMT array",
     )
-    fig.add_tools(bokeh.models.HoverTool(name=label + "_pmt_array", tooltips=tool_tip))
+    fig.add_tools(
+        bokeh.models.HoverTool(name=label + " PMT array", tooltips=tool_tip, renderers=[p])
+    )
     fig.legend.location = "top_left"
     fig.legend.click_policy = "hide"
     fig.legend.orientation = "horizontal"
@@ -839,7 +841,9 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     tt = [v for k, v in tt.items() if k not in ["time_dynamic", "amplitude"]]
     fig.add_tools(
         bokeh.models.HoverTool(
-            name=label, tooltips=[("Position x [cm]", "@x"), ("Position y [cm]", "@y")] + tt
+            name=label,
+            tooltips=[("x [cm]", "@x"), ("y [cm]", "@y")] + tt,
+            renderers=[p],
         )
     )
     return fig, p
