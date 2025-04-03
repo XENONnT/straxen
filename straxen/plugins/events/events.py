@@ -48,10 +48,16 @@ class Events(strax.OverlapWindowPlugin):
         help="Peaks must have more area (PE) than this to cause events",
     )
 
+    trigger_feature = straxen.URLConfig(
+        default="proximity_score",
+        type=str,
+        help="Feature as event building criterion",
+    )
+
     trigger_max_proximity = straxen.URLConfig(
-        default=1.25e-7,
-        type=float,
-        help="Peaks must have less ambience score to cause events",
+        default=1.0e-7,
+        type=(int, float),
+        help="Peaks must have less proximity score to cause events",
     )
 
     left_event_extension = straxen.URLConfig(
@@ -112,7 +118,7 @@ class Events(strax.OverlapWindowPlugin):
     def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
         _is_triggering &= peaks["type"] == 2
-        _is_triggering &= peaks["proximity_score"] <= self.trigger_max_proximity
+        _is_triggering &= peaks[self.trigger_feature] <= self.trigger_max_proximity
         return _is_triggering
 
     def compute(self, peaks, start, end):

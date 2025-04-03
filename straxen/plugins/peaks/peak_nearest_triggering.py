@@ -50,11 +50,18 @@ class PeakNearestTriggering(Events):
                     np.int64,
                 ),
                 ((f"type {common_descr} {direction}", f"{direction}_type"), np.int8),
-                ((f"n_competing {common_descr} {direction}", f"{direction}_n_competing"), np.int32),
                 (
                     (f"proximity_score {common_descr} {direction}", f"{direction}_proximity_score"),
                     np.float32,
                 ),
+                (
+                    (
+                        f"n_competing_left {common_descr} {direction}",
+                        f"{direction}_n_competing_left",
+                    ),
+                    np.int32,
+                ),
+                ((f"n_competing {common_descr} {direction}", f"{direction}_n_competing"), np.int32),
                 ((f"area {common_descr} {direction} [PE]", f"{direction}_area"), np.float32),
             ]
         dtype += strax.time_fields
@@ -117,8 +124,9 @@ class PeakNearestTriggering(Events):
             "endtime",
             "center_time",
             "type",
-            "n_competing",
             "proximity_score",
+            "n_competing_left",
+            "n_competing",
             "area",
         ]:
             result["left_" + field] = np.where(

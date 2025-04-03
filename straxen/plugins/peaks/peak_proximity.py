@@ -28,12 +28,6 @@ class PeakProximity(strax.OverlapWindowPlugin):
         ("n_competing", np.int32, "Number of nearby larger or slightly smaller peaks"),
     ] + strax.time_fields
 
-    proximity_max_peak = straxen.URLConfig(
-        default=1e4,
-        type=(int, float),
-        help="Exclude larger peaks than this from proximity peak [PE]",
-    )
-
     proximity_min_area_fraction = straxen.URLConfig(
         default=0.5,
         infer_type=False,
@@ -50,7 +44,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
     )
 
     proximity_exponents = straxen.URLConfig(
-        default=(-1.0, -1.0),
+        default=(1.0, -1.0, -1.0),
         type=(list, tuple),
         help="The exponent of (delta t, delta r) when calculating proximity score",
     )
@@ -75,7 +69,6 @@ class PeakProximity(strax.OverlapWindowPlugin):
         roi["time"] = current_peak["center_time"] - self.proximity_window
         roi["endtime"] = current_peak["center_time"].copy()
         mask = peaks["type"] == 2
-        mask &= peaks["area"] < self.proximity_max_peak
         result["proximity_score"] = self.peaks_proximity(
             current_peak,
             peaks[mask],
@@ -101,18 +94,18 @@ class PeakProximity(strax.OverlapWindowPlugin):
     @numba.jit(nopython=True, nogil=True, cache=True)
     def find_n_competing(peaks, nearby_peaks, windows, fraction):
         n_left = np.zeros(len(peaks), dtype=np.int32)
-        n_tot = n_left.copy()
-        areas_in_roi = nearby_peaks["area"]
+        n = n_left.copy()
+        nearby_areas = nearby_peaks["area"]
         areas = peaks["area"]
 
         dig = np.searchsorted(nearby_peaks["center_time"], peaks["center_time"])
         for i, peak in enumerate(peaks):
             left_i, right_i = windows[i]
             threshold = areas[i] * fraction
-            n_left[i] = np.sum(areas_in_roi[left_i : dig[i]] > threshold)
-            n_tot[i] = n_left[i] + np.sum(areas_in_roi[dig[i] : right_i] > threshold)
+            n_left[i] = np.sum(nearby_areas[left_i : dig[i]] > threshold)
+            n[i] = n_left[i] + np.sum(nearby_areas[dig[i] : right_i] > threshold)
 
-        return n_left, n_tot
+        return n_left, n
 
     @staticmethod
     @numba.njit(nopython=True, nogil=True, cache=True)
@@ -135,14 +128,14 @@ class PeakProximity(strax.OverlapWindowPlugin):
                     continue
                 if creating_peak["area"] < min_area_fraction * suspicious_peak["area"]:
                     continue
-                r = distance_in_xy(suspicious_peak, creating_peak)
-                if np.isnan(r):
+                dr = distance_in_xy(suspicious_peak, creating_peak)
+                if np.isnan(dr):
                     continue
-                if r == 0:
+                if dr == 0:
                     # the peaks are at the same position
                     sum_array[p_i] = np.inf
                     continue
-                score = creating_peak["area"] * dt ** exponents[0] * r ** exponents[1]
-                score /= suspicious_peak["area"]
+                r = creating_peak["area"] / suspicious_peak["area"]
+                score = r ** exponents[0] * dt ** exponents[1] * dr ** exponents[2]
                 sum_array[p_i] += score
         return sum_array

@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 @export
 class PeakShadow(strax.OverlapWindowPlugin):
     """This plugin can find and calculate the time & position shadow from previous peaks in time. It
-    also gives the area and (x,y) of the previous peaks.
+    also gives the area and (x, y) of the previous peaks.
 
     References:
         * v0.1.5 reference: xenon:xenonnt:ac:prediction:shadow_ambience
