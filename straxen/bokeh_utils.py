@@ -123,7 +123,7 @@ def peak_tool_tip(peak_type):
     tool_tip["type"] = ("type", "@type")
 
     # Add non-time parameters (results in an ordered tooltip)
-    tool_tip["amplitude"] = ("Amplitude [pe/ns]", "$y")
+    tool_tip["amplitude"] = ("amplitude [pe/ns]", "$y")
     tool_tip["area"] = ("area [pe]", "@area")
     tool_tip["x"] = ("x [cm]", "@x")
     tool_tip["y"] = ("y [cm]", "@y")

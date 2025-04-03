@@ -479,7 +479,7 @@ def peaks_display_interactive(
         s2_keys,
         labels,
         colors,
-        title=["S0 / S1", "S2 and others"],
+        title=["S0 and S1", "S2 and others"],
         yscale=yscale[:2],
     )
 
@@ -566,10 +566,6 @@ def plot_peak_detail(
     if not fig:
         fig = straxen.bokeh_utils.default_fig(title=f"Main/Alt S{p_type}")
 
-    tt = straxen.bokeh_utils.peak_tool_tip(p_type)
-    tt = [v for k, v in tt.items() if k not in ["time_static", "center_time", "endtime"]]
-    fig.add_tools(bokeh.models.HoverTool(name=label, tooltips=tt))
-
     source = straxen.bokeh_utils.get_peaks_source(
         peak,
         relative_start=peak[0]["time"],
@@ -586,6 +582,9 @@ def plot_peak_detail(
         line_width=0.5,
         name=label,
     )
+    tt = straxen.bokeh_utils.peak_tool_tip(p_type)
+    tt = [v for k, v in tt.items() if k not in ["time_static", "center_time", "endtime"]]
+    fig.add_tools(bokeh.models.HoverTool(name=label, tooltips=tt, renderers=[patches]))
     fig.xaxis.axis_label = f"Time [{unit}]"
     fig.xaxis.axis_label_text_font_size = "12pt"
     fig.yaxis.axis_label = "Amplitude [pe/ns]"
@@ -630,7 +629,7 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
         )
 
         _i = i if i < len(colors) else 0
-        fig.patches(
+        p = fig.patches(
             source=source,
             fill_color=colors[_i],
             fill_alpha=0.2,
@@ -642,7 +641,7 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
 
         tt = straxen.bokeh_utils.peak_tool_tip(i)
         tt = [v for k, v in tt.items() if k != "time_dynamic"]
-        fig.add_tools(bokeh.models.HoverTool(name=LEGENDS[_i], tooltips=tt))
+        fig.add_tools(bokeh.models.HoverTool(name=LEGENDS[_i], tooltips=tt, renderers=[p]))
         fig.add_tools(bokeh.models.WheelZoomTool(dimensions="width", name="wheel"))
         fig.toolbar.active_scroll = [t for t in fig.tools if t.name == "wheel"][0]
 
@@ -682,10 +681,10 @@ def plot_pmt_array(
         raise ValueError("Can plot PMT array only for a single peak at a time.")
 
     tool_tip = [
-        ("Plot", "$name"),
-        ("Channel", "@pmt"),
-        ("X-Position [cm]", "$x"),
-        ("Y-Position [cm]", "$y"),
+        ("plot", "$name"),
+        ("channel", "@pmt"),
+        ("x [cm]", "$x"),
+        ("y [cm]", "$y"),
         ("area [pe]", "@area"),
     ]
 
@@ -743,9 +742,11 @@ def plot_pmt_array(
         fill_alpha=1,
         line_color="black",
         legend_label=label,
-        name=label + "_pmt_array",
+        name=label + " PMT array",
     )
-    fig.add_tools(bokeh.models.HoverTool(name=label + "_pmt_array", tooltips=tool_tip))
+    fig.add_tools(
+        bokeh.models.HoverTool(name=label + " PMT array", tooltips=tool_tip, renderers=[p])
+    )
     fig.legend.location = "top_left"
     fig.legend.click_policy = "hide"
     fig.legend.orientation = "horizontal"
@@ -839,7 +840,9 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     tt = [v for k, v in tt.items() if k not in ["time_dynamic", "amplitude"]]
     fig.add_tools(
         bokeh.models.HoverTool(
-            name=label, tooltips=[("Position x [cm]", "@x"), ("Position y [cm]", "@y")] + tt
+            name=label,
+            tooltips=[("x [cm]", "@x"), ("y [cm]", "@y")] + tt,
+            renderers=[p],
         )
     )
     return fig, p
