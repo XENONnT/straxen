@@ -95,6 +95,12 @@ class Events(strax.OverlapWindowPlugin):
         default=2, type=int, help="Minimum tight coincidence necessary to make an S1"
     )
 
+    event_exclude_s3 = straxen.URLConfig(
+        default=True,
+        type=bool,
+        help="Event will not be built if S3 is present in the window",
+    )
+
     diagnose_overlapping = straxen.URLConfig(
         track=False, default=True, infer_type=False, help="Enable runtime checks for disjointness"
     )
@@ -137,13 +143,22 @@ class Events(strax.OverlapWindowPlugin):
         # Don't extend beyond the chunk boundaries
         # This will often happen for events near the invalid boundary of the
         # overlap processing (which should be thrown away)
+        # The different chunking causes different results, but this is
+        # NOT tracked by lineage
         t0 = np.clip(t0, start, end)
         t1 = np.clip(t1, start, end)
 
         result = np.zeros(len(t0), self.dtype)
         result["time"] = t0
         result["endtime"] = t1
+
+        if self.event_exclude_s3:
+            split_peaks = strax.split_by_containment(peaks, result)
+            has_s3 = np.array([np.any(sp["type"] == 3) for i, sp in enumerate(split_peaks)])
+            result = result[~has_s3]
+
         result["event_number"] = np.arange(len(result)) + self.events_seen
+        self.events_seen += len(result)
 
         if not result.size > 0:
             print("Found chunk without events?!")
@@ -152,7 +167,5 @@ class Events(strax.OverlapWindowPlugin):
             # Check if the event windows overlap
             _event_window_do_not_overlap = (strax.endtime(result)[:-1] - result["time"][1:]) <= 0
             assert np.all(_event_window_do_not_overlap), "Events not disjoint"
-
-        self.events_seen += len(result)
 
         return result

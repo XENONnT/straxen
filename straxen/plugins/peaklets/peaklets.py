@@ -241,6 +241,8 @@ class Peaklets(strax.Plugin):
         # Make sure peaklets don't extend out of the chunk boundary
         # This should be very rare in normal data due to the ADC pretrigger
         # window.
+        # The different chunking causes different results, but this is
+        # NOT tracked by lineage
         self.clip_peaklet_times(peaklets, start, end)
 
         # Get hits outside peaklets, and store them separately.
