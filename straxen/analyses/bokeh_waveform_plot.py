@@ -421,6 +421,7 @@ def peaks_display_interactive(
     colors=("gray", "blue", "green"),
     yscale=("linear", "linear", "linear"),
     log=True,
+    _provide_peaks=False,
 ):
     """Interactive events display for XENONnT. Plots detailed waveform, bottom and top PMT hit
     pattern for selected center time.
@@ -527,6 +528,9 @@ def peaks_display_interactive(
         sizing_mode="scale_width",
         max_width=1600,
     )
+
+    if _provide_peaks:
+        return event_display, peaks
 
     return event_display
 
