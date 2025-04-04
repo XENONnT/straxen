@@ -458,7 +458,7 @@ def peaks_display_interactive(
         if not _p.shape[0]:
             raise ValueError(f"Could not find peak at center time {center_time}.")
         p = _p[0]
-        if np.isin(p["type"], [0, 1]):
+        if np.isin(p["type"], [0, 1, 3]):
             key = f"s{p['type']}_{ind}"
             if found_s1:
                 key = f"alt_{key}"
@@ -468,6 +468,7 @@ def peaks_display_interactive(
             key = f"s{p['type']}_{ind}"
             if found_s2:
                 key = f"alt_{key}"
+            assert "s2" in key, "Only S2 peaks are allowed here."
             found_s2 = True
             s2_keys.append(key)
         signal[key] = _p
@@ -480,7 +481,7 @@ def peaks_display_interactive(
         s2_keys,
         labels,
         colors,
-        title=["S0 and S1", "S2 and others"],
+        title=["S0, S1 and others", "S2 and others"],
         yscale=yscale[:2],
     )
 
@@ -577,12 +578,13 @@ def plot_peak_detail(
         keep_amplitude_per_sample=False,
     )
 
+    _i = p_type if p_type < len(colors) else 0
     patches = fig.patches(
         source=source,
         legend_label=label,
-        fill_color=colors[p_type],
+        fill_color=colors[_i],
         fill_alpha=0.2,
-        line_color=colors[p_type],
+        line_color=colors[_i],
         line_width=0.5,
         name=label,
     )
@@ -813,9 +815,6 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     if not peaks.shape:
         peaks = np.array([peaks])
 
-    if not np.all(peaks["type"] == 2):
-        raise ValueError("All peaks must be S2!")
-
     if not fig:
         fig = straxen.bokeh_utils.default_fig()
 
@@ -825,8 +824,7 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
         p = fig.cross(
             source=source, name=label, legend_label=label, color="red", line_width=2, size=12
         )
-
-    if s2_type_style_id == 1:
+    elif s2_type_style_id == 1:
         p = fig.cross(
             source=source,
             name=label,
@@ -836,8 +834,7 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
             line_width=2,
             size=12,
         )
-
-    if s2_type_style_id == 2:
+    else:
         p = fig.diamond_cross(source=source, name=label, legend_label=label, color="red", size=8)
 
     tt = straxen.bokeh_utils.peak_tool_tip(2)
