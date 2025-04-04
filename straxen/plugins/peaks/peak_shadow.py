@@ -171,7 +171,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
         for key in ["s2_position_shadow", "s2_time_shadow", "s1_time_shadow"]:
             is_position = "position" in key
             type_str = key.split("_")[0]
-            # S3 is also S1 xenon:xenonnt:lsanchez:som_sr1b_summary_note
+            # type 3 is also S1 xenon:xenonnt:lsanchez:som_sr1b_summary_note
             stype = 2 if "s2" in key else [1, 3]
             mask_pre = np.isin(peaks["type"], stype) & (peaks["area"] > self.shadow_threshold[key])
             split_peaks = strax.touching_windows(peaks[mask_pre], roi)

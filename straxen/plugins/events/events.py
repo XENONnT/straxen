@@ -153,8 +153,9 @@ class Events(strax.OverlapWindowPlugin):
         result["endtime"] = t1
 
         if self.event_exclude_s3:
+            # type 3 high energy gas scintillation xenon:xenonnt:lsanchez:som_sr1b_summary_note
             split_peaks = strax.split_by_containment(peaks, result)
-            has_s3 = np.array([np.any(sp["type"] == 3) for i, sp in enumerate(split_peaks)])
+            has_s3 = np.array([np.any(sp["type"] == 3) for sp in split_peaks]).astype(bool)
             result = result[~has_s3]
 
         result["event_number"] = np.arange(len(result)) + self.events_seen
