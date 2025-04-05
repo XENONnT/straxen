@@ -20,7 +20,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
     provides = "peak_proximity"
     dtype = [
         # when proximity_exponents is (1, -1, *), the unit is [/ms]
-        ("proximity_score", np.float32, "Strength of proximity peaks in (time, space) [/ns/cm]"),
+        ("proximity_score", np.float32, "Strength of proximity peaks in (time, space)"),
         (
             "n_competing_left",
             np.int32,
