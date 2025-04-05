@@ -36,7 +36,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
     )
 
     proximity_min_area_fraction = straxen.URLConfig(
-        default=0.5,
+        default=0.2,
         infer_type=False,
         help=(
             "The area of competing peaks must be at least "
