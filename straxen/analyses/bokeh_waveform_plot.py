@@ -842,9 +842,6 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
         color = "red"
         p = fig.diamond_cross(source=source, name=label, legend_label=label, color=color, size=8)
 
-    # Add both the cross and contour lines to the same legend item
-    # fig.legend.items = [bokeh.models.LegendItem(label=label, renderers=[p, c])]
-
     tt = straxen.bokeh_utils.peak_tool_tip(2)
     tt = [v for k, v in tt.items() if k not in ["time_dynamic", "amplitude"]]
     fig.add_tools(
@@ -855,16 +852,18 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
         )
     )
 
-    # Plotting the contour of the S2
-    c = fig.multi_line(
-        peaks["position_contour_cnf"][:, :, 0].tolist(),
-        peaks["position_contour_cnf"][:, :, 1].tolist(),
-        name=label,
-        legend_label=label,
-        color=color,
-        line_width=1.0,
-    )
-    return fig, [p, c]
+    if "position_contour_cnf" in peaks.dtype.names:
+        # Plotting the contour of the S2
+        c = fig.multi_line(
+            peaks["position_contour_cnf"][:, :, 0].tolist(),
+            peaks["position_contour_cnf"][:, :, 1].tolist(),
+            name=label,
+            legend_label=label,
+            color=color,
+            line_width=1.0,
+        )
+        return fig, [p, c]
+    return fig, [p]
 
 
 def _make_event_title(event, run_id, width=1600):
