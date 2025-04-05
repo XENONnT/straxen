@@ -122,7 +122,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
         return n_left, n
 
     @staticmethod
-    @numba.njit(nopython=True, nogil=True, cache=True)
+    @numba.jit(nopython=True, nogil=True, cache=True)
     def peaks_proximity(
         peaks,
         pre_peaks,
