@@ -151,10 +151,11 @@ def event_display_interactive(
     if np.any(m_other_s2) and not only_main_peaks:
         # Now we have to add the positions of all the other S2 to the top pmt array
         # if not only main peaks.
-        fig_top, plot = plot_posS2s(
+        fig_top, plots = plot_posS2s(
             peaks[m_other_s2], label="OS2s", fig=fig_top, s2_type_style_id=2
         )
-        plot.visible = False
+        for plot in plots:
+            plot.visible = False
 
     # Main waveform plot:
     if only_peak_detail_in_wf:
@@ -346,12 +347,13 @@ def plot_pmt_arrays_and_positions(
 
             if pmt_array_type == "top" and "s2" in k:
                 # In case of the top PMT array we also have to plot the S2 positions:
-                fig, plot = plot_posS2s(
+                fig, plots = plot_posS2s(
                     signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind
                 )
                 if ind:
                     # Not main S2
-                    plot.visible = False
+                    for plot in plots:
+                        plot.visible = False
 
     return fig_top, fig_bottom
 
@@ -421,6 +423,7 @@ def peaks_display_interactive(
     colors=("gray", "blue", "green"),
     yscale=("linear", "linear", "linear"),
     log=True,
+    _provide_peaks=False,
 ):
     """Interactive events display for XENONnT. Plots detailed waveform, bottom and top PMT hit
     pattern for selected center time.
@@ -457,7 +460,7 @@ def peaks_display_interactive(
         if not _p.shape[0]:
             raise ValueError(f"Could not find peak at center time {center_time}.")
         p = _p[0]
-        if np.isin(p["type"], [0, 1]):
+        if np.isin(p["type"], [0, 1, 3]):
             key = f"s{p['type']}_{ind}"
             if found_s1:
                 key = f"alt_{key}"
@@ -467,6 +470,7 @@ def peaks_display_interactive(
             key = f"s{p['type']}_{ind}"
             if found_s2:
                 key = f"alt_{key}"
+            assert "s2" in key, "Only S2 peaks are allowed here."
             found_s2 = True
             s2_keys.append(key)
         signal[key] = _p
@@ -479,7 +483,7 @@ def peaks_display_interactive(
         s2_keys,
         labels,
         colors,
-        title=["S0 and S1", "S2 and others"],
+        title=["S0, S1 and others", "S2 and others"],
         yscale=yscale[:2],
     )
 
@@ -528,6 +532,9 @@ def peaks_display_interactive(
         max_width=1600,
     )
 
+    if _provide_peaks:
+        return event_display, peaks
+
     return event_display
 
 
@@ -573,12 +580,13 @@ def plot_peak_detail(
         keep_amplitude_per_sample=False,
     )
 
+    _i = p_type if p_type < len(colors) else 0
     patches = fig.patches(
         source=source,
         legend_label=label,
-        fill_color=colors[p_type],
+        fill_color=colors[_i],
         fill_alpha=0.2,
-        line_color=colors[p_type],
+        line_color=colors[_i],
         line_width=0.5,
         name=label,
     )
@@ -809,32 +817,30 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     if not peaks.shape:
         peaks = np.array([peaks])
 
-    if not np.all(peaks["type"] == 2):
-        raise ValueError("All peaks must be S2!")
-
     if not fig:
         fig = straxen.bokeh_utils.default_fig()
 
     source = straxen.bokeh_utils.get_peaks_source(peaks)
 
     if s2_type_style_id == 0:
+        color = "red"
         p = fig.cross(
-            source=source, name=label, legend_label=label, color="red", line_width=2, size=12
+            source=source, name=label, legend_label=label, color=color, line_width=2, size=12
         )
-
-    if s2_type_style_id == 1:
+    elif s2_type_style_id == 1:
+        color = "orange"
         p = fig.cross(
             source=source,
             name=label,
             legend_label=label,
-            color="orange",
+            color=color,
             angle=45 / 360 * 2 * np.pi,
             line_width=2,
             size=12,
         )
-
-    if s2_type_style_id == 2:
-        p = fig.diamond_cross(source=source, name=label, legend_label=label, color="red", size=8)
+    else:
+        color = "red"
+        p = fig.diamond_cross(source=source, name=label, legend_label=label, color=color, size=8)
 
     tt = straxen.bokeh_utils.peak_tool_tip(2)
     tt = [v for k, v in tt.items() if k not in ["time_dynamic", "amplitude"]]
@@ -845,7 +851,19 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
             renderers=[p],
         )
     )
-    return fig, p
+
+    if "position_contour_cnf" in peaks.dtype.names:
+        # Plotting the contour of the S2
+        c = fig.multi_line(
+            peaks["position_contour_cnf"][:, :, 0].tolist(),
+            peaks["position_contour_cnf"][:, :, 1].tolist(),
+            name=label,
+            legend_label=label,
+            color=color,
+            line_width=1.0,
+        )
+        return fig, [p, c]
+    return fig, [p]
 
 
 def _make_event_title(event, run_id, width=1600):
