@@ -158,6 +158,7 @@ class Events(strax.OverlapWindowPlugin):
             has_s3 = np.array([np.any(sp["type"] == 3) for sp in split_peaks]).astype(bool)
             result = result[~has_s3]
 
+        # because this is an overlap window plugin, event_number is not continuous
         result["event_number"] = np.arange(len(result)) + self.events_seen
         self.events_seen += len(result)
 

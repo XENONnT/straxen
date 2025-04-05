@@ -151,10 +151,11 @@ def event_display_interactive(
     if np.any(m_other_s2) and not only_main_peaks:
         # Now we have to add the positions of all the other S2 to the top pmt array
         # if not only main peaks.
-        fig_top, plot = plot_posS2s(
+        fig_top, plots = plot_posS2s(
             peaks[m_other_s2], label="OS2s", fig=fig_top, s2_type_style_id=2
         )
-        plot.visible = False
+        for plot in plots:
+            plot.visible = False
 
     # Main waveform plot:
     if only_peak_detail_in_wf:
@@ -346,12 +347,13 @@ def plot_pmt_arrays_and_positions(
 
             if pmt_array_type == "top" and "s2" in k:
                 # In case of the top PMT array we also have to plot the S2 positions:
-                fig, plot = plot_posS2s(
+                fig, plots = plot_posS2s(
                     signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind
                 )
                 if ind:
                     # Not main S2
-                    plot.visible = False
+                    for plot in plots:
+                        plot.visible = False
 
     return fig_top, fig_bottom
 
@@ -821,21 +823,27 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     source = straxen.bokeh_utils.get_peaks_source(peaks)
 
     if s2_type_style_id == 0:
+        color = "red"
         p = fig.cross(
-            source=source, name=label, legend_label=label, color="red", line_width=2, size=12
+            source=source, name=label, legend_label=label, color=color, line_width=2, size=12
         )
     elif s2_type_style_id == 1:
+        color = "orange"
         p = fig.cross(
             source=source,
             name=label,
             legend_label=label,
-            color="orange",
+            color=color,
             angle=45 / 360 * 2 * np.pi,
             line_width=2,
             size=12,
         )
     else:
-        p = fig.diamond_cross(source=source, name=label, legend_label=label, color="red", size=8)
+        color = "red"
+        p = fig.diamond_cross(source=source, name=label, legend_label=label, color=color, size=8)
+
+    # Add both the cross and contour lines to the same legend item
+    # fig.legend.items = [bokeh.models.LegendItem(label=label, renderers=[p, c])]
 
     tt = straxen.bokeh_utils.peak_tool_tip(2)
     tt = [v for k, v in tt.items() if k not in ["time_dynamic", "amplitude"]]
@@ -846,7 +854,17 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
             renderers=[p],
         )
     )
-    return fig, p
+
+    # Plotting the contour of the S2
+    c = fig.multi_line(
+        peaks["position_contour_cnf"][:, :, 0].tolist(),
+        peaks["position_contour_cnf"][:, :, 1].tolist(),
+        name=label,
+        legend_label=label,
+        color=color,
+        line_width=1.0,
+    )
+    return fig, [p, c]
 
 
 def _make_event_title(event, run_id, width=1600):
