@@ -155,7 +155,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
                 sigma = proximity_sigma * np.sqrt(
                     1 / creating_peak["area"] + 1 / suspicious_peak["area"]
                 )
-                pdf = half_cauchy_pdf(dr, sigma)
+                pdf = half_cauchy_pdf(dr, sigma).item()
                 score = r ** exponents[0] * dt ** exponents[1] * pdf ** exponents[2]
                 sum_array[p_i] += score
         return sum_array

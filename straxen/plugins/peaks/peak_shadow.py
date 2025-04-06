@@ -263,7 +263,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                     # time shadow with a HalfCauchy PDF multiplier
                     distance = distance_in_xy(suspicious_peak, casting_peak)
                     distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
-                    new_shadow *= half_cauchy_pdf(distance, sigma)
+                    new_shadow *= half_cauchy_pdf(distance, sigma).item()
                 # Only the previous peak with largest shadow is recorded
                 if new_shadow > result["shadow"][p_i]:
                     result["shadow"][p_i] = new_shadow
