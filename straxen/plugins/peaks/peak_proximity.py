@@ -168,7 +168,7 @@ def half_cauchy_pdf(x, scale=1.0):
         0.0,
         np.where(
             scale <= 0.0,
-            2.0 / (np.pi * scale * (1 + (x / scale) ** 2)),
             np.nan,
+            2.0 / (np.pi * scale * (1 + (x / scale) ** 2)),
         ),
     )
