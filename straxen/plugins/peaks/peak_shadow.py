@@ -1,9 +1,9 @@
 import numpy as np
 import numba
-from scipy.stats import halfcauchy
 import strax
 import straxen
 
+from .peak_proximity import half_cauchy_pdf
 from .peak_ambience import distance_in_xy, _quick_assign
 
 export, __all__ = strax.exporter()
@@ -222,8 +222,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
         # If distance is NaN, set largest distance
         distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
         # HalfCauchy PDF when calculating S2 position shadow
-        result["pdf_s2_position_shadow"] = halfcauchy.pdf(
-            distance, scale=self.getsigma(self.shadow_sigma_and_baseline, current_peak["area"])
+        result["pdf_s2_position_shadow"] = half_cauchy_pdf(
+            distance,
+            self.getsigma(self.shadow_sigma_and_baseline, current_peak["area"]),
         )
 
         # 6. Set time and endtime for peaks
@@ -262,7 +263,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                     # time shadow with a HalfCauchy PDF multiplier
                     distance = distance_in_xy(suspicious_peak, casting_peak)
                     distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
-                    new_shadow *= 2 / (np.pi * sigma * (1 + (distance / sigma) ** 2))
+                    new_shadow *= half_cauchy_pdf(distance, sigma)
                 # Only the previous peak with largest shadow is recorded
                 if new_shadow > result["shadow"][p_i]:
                     result["shadow"][p_i] = new_shadow
