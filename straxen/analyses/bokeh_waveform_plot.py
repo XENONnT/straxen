@@ -508,6 +508,9 @@ def peaks_display_interactive(
     event["endtime"] = strax.endtime(peaks)[-1]
     waveform = plot_event(peaks, signal, labels, event[0], colors, yscale[-1])
 
+    # Create tile:
+    title = _make_peaks_title(peaks, run_id)
+
     # Put everything together:
     if bottom_pmt_array:
         upper_row = [fig_s1, fig_s2, fig_top, fig_bottom]
@@ -527,7 +530,7 @@ def peaks_display_interactive(
         toolbar_location="above",
     )
     event_display = bokeh.layouts.Column(
-        children=[plots],
+        children=[title, plots],
         sizing_mode="scale_width",
         max_width=1600,
     )
@@ -886,8 +889,45 @@ def _make_event_title(event, run_id, width=1600):
     event_number = event["event_number"]
     text = (
         f"<h2>Event {event_number} from run {run_id}<br>"
-        f"Recorded at {date[:10]} {date[10:]} UTC,"
-        f" {start_ns} ns - {end_ns} ns </h2>"
+        f"Recorded at {date[:10]} {date[10:]} UTC, {start_ns} ns - {end_ns} ns<br>"
+        f"({start} - {end})</h2>"
+    )
+
+    title = bokeh.models.Div(
+        text=text,
+        styles={
+            "text-align": "left",
+        },
+        sizing_mode="scale_width",
+        width=width,
+        # orientation='vertical',
+        width_policy="fit",
+        margin=(0, 0, -30, 50),
+    )
+    return title
+
+
+def _make_peaks_title(peaks, run_id, width=1600):
+    """Function which makes the title of the plot for the specified peaks.
+
+    Note:
+        To center the title I use a transparent box.
+
+    :param peaks: Peaks which we are plotting
+    :param run_id: run_id
+
+    :return: Title as bokeh.models.Div instance
+
+    """
+    start = peaks["time"].min()
+    date = np.datetime_as_string(start.astype("<M8[ns]"), unit="s")
+    start_ns = start - (start // straxen.units.s) * straxen.units.s
+    end = strax.endtime(peaks).max()
+    end_ns = end - start + start_ns
+    text = (
+        f"<h2>Peaks from run {run_id}<br>"
+        f"Recorded at {date[:10]} {date[10:]} UTC, {start_ns} ns - {end_ns} ns<br>"
+        f"({start} - {end})</h2>"
     )
 
     title = bokeh.models.Div(
