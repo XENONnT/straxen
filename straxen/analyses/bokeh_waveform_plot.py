@@ -450,12 +450,12 @@ def peaks_display_interactive(
 
         output_notebook()
 
-    if times and center_times:
+    if len(times) and len(center_times):
         raise ValueError("Please specify either times or center_times, not both.")
-    if times:
+    if len(times):
         unique = np.unique(times)
         field = "time"
-    elif center_times:
+    elif len(center_times):
         unique = np.unique(center_times)
         field = "center_time"
     else:
