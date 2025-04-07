@@ -417,6 +417,7 @@ def peaks_display_interactive(
     to_pe,
     run_id,
     context,
+    times=[],
     center_times=[],
     bottom_pmt_array=True,
     plot_all_pmts=False,
@@ -449,16 +450,27 @@ def peaks_display_interactive(
 
         output_notebook()
 
+    if times and center_times:
+        raise ValueError("Please specify either times or center_times, not both.")
+
     signal = {}
     s1_keys = []
     s2_keys = []
     labels = {}
     found_s1 = False
     found_s2 = False
-    for ind, center_time in enumerate(np.unique(center_times)):
-        _p = peaks[peaks["center_time"] == center_time]
+    if times:
+        unique = np.unique(times)
+        field = "time"
+    else:
+        unique = np.unique(center_times)
+        field = "center_time"
+    for ind, t in enumerate(unique):
+        _p = peaks[peaks[field] == t]
         if not _p.shape[0]:
-            raise ValueError(f"Could not find peak at center time {center_time}.")
+            raise ValueError(f"Could not find peak at center time {t}.")
+        if len(_p) > 1:
+            warnings.warn(f"Found multiple peaks at {field} {t}, using the first one.")
         p = _p[0]
         if np.isin(p["type"], [0, 1, 3]):
             key = f"s{p['type']}_{ind}"
