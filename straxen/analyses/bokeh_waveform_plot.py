@@ -452,6 +452,14 @@ def peaks_display_interactive(
 
     if times and center_times:
         raise ValueError("Please specify either times or center_times, not both.")
+    if times:
+        unique = np.unique(times)
+        field = "time"
+    elif center_times:
+        unique = np.unique(center_times)
+        field = "center_time"
+    else:
+        warnings.warn("No times or center_times specified, will not plot any peak in detail.")
 
     signal = {}
     s1_keys = []
@@ -459,12 +467,6 @@ def peaks_display_interactive(
     labels = {}
     found_s1 = False
     found_s2 = False
-    if times:
-        unique = np.unique(times)
-        field = "time"
-    else:
-        unique = np.unique(center_times)
-        field = "center_time"
     for ind, t in enumerate(unique):
         _p = peaks[peaks[field] == t]
         if not _p.shape[0]:
