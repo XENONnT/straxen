@@ -162,7 +162,6 @@ class CorrectedAreas(strax.Plugin):
         self.s1_peak_bias_corr = self.peak_bias_correction_map.apply_s1
         self.s2_peak_bias_corr = self.peak_bias_correction_map.apply_s2
 
-
     def ab_region(self, x, y):
         new_x, new_y = rotate_perp_wires(x, y)
         cond = new_x < self.single_electron_gain_partition["linear"]
@@ -209,7 +208,6 @@ class CorrectedAreas(strax.Plugin):
             ee = {key: self.rel_extraction_eff for key in self.regions}
 
         return seg, avg_seg, ee
-
 
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
