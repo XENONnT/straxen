@@ -87,10 +87,6 @@ class PeakCorrectedAreas(CorrectedAreas):
         ]
         return dtype
 
-    def setup(self):
-
-        self.s1_peak_bias_corr = self.peak_bias_correction_map.apply_s1
-        self.s2_peak_bias_corr = self.peak_bias_correction_map.apply_s2
 
     def compute(self, peaks):
         result = np.zeros(len(peaks), self.dtype)
@@ -109,7 +105,10 @@ class PeakCorrectedAreas(CorrectedAreas):
 
         is_an_s1 = peaks["type"] == 1
         result["cs1"][is_an_s1] = (
-            peaks["area"] / self.s1_peak_bias_corr(peaks["area"])
+            peaks["area"] / self.peak_bias_correction_map(
+                peaks["area"].reshape(-1, 1), 
+                map_name="s1_map"
+            )
         )
         result["cs1"][~is_an_s1] = np.nan
 
@@ -131,7 +130,10 @@ class PeakCorrectedAreas(CorrectedAreas):
         # S2 bias correction
         result["cs2_wo_xycorr"][~not_s2_mask] = (
             peaks["area"]
-            / self.s2_peak_bias_corr(peaks["area"])
+            / self.peak_bias_correction_map(    
+                    peaks["area"].reshape(-1, 1),
+                    map_name="s2_map",
+            )
         )
 
         # corrected s2 with s2 xy map only, i.e. no elife correction

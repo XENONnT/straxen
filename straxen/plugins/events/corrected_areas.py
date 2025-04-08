@@ -157,11 +157,6 @@ class CorrectedAreas(strax.Plugin):
                 ]
         return dtype
 
-    def setup(self):
-
-        self.s1_peak_bias_corr = self.peak_bias_correction_map.apply_s1
-        self.s2_peak_bias_corr = self.peak_bias_correction_map.apply_s2
-
     def ab_region(self, x, y):
         new_x, new_y = rotate_perp_wires(x, y)
         cond = new_x < self.single_electron_gain_partition["linear"]
@@ -223,7 +218,10 @@ class CorrectedAreas(strax.Plugin):
 
             result[f"{peak_type}cs1_wo_xyzcorr"] = events[
                 f"{peak_type}s1_area"
-            ] / self.s1_peak_bias_corr(events[f"{peak_type}s1_area"])
+            ] / self.peak_bias_correction_map(
+                events[f"{peak_type}s1_area"].reshape(-1, 1), 
+                map_name="s1_map"
+            )
 
             result[f"{peak_type}cs1_wo_timecorr"] = result[
                 f"{peak_type}cs1_wo_xyzcorr"
@@ -241,7 +239,10 @@ class CorrectedAreas(strax.Plugin):
             # apply the S2 peak bias correction
             result[f"{peak_type}cs2_wo_xycorr"] = events[
                 f"{peak_type}s2_area"
-            ] / self.s2_peak_bias_corr(events[f"{peak_type}s2_area"])
+            ] / self.peak_bias_correction_map(
+                events[f"{peak_type}s2_area"].reshape(-1, 1), 
+                map_name="s2_map"
+            )
 
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
