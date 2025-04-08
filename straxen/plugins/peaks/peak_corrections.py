@@ -112,8 +112,6 @@ class PeakCorrectedAreas(CorrectedAreas):
         )
         result["cs1"][~is_an_s1] = np.nan
 
-
-
         # s2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
 
@@ -124,11 +122,10 @@ class PeakCorrectedAreas(CorrectedAreas):
         # S2(x,y) corrections use the observed S2 positions
         s2_positions = np.vstack([peaks["x"], peaks["y"]]).T
 
-
         not_s2_mask = peaks["type"] != 2
 
         # S2 bias correction
-        result["cs2_wo_xycorr"][~not_s2_mask] = (
+        result["cs2_wo_xycorr"][~not_s2_mask] = peaks["area"] / self.s2_peak_bias_corr(
             peaks["area"]
             / self.peak_bias_correction_map(    
                     peaks["area"].reshape(-1, 1),
