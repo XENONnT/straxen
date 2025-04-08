@@ -34,7 +34,6 @@ class PeakCorrectedAreas(CorrectedAreas):
             "S1 and S2 reconstruction bias correction maps. Provides two separate "
             "functions to correct for S1 and S2 bias. "
         ),
-        infer_type=False,
         default="xedocs://peak_bias_correction_map?attr=value&run_id=plugin.run_id&version=ONLINE",
     )
 
