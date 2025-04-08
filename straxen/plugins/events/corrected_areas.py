@@ -103,6 +103,16 @@ class CorrectedAreas(strax.Plugin):
         default=1, help="Scaling factor for cS2 AFT correction due to photon ionization"
     )
 
+    peak_bias_correction_map = straxen.URLConfig(
+            help=(
+                "S1 and S2 reconstruction bias correction maps. Provides two separate "
+                "functions to correct for S1 and S2 bias. "
+            ),
+            infer_type=False,
+            default="xedocs://peak_bias_correction_map?attr=value&run_id=plugin.run_id&version=ONLINE",
+    )
+
+
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
@@ -195,6 +205,11 @@ class CorrectedAreas(strax.Plugin):
 
         return seg, avg_seg, ee
 
+    def setup(self):
+
+        self.s1_peak_bias_corr = self.peak_bias_correction_map.apply_s1
+        self.s2_peak_bias_corr = self.peak_bias_correction_map.apply_s2
+
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result["time"] = events["time"]
@@ -206,10 +221,21 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events["x"], events["y"], events["z"]]).T
 
         for peak_type in ["", "alt_"]:
-            result[f"{peak_type}cs1_wo_timecorr"] = events[f"{peak_type}s1_area"] / self.s1_xyz_map(
-                event_positions
+
+            result[f"{peak_type}cs1_wo_xyzcorr"] = (
+                events[f"{peak_type}s1_area"]
+                / self.s1_peak_bias_corr(events[f"{peak_type}s1_area"])
             )
-            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
+        
+            result[f"{peak_type}cs1_wo_timecorr"] = (
+                result[f"{peak_type}cs1_wo_xyzcorr"]
+                / self.s1_xyz_map(event_positions)
+            )
+
+            result[f"{peak_type}cs1"] = (
+                result[f"{peak_type}cs1_wo_timecorr"] 
+                / self.rel_light_yield
+            )
 
         # S2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
@@ -217,6 +243,13 @@ class CorrectedAreas(strax.Plugin):
 
         # now can start doing corrections
         for peak_type in ["", "alt_"]:
+
+            # apply the S2 peak bias correction
+            result[f"{peak_type}cs2_wo_xycorr"] = (
+                events[f"{peak_type}s2_area"]
+                / self.s2_peak_bias_corr(events[f"{peak_type}s2_area"])
+            )
+
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
 
@@ -224,13 +257,13 @@ class CorrectedAreas(strax.Plugin):
             # this is for S2-only events which don't have drift time info
             s2_xy_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
             cs2_top_xycorr = (
-                events[f"{peak_type}s2_area"]
+                result[f"{peak_type}cs2_wo_xycorr"]
                 * events[f"{peak_type}s2_area_fraction_top"]
                 / s2_xy_top
             )
             s2_xy_bottom = self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
             cs2_bottom_xycorr = (
-                events[f"{peak_type}s2_area"]
+                result[f"{peak_type}cs2_wo_xycorr"]
                 * (1 - events[f"{peak_type}s2_area_fraction_top"])
                 / s2_xy_bottom
             )
@@ -283,4 +316,6 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs2_area_fraction_top"] = result[
                 f"{peak_type}cs2_area_fraction_top_wo_elifecorr"
             ]
+
+
         return result
