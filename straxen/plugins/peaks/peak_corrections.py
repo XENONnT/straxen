@@ -87,7 +87,6 @@ class PeakCorrectedAreas(CorrectedAreas):
         ]
         return dtype
 
-
     def compute(self, peaks):
         result = np.zeros(len(peaks), self.dtype)
         result["time"] = peaks["time"]
@@ -104,11 +103,8 @@ class PeakCorrectedAreas(CorrectedAreas):
         result["s1_rel_light_yield_correction_factor"] = 1 / self.rel_light_yield
 
         is_an_s1 = peaks["type"] == 1
-        result["cs1"][is_an_s1] = (
-            peaks["area"] / self.peak_bias_correction_map(
-                peaks["area"].reshape(-1, 1), 
-                map_name="s1_map"
-            )
+        result["cs1"][is_an_s1] = peaks["area"] / self.peak_bias_correction_map(
+            peaks["area"].reshape(-1, 1), map_name="s1_map"
         )
         result["cs1"][~is_an_s1] = np.nan
 
@@ -127,9 +123,9 @@ class PeakCorrectedAreas(CorrectedAreas):
         # S2 bias correction
         result["cs2_wo_xycorr"][~not_s2_mask] = peaks["area"] / self.s2_peak_bias_corr(
             peaks["area"]
-            / self.peak_bias_correction_map(    
-                    peaks["area"].reshape(-1, 1),
-                    map_name="s2_map",
+            / self.peak_bias_correction_map(
+                peaks["area"].reshape(-1, 1),
+                map_name="s2_map",
             )
         )
 

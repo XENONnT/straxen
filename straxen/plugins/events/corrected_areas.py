@@ -219,8 +219,7 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs1_wo_xyzcorr"] = events[
                 f"{peak_type}s1_area"
             ] / self.peak_bias_correction_map(
-                events[f"{peak_type}s1_area"].reshape(-1, 1), 
-                map_name="s1_map"
+                events[f"{peak_type}s1_area"].reshape(-1, 1), map_name="s1_map"
             )
 
             result[f"{peak_type}cs1_wo_timecorr"] = result[
@@ -240,8 +239,7 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs2_wo_xycorr"] = events[
                 f"{peak_type}s2_area"
             ] / self.peak_bias_correction_map(
-                events[f"{peak_type}s2_area"].reshape(-1, 1), 
-                map_name="s2_map"
+                events[f"{peak_type}s2_area"].reshape(-1, 1), map_name="s2_map"
             )
 
             # S2(x,y) corrections use the observed S2 positions
