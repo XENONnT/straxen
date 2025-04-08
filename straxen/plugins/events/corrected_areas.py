@@ -127,8 +127,8 @@ class CorrectedAreas(strax.Plugin):
                     f"Corrected area of {peak_name} S1 (before LY correction) [PE]",
                 ),
             ]
-            names = ["_wo_timecorr", "_wo_picorr", "_wo_elifecorr", ""]
-            descriptions = ["S2 xy", "SEG/EE", "photon ionization", "elife"]
+            names = ["_wo_xycorr", "_wo_timecorr", "_wo_picorr", "_wo_elifecorr", ""]
+            descriptions = ["bias", "S2 xy", "SEG/EE", "photon ionization", "elife"]
             for i, name in enumerate(names):
                 if i == len(names) - 1:
                     description = ""
@@ -157,6 +157,12 @@ class CorrectedAreas(strax.Plugin):
                     ),
                 ]
         return dtype
+
+    def setup(self):
+
+        self.s1_peak_bias_corr = self.peak_bias_correction_map.apply_s1
+        self.s2_peak_bias_corr = self.peak_bias_correction_map.apply_s2
+
 
     def ab_region(self, x, y):
         new_x, new_y = rotate_perp_wires(x, y)
@@ -205,10 +211,6 @@ class CorrectedAreas(strax.Plugin):
 
         return seg, avg_seg, ee
 
-    def setup(self):
-
-        self.s1_peak_bias_corr = self.peak_bias_correction_map.apply_s1
-        self.s2_peak_bias_corr = self.peak_bias_correction_map.apply_s2
 
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
