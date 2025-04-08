@@ -30,14 +30,13 @@ class PeakCorrectedAreas(CorrectedAreas):
     )
 
     peak_bias_correction_map = straxen.URLConfig(
-            help=(
-                "S1 and S2 reconstruction bias correction maps. Provides two separate "
-                "functions to correct for S1 and S2 bias. "
-            ),
-            infer_type=False,
-            default="xedocs://peak_bias_correction_map?attr=value&run_id=plugin.run_id&version=ONLINE",
+        help=(
+            "S1 and S2 reconstruction bias correction maps. Provides two separate "
+            "functions to correct for S1 and S2 bias. "
+        ),
+        infer_type=False,
+        default="xedocs://peak_bias_correction_map?attr=value&run_id=plugin.run_id&version=ONLINE",
     )
-
 
     def infer_dtype(self):
         dtype = strax.time_fields + [
@@ -93,7 +92,6 @@ class PeakCorrectedAreas(CorrectedAreas):
         self.s1_peak_bias_corr = self.peak_bias_correction_map.apply_s1
         self.s2_peak_bias_corr = self.peak_bias_correction_map.apply_s2
 
-
     def compute(self, peaks):
         result = np.zeros(len(peaks), self.dtype)
         result["time"] = peaks["time"]
@@ -109,6 +107,7 @@ class PeakCorrectedAreas(CorrectedAreas):
         result["s1_xyz_correction_factor"] = 1 / self.s1_xyz_map(peak_positions)
         result["s1_rel_light_yield_correction_factor"] = 1 / self.rel_light_yield
 
+<<<<<<< HEAD
         is_an_s1 = peaks["type"] == 1
         result["cs1"][is_an_s1] = (
             peaks["area"] / self.s1_peak_bias_corr(peaks["area"])
@@ -117,6 +116,8 @@ class PeakCorrectedAreas(CorrectedAreas):
 
 
 
+=======
+>>>>>>> f84fa92f34265555fcb3a13c0e9372bb23d46225
         # s2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
 
@@ -127,6 +128,7 @@ class PeakCorrectedAreas(CorrectedAreas):
         # S2(x,y) corrections use the observed S2 positions
         s2_positions = np.vstack([peaks["x"], peaks["y"]]).T
 
+<<<<<<< HEAD
 
         not_s2_mask = peaks["type"] != 2
 
@@ -135,6 +137,10 @@ class PeakCorrectedAreas(CorrectedAreas):
             peaks["area"]
             / self.s2_peak_bias_corr(peaks["area"])
         )
+=======
+        # S2 bias correction
+        result["cs2_wo_xycorr"] = peaks["area"] / self.s2_peak_bias_corr(peaks["area"])
+>>>>>>> f84fa92f34265555fcb3a13c0e9372bb23d46225
 
         # corrected s2 with s2 xy map only, i.e. no elife correction
         # this is for s2-only events which don't have drift time info
