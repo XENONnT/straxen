@@ -69,6 +69,13 @@ class PeakShadow(strax.OverlapWindowPlugin):
         help="Merge primary peaks but keep the last center time",
     )
 
+    shadow_pdf_ordered = straxen.URLConfig(
+        default={"s1_time_shadow": False, "s2_time_shadow": False, "s2_position_shadow": False},
+        type=dict,
+        track=True,
+        help="Whether position shadow should be ordered by the position correlation only",
+    )
+
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
@@ -309,7 +316,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     @property
     def shadowdtype(self):
         dtype = []
-        dtype += [("shadow", np.float32), ("dt", np.int64)]
+        dtype += [("shadow", np.float32), ("dt", np.int64), ("pdf", np.float32)]
         dtype += [("x", np.float32), ("y", np.float32)]
         dtype += [("nearest", np.float32), ("nearest_dt", np.int64)]
         return dtype
@@ -336,7 +343,6 @@ class PeakShadow(strax.OverlapWindowPlugin):
             weights = peaks["area"] * peaks["area_fraction_top"]
         result = np.zeros(len(current_peak), self.dtype)
         for key in ["s2_position_shadow", "s2_time_shadow", "s1_time_shadow"]:
-            type_str = key.split("_")[0]
             if "s2" in key:
                 # in very rare cases, high energy S2 canbe classified as type 20 and 22
                 stype = [2, FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE]
@@ -367,6 +373,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
             else:
                 # Assign the position shadow to be zero
                 array["shadow"] = 0
+            array["pdf"] = 0
 
             # Calculating shadow, the Major of the plugin.
             # Only record the previous peak casting the largest shadow if is_sum is False
@@ -383,12 +390,14 @@ class PeakShadow(strax.OverlapWindowPlugin):
                     split_peaks,
                     self.shadow_deltatime_exponent,
                     array,
-                    is_position,
-                    is_sum,
-                    self.getsigma(self.shadow_sigma_and_baseline, current_peak["area"]),
+                    is_position=is_position,
+                    is_sum=is_sum,
+                    is_pdf=self.shadow_pdf_ordered[key],
+                    sigmas=self.getsigma(self.shadow_sigma_and_baseline, current_peak["area"]),
                 )
 
             # Fill results
+            type_str = key.split("_")[0]
             names = ["shadow", "dt"]
             if "s2" in key:  # Only previous S2 peaks have (x,y)
                 names += ["x", "y"]
@@ -400,17 +409,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 else:
                     result[f"{name}_{key}"] = array[name]
 
-        distance = np.sqrt(
-            (result[f"x_s2_position_shadow"] - current_peak["x"]) ** 2
-            + (result[f"y_s2_position_shadow"] - current_peak["y"]) ** 2
-        )
-        # If distance is NaN, set largest distance
-        distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
-        # HalfCauchy PDF when calculating S2 position shadow
-        result["pdf_s2_position_shadow"] = half_cauchy_pdf(
-            distance,
-            self.getsigma(self.shadow_sigma_and_baseline, current_peak["area"]),
-        )
+            if key == "s2_position_shadow":
+                # HalfCauchy PDF when calculating S2 position shadow
+                result["pdf_s2_position_shadow"] = array["pdf"]
 
         # 6. Set time and endtime for peaks
         result["time"] = current_peak["time"]
@@ -426,7 +427,15 @@ class PeakShadow(strax.OverlapWindowPlugin):
     @staticmethod
     @numba.njit
     def peaks_shadow(
-        peaks, pre_peaks, touching_windows, exponent, result, is_position, is_sum, sigmas=None
+        peaks,
+        pre_peaks,
+        touching_windows,
+        exponent,
+        result,
+        is_position=False,
+        is_sum=False,
+        is_pdf=False,
+        sigmas=None,
     ):
         """For each peak in peaks, check if there is a shadow-casting peak and check if it casts the
         largest shadow."""
@@ -445,15 +454,22 @@ class PeakShadow(strax.OverlapWindowPlugin):
                     result["nearest"][p_i] = casting_peak["area"]
                 # Calculate time shadow
                 new_shadow = casting_peak["area"] * dt**exponent
-                if is_position:
-                    # Calculate position shadow which is
-                    # time shadow with a HalfCauchy PDF multiplier
+                if is_position or is_pdf:
+                    # Calculate HalfCauchy PDF
                     distance = distance_in_xy(suspicious_peak, casting_peak)
+                    # If distance is NaN, set largest distance
                     distance = np.where(np.isnan(distance), 2 * straxen.tpc_r, distance)
-                    new_shadow *= half_cauchy_pdf(distance, sigma).item()
+                    new_pdf = half_cauchy_pdf(distance, sigma).item()
+                else:
+                    new_pdf = np.nan
+                if is_position:
+                    new_shadow *= new_pdf
                 # Only the previous peak with largest shadow is recorded
-                if new_shadow > result["shadow"][p_i]:
+                found = is_pdf and new_pdf > result["pdf"][p_i]
+                found |= ~is_pdf and new_shadow > result["shadow"][p_i]
+                if found:
                     result["shadow"][p_i] = new_shadow
+                    result["pdf"][p_i] = new_pdf
                     result["x"][p_i] = casting_peak["x"]
                     result["y"][p_i] = casting_peak["y"]
                     result["dt"][p_i] = suspicious_peak["center_time"] - casting_peak["center_time"]
@@ -465,6 +481,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                     continue
                 ft = dt[mask] ** exponent
                 result["shadow"][p_i] = np.sum(pre_peaks["area"][sl][mask] * ft)
+                result["pdf"][p_i] = np.nan
                 result["x"][p_i] = np.nan
                 result["y"][p_i] = np.nan
                 result["dt"][p_i] = mask.sum() * np.sum(ft) ** (1 / exponent)
