@@ -56,6 +56,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
         help="The exponent of (delta t, delta r) when calculating proximity score",
     )
 
+    # TODO: change the config name to be more descriptive
     proximity_sigma = straxen.URLConfig(
         default=20.0,
         type=(int, float),

@@ -60,6 +60,7 @@ class Events(strax.OverlapWindowPlugin):
         help="Peaks must have less proximity score to cause events",
     )
 
+    # TODO: extand the padding to cover all multiple scattering
     left_event_extension = straxen.URLConfig(
         default=int(0.25e6),
         type=(int, float),

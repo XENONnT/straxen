@@ -3,6 +3,7 @@ import numba
 import strax
 import straxen
 
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE
 from .peak_proximity import half_cauchy_pdf
 from .peak_ambience import distance_in_xy, _quick_assign
 
@@ -25,6 +26,45 @@ class PeakShadow(strax.OverlapWindowPlugin):
     provides = "peak_shadow"
     save_when = strax.SaveWhen.EXPLICIT
 
+    shadow_threshold = straxen.URLConfig(
+        default={"s1_time_shadow": 1e3, "s2_time_shadow": 1e4, "s2_position_shadow": 1e4},
+        type=dict,
+        track=True,
+        help="Only take S1/S2s larger than this into account when calculating Shadow [PE]",
+    )
+
+    shadow_sum = straxen.URLConfig(
+        default={"s1_time_shadow": False, "s2_time_shadow": False, "s2_position_shadow": False},
+        type=dict,
+        track=True,
+        help="Whether the shadow should be summed up rather than taking the largest one",
+    )
+
+    shadow_merge_replace = straxen.URLConfig(
+        default={"s1_time_shadow": False, "s2_time_shadow": False, "s2_position_shadow": False},
+        type=dict,
+        track=True,
+        help="Whether replace the primary peak with the merged peak",
+    )
+
+    shadow_merge_dt = straxen.URLConfig(
+        default={"s1_time_shadow": -1, "s2_time_shadow": -1, "s2_position_shadow": -1},
+        type=dict,
+        track=True,
+        help="Merge primary peaks within this time window [ns]",
+    )
+
+    shadow_merge_dr = straxen.URLConfig(
+        default={"s1_time_shadow": -1, "s2_time_shadow": -1, "s2_position_shadow": -1},
+        type=dict,
+        track=True,
+        help="Merge primary peaks within this distance [cm]",
+    )
+
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
+
     shadow_time_window_backward = straxen.URLConfig(
         default=int(1e9),
         type=int,
@@ -32,11 +72,11 @@ class PeakShadow(strax.OverlapWindowPlugin):
         help="Search for peaks casting time & position shadow in this time window [ns]",
     )
 
-    shadow_threshold = straxen.URLConfig(
-        default={"s1_time_shadow": 1e3, "s2_time_shadow": 1e4, "s2_position_shadow": 1e4},
-        type=dict,
+    shadow_uncertainty_weights = straxen.URLConfig(
+        default=True,
+        type=bool,
         track=True,
-        help="Only take S1/S2s larger than this into account when calculating Shadow [PE]",
+        help="Whether to use uncertainty weights when merging peaks",
     )
 
     shadow_deltatime_exponent = straxen.URLConfig(
@@ -145,6 +185,106 @@ class PeakShadow(strax.OverlapWindowPlugin):
         )
         return dtype
 
+    def setup(self):
+        super().setup()
+        for key in ["s2_position_shadow", "s2_time_shadow", "s1_time_shadow"]:
+            if self.shadow_sum[key] and not self.shadow_merge_replace[key]:
+                raise ValueError(
+                    f"shadow_sum is set to True, but shadow_merge_replace is set to False for {key}"
+                )
+        if (
+            self.shadow_uncertainty_weights
+            and self.default_reconstruction_algorithm != DEFAULT_POSREC_ALGO
+        ):
+            raise ValueError(
+                "Using pos-rec uncertainty as (x, y) merging weights, "
+                f"but default_reconstruction_algorithm is not set to {DEFAULT_POSREC_ALGO}"
+            )
+
+    @staticmethod
+    def cluster_xy(peaks, indices, dr):
+        """Find connectivity map of peaks in xy space."""
+        clusters = []
+        unvisited = set(indices)
+
+        while unvisited:
+            current = unvisited.pop()
+            cluster = {current}
+            to_check = {current}
+            while to_check:
+                checking = to_check.pop()
+                dists = distance_in_xy(peaks[checking], peaks[list(unvisited)])
+                close = {i for i, d in zip(unvisited, dists) if d <= dr}
+                to_check.update(close)
+                cluster.update(close)
+                unvisited -= close
+            clusters.append(list(cluster))
+        clusters = [sorted(cluster) for cluster in clusters if len(cluster) > 1]
+        return clusters
+
+    @staticmethod
+    def merge_peaks(peaks, weights, dt, dr, replace=False):
+        """Merge peaks in time and space."""
+
+        # Prepare the dtype for the merged peaks
+        dtype = []
+        needed_fileds = "time endtime center_time area x y".split()
+        for d, n in zip(peaks.dtype.descr, peaks.dtype.names):
+            if n in needed_fileds:
+                dtype.append(d)
+        dtype = np.dtype(dtype)
+
+        # Copy the fields to a new array
+        _peaks = np.zeros(len(peaks), dtype=dtype)
+        for d in needed_fileds:
+            _peaks[d] = peaks[d]
+
+        # Identify indices of peaks mergable in time
+        if dt > 0:
+            t_clusters = [[0]]
+            for i in range(len(peaks) - 1):
+                if np.abs(peaks["center_time"][i + 1] - peaks["center_time"][i]) > dt:
+                    t_clusters.append([i])
+                else:
+                    t_clusters[-1].append(i + 1)
+            t_clusters = [cluster for cluster in t_clusters if len(cluster) > 1]
+        else:
+            t_clusters = []
+
+        # Identify indices of peaks mergable also in space
+        if dr > 0:
+            txy_clusters = []
+            for cluster in t_clusters:
+                txy_clusters += PeakShadow.cluster_xy(peaks, cluster, dr)
+        else:
+            txy_clusters = t_clusters
+
+        # Merge peaks
+        merged_peaks = np.zeros(len(txy_clusters), dtype=dtype)
+        for i, cluster in enumerate(txy_clusters):
+            # Merge peaks
+            merged_peaks[i]["time"] = peaks["time"][cluster].min()
+            merged_peaks[i]["endtime"] = strax.endtime(peaks)[cluster].max()
+            # center_time is by definition the average time of waveform
+            merged_peaks[i]["center_time"] = np.average(
+                peaks["center_time"][cluster], weights=peaks["area"][cluster]
+            )
+            merged_peaks[i]["area"] = np.sum(peaks["area"][cluster])
+            merged_peaks[i]["x"] = np.average(peaks["x"][cluster], weights=weights[cluster])
+            merged_peaks[i]["y"] = np.average(peaks["y"][cluster], weights=weights[cluster])
+
+        # Replace peaks with merged peaks if replace is True
+        if replace:
+            for i, cluster in enumerate(txy_clusters):
+                _peaks[cluster] = merged_peaks[i]
+            _peaks = np.delete(_peaks, [cluster[1:] for cluster in txy_clusters])
+        else:
+            _peaks = np.insert(_peaks, [cluster[0] for cluster in txy_clusters], merged_peaks)
+        _peaks = strax.sort_by_time(_peaks)
+
+        # Return merged peaks
+        return _peaks
+
     @property
     def shadowdtype(self):
         dtype = []
@@ -167,14 +307,30 @@ class PeakShadow(strax.OverlapWindowPlugin):
         roi["endtime"] = current_peak["center_time"]
 
         # 2. Calculate S2 position shadow, S2 time shadow, and S1 time shadow
+        # weights of the peaklets when calculating the weighted mean deviation in (x, y)
+        posrec_algo = self.default_reconstruction_algorithm
+        if self.shadow_uncertainty_weights:
+            weights = 1 / peaks[f"position_contour_area_{posrec_algo}"]
+        else:
+            weights = peaks["area"] * peaks["area_fraction_top"]
         result = np.zeros(len(current_peak), self.dtype)
         for key in ["s2_position_shadow", "s2_time_shadow", "s1_time_shadow"]:
-            is_position = "position" in key
             type_str = key.split("_")[0]
-            # type 3 is also S1 xenon:xenonnt:lsanchez:som_sr1b_summary_note
-            stype = 2 if "s2" in key else [1, 3]
+            if "s2" in key:
+                # in very rare cases, high energy S2 canbe classified as type 20 and 22
+                stype = [2, FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE]
+            else:
+                # type 3 is also S1 xenon:xenonnt:lsanchez:som_sr1b_summary_note
+                stype = [1, 3]
             mask_pre = np.isin(peaks["type"], stype) & (peaks["area"] > self.shadow_threshold[key])
-            split_peaks = strax.touching_windows(peaks[mask_pre], roi)
+            _peaks = self.merge_peaks(
+                peaks[mask_pre],
+                weights[mask_pre],
+                dt=self.shadow_merge_dt[key],
+                dr=self.shadow_merge_dr[key],
+                replace=self.shadow_merge_replace[key],
+            )
+            split_peaks = strax.touching_windows(_peaks, roi)
             array = np.zeros(len(current_peak), np.dtype(self.shadowdtype))
             strax.set_nan_defaults(array)
 
@@ -191,15 +347,22 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 array["shadow"] = 0
 
             # Calculating shadow, the Major of the plugin.
-            # Only record the previous peak casting the largest shadow
+            # Only record the previous peak casting the largest shadow if is_sum is False
+            is_position = "position" in key
+            is_sum = self.shadow_sum[key]
+            if is_position and is_sum:
+                raise ValueError(
+                    "Position shadow cannot be summed up, please set its shadow_sum to False"
+                )
             if len(current_peak):
                 self.peaks_shadow(
                     current_peak,
-                    peaks[mask_pre],
+                    _peaks,
                     split_peaks,
                     self.shadow_deltatime_exponent,
                     array,
                     is_position,
+                    is_sum,
                     self.getsigma(self.shadow_sigma_and_baseline, current_peak["area"]),
                 )
 
@@ -240,7 +403,9 @@ class PeakShadow(strax.OverlapWindowPlugin):
 
     @staticmethod
     @numba.njit
-    def peaks_shadow(peaks, pre_peaks, touching_windows, exponent, result, pos_corr, sigmas=None):
+    def peaks_shadow(
+        peaks, pre_peaks, touching_windows, exponent, result, is_position, is_sum, sigmas=None
+    ):
         """For each peak in peaks, check if there is a shadow-casting peak and check if it casts the
         largest shadow."""
         for p_i, (suspicious_peak, sigma) in enumerate(zip(peaks, sigmas)):
@@ -258,7 +423,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                     result["nearest"][p_i] = casting_peak["area"]
                 # Calculate time shadow
                 new_shadow = casting_peak["area"] * dt**exponent
-                if pos_corr:
+                if is_position:
                     # Calculate position shadow which is
                     # time shadow with a HalfCauchy PDF multiplier
                     distance = distance_in_xy(suspicious_peak, casting_peak)
@@ -270,3 +435,14 @@ class PeakShadow(strax.OverlapWindowPlugin):
                     result["x"][p_i] = casting_peak["x"]
                     result["y"][p_i] = casting_peak["y"]
                     result["dt"][p_i] = suspicious_peak["center_time"] - casting_peak["center_time"]
+            if is_sum:
+                sl = slice(indices[0], indices[1])
+                dt = suspicious_peak["center_time"] - pre_peaks["center_time"][sl]
+                mask = dt > 0
+                if mask.sum() == 0:
+                    continue
+                ft = dt[mask] ** exponent
+                result["shadow"][p_i] = np.sum(pre_peaks["area"][sl][mask] * ft)
+                result["x"][p_i] = np.nan
+                result["y"][p_i] = np.nan
+                result["dt"][p_i] = mask.sum() / np.sum(ft) ** (1 / exponent)
