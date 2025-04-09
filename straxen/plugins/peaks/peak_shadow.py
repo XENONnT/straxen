@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import numba
 import strax
@@ -59,6 +60,13 @@ class PeakShadow(strax.OverlapWindowPlugin):
         type=dict,
         track=True,
         help="Merge primary peaks within this distance [cm]",
+    )
+
+    shadow_merge_last_center = straxen.URLConfig(
+        default={"s1_time_shadow": False, "s2_time_shadow": False, "s2_position_shadow": False},
+        type=dict,
+        track=True,
+        help="Merge primary peaks but keep the last center time",
     )
 
     default_reconstruction_algorithm = straxen.URLConfig(
@@ -188,7 +196,11 @@ class PeakShadow(strax.OverlapWindowPlugin):
     def setup(self):
         super().setup()
         for key in ["s2_position_shadow", "s2_time_shadow", "s1_time_shadow"]:
-            if self.shadow_sum[key] and not self.shadow_merge_replace[key]:
+            if (
+                self.shadow_sum[key]
+                and not self.shadow_merge_replace[key]
+                and self.shadow_merge_dt[key] > 0
+            ):
                 raise ValueError(
                     f"shadow_sum is set to True, but shadow_merge_replace is set to False for {key}"
                 )
@@ -223,7 +235,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
         return clusters
 
     @staticmethod
-    def merge_peaks(peaks, weights, dt, dr, replace=False):
+    def merge_peaks(peaks, weights, dt, dr, replace=True, last=True):
         """Merge peaks in time and space."""
 
         # Prepare the dtype for the merged peaks
@@ -266,18 +278,27 @@ class PeakShadow(strax.OverlapWindowPlugin):
             merged_peaks[i]["time"] = peaks["time"][cluster].min()
             merged_peaks[i]["endtime"] = strax.endtime(peaks)[cluster].max()
             # center_time is by definition the average time of waveform
-            merged_peaks[i]["center_time"] = np.average(
-                peaks["center_time"][cluster], weights=peaks["area"][cluster]
-            )
+            if last:
+                merged_peaks[i]["center_time"] = peaks["center_time"][cluster[-1]]
+            else:
+                merged_peaks[i]["center_time"] = np.average(
+                    peaks["center_time"][cluster], weights=peaks["area"][cluster]
+                )
             merged_peaks[i]["area"] = np.sum(peaks["area"][cluster])
-            merged_peaks[i]["x"] = np.average(peaks["x"][cluster], weights=weights[cluster])
-            merged_peaks[i]["y"] = np.average(peaks["y"][cluster], weights=weights[cluster])
+            for xy in ["x", "y"]:
+                if np.any(np.isinf(weights[cluster])):
+                    merged_peaks[i][xy] = peaks[xy][cluster][np.isinf(weights[cluster])].mean()
+                else:
+                    merged_peaks[i][xy] = np.average(peaks[xy][cluster], weights=weights[cluster])
 
         # Replace peaks with merged peaks if replace is True
         if replace:
             for i, cluster in enumerate(txy_clusters):
                 _peaks[cluster] = merged_peaks[i]
-            _peaks = np.delete(_peaks, [cluster[1:] for cluster in txy_clusters])
+            _peaks = np.delete(
+                _peaks,
+                list(itertools.chain.from_iterable([cluster[1:] for cluster in txy_clusters])),
+            )
         else:
             _peaks = np.insert(_peaks, [cluster[0] for cluster in txy_clusters], merged_peaks)
         _peaks = strax.sort_by_time(_peaks)
@@ -329,6 +350,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 dt=self.shadow_merge_dt[key],
                 dr=self.shadow_merge_dr[key],
                 replace=self.shadow_merge_replace[key],
+                last=self.shadow_merge_last_center[key],
             )
             split_peaks = strax.touching_windows(_peaks, roi)
             array = np.zeros(len(current_peak), np.dtype(self.shadowdtype))
@@ -445,4 +467,4 @@ class PeakShadow(strax.OverlapWindowPlugin):
                 result["shadow"][p_i] = np.sum(pre_peaks["area"][sl][mask] * ft)
                 result["x"][p_i] = np.nan
                 result["y"][p_i] = np.nan
-                result["dt"][p_i] = mask.sum() / np.sum(ft) ** (1 / exponent)
+                result["dt"][p_i] = mask.sum() * np.sum(ft) ** (1 / exponent)
