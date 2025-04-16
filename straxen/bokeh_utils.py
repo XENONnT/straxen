@@ -137,7 +137,10 @@ def peak_tool_tip(peak_type):
     tool_tip["amplitude"] = ("Amplitude [pe/ns]", "$y")
     tool_tip["area"] = ("area [pe]", "@area")
     tool_tip["aft"] = ("AFT", "@aft")
-    tool_tip["nhits"] = ("nhits", "@nhits")
+    tool_tip["s2_x"] = ("s2_x", "@x")
+    tool_tip["s2_y"] = ("s2_y", "@y")
+    tool_tip["s1_x"] = ("s1_x", "@x_s1_cnn")
+    tool_tip["s1_y"] = ("s1_y", "@y_s1_cnn")
 
     if peak_type == 2:
         for k, i in tool_tip.items():

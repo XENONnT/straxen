@@ -293,6 +293,7 @@ def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors, yscale=("li
                 # If signal exists, plot:
                 fig, plot = plot_peak_detail(
                     signal[peak_type],
+                    signal,
                     time_scalar=time_scalar,
                     label=labels[peak_type],
                     unit=unit,
@@ -367,9 +368,9 @@ def plot_event(peaks, signal, labels, event, colors, yscale="linear"):
     :return: bokeh.plotting.figure instance
 
     """
-    waveform = plot_peaks(peaks, time_scalar=1000, colors=colors, yscale=yscale)
+    waveform = plot_peaks(peaks, signal, time_scalar=1000, colors=colors, yscale=yscale)
     # Highlight main and alternate S1/S2:
-    start = peaks[0]["time"]
+    start = signal['s2']['time'][0]
     end = strax.endtime(peaks)[-1]
     # Workaround did not manage to scale via pixels...
     ymax = np.max((peaks["data"].T / peaks["dt"]).T)
@@ -399,13 +400,14 @@ def plot_event(peaks, signal, labels, event, colors, yscale="linear"):
     # beyond first last peak, clip at event boundary.
     length = (end - start) / 10**3
 
-    waveform.x_range.start = max(-0.1 * length, (event["time"] - start) / 10**3)
-    waveform.x_range.end = min(1.1 * length, (event["endtime"] - start) / 10**3)
+    # waveform.x_range.start = max(-0.1 * length, (event["time"] - start) / 10**3)
+    # waveform.x_range.end = min(1.1 * length, (event["endtime"] - start) / 10**3)
     return waveform
 
 
 def plot_peak_detail(
     peak,
+    signal,
     time_scalar=1,
     label="",
     unit="ns",
@@ -445,7 +447,7 @@ def plot_peak_detail(
 
     source = straxen.bokeh_utils.get_peaks_source(
         peak,
-        relative_start=peak[0]["time"],
+        relative_start=signal['s2']['time'][0],
         time_scaler=time_scalar,
         keep_amplitude_per_sample=False,
     )
@@ -475,7 +477,7 @@ def plot_peak_detail(
     return fig, patches
 
 
-def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"), yscale="linear"):
+def plot_peaks(peaks, signal, time_scalar=1, fig=None, colors=("gray", "blue", "green"), yscale="linear"):
     """Function which plots a list/array of peaks relative to the first one.
 
     :param peaks: Peaks to be plotted.
@@ -497,7 +499,7 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
 
         source = straxen.bokeh_utils.get_peaks_source(
             peaks[_ind],
-            relative_start=peaks[0]["time"],
+            relative_start=signal['s2']['time'][0],
             time_scaler=time_scalar,
             keep_amplitude_per_sample=False,
         )
