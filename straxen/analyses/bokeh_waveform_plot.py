@@ -57,18 +57,14 @@ def event_display_interactive(
     :param yscale: Defines scale for main/alt S1 == 0, main/alt S2 == 1,
         waveform plot == 2. Please note, that the log scale can lead to funny
         glyph renders for small values.
-    :param log: If true color sclae is used for hitpattern plots.
+    :param log: If true color scale is used for hitpattern plots.
 
     example::
 
         from IPython.core.display import display, HTML
         display(HTML("<style>.container { width:80% !important; }</style>"))
         import bokeh.plotting as bklt
-        fig = st.event_display_interactive(
-                         run_id,
-                         time_range=(event['time'],
-                                     event['endtime'])
-                         )
+        fig = st.event_display_interactive(run_id, time_range=(event['time'], event['endtime']))
         bklt.show(fig)
 
     :raises:
@@ -128,13 +124,14 @@ def event_display_interactive(
         s2_keys,
         labels,
         colors,
-        yscale[:2],
+        yscale=yscale[:2],
     )
 
     # PMT arrays:
     if not only_main_peaks:
         # Plot all keys into both arrays:
         top_array_keys = s2_keys + s1_keys
+        # Plot S1 first then S2 in the bottom array:
         bottom_array_keys = s1_keys + s2_keys
     else:
         top_array_keys = s2_keys
@@ -154,17 +151,18 @@ def event_display_interactive(
     if np.any(m_other_s2) and not only_main_peaks:
         # Now we have to add the positions of all the other S2 to the top pmt array
         # if not only main peaks.
-        fig_top, plot = plot_posS2s(
+        fig_top, plots = plot_posS2s(
             peaks[m_other_s2], label="OS2s", fig=fig_top, s2_type_style_id=2
         )
-        plot.visible = False
+        for plot in plots:
+            plot.visible = False
 
     # Main waveform plot:
     if only_peak_detail_in_wf:
         # If specified by the user only plot main/alt S1/S2
         peaks = peaks[~m_other_peaks]
 
-    waveform = plot_event(peaks, signal, labels, events[0], colors, yscale[-1])
+    waveform = plot_event(peaks, signal, labels, events[0], colors, yscale=yscale[-1])
 
     # Create tile:
     title = _make_event_title(events[0], run_id)
@@ -253,7 +251,15 @@ def event_display_interactive(
     return event_display
 
 
-def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors, yscale=("linear", "linear")):
+def plot_detail_plot_s1_s2(
+    signal,
+    s1_keys,
+    s2_keys,
+    labels,
+    colors,
+    title=["Main/Alt S1", "Main/Alt S2"],
+    yscale=("linear", "linear"),
+):
     """Function to plot the main/alt S1/S2 peak details.
 
     :param signal: Dictionary containing the peak information.
@@ -268,11 +274,11 @@ def plot_detail_plot_s1_s2(signal, s1_keys, s2_keys, labels, colors, yscale=("li
     # First we create figure then we loop over figures and plots and
     # add drawings:
     fig_s1 = straxen.bokeh_utils.default_fig(
-        title="Main/Alt S1",
+        title=title[0],
         y_axis_type=yscale[0],
     )
     fig_s2 = straxen.bokeh_utils.default_fig(
-        title="Main/Alt S2",
+        title=title[1],
         y_axis_type=yscale[1],
     )
 
@@ -341,12 +347,13 @@ def plot_pmt_arrays_and_positions(
 
             if pmt_array_type == "top" and "s2" in k:
                 # In case of the top PMT array we also have to plot the S2 positions:
-                fig, plot = plot_posS2s(
+                fig, plots = plot_posS2s(
                     signal[k][0], label=labels[k], fig=fig, s2_type_style_id=ind
                 )
                 if ind:
                     # Not main S2
-                    plot.visible = False
+                    for plot in plots:
+                        plot.visible = False
 
     return fig_top, fig_bottom
 
@@ -400,6 +407,154 @@ def plot_event(peaks, signal, labels, event, colors, yscale="linear"):
     return waveform
 
 
+@straxen.mini_analysis(
+    requires=("peaks", "peak_basics", "peak_positions"),
+    default_time_selection="touching",
+    warn_beyond_sec=10,
+)
+def peaks_display_interactive(
+    peaks,
+    to_pe,
+    run_id,
+    context,
+    times=[],
+    center_times=[],
+    bottom_pmt_array=True,
+    plot_all_pmts=False,
+    colors=("gray", "blue", "green"),
+    yscale=("linear", "linear", "linear"),
+    log=True,
+    _provide_peaks=False,
+):
+    """Interactive events display for XENONnT. Plots detailed waveform, bottom and top PMT hit
+    pattern for selected center time.
+
+    :param bottom_pmt_array: If true plots bottom PMT array hit-pattern.
+    :param colors: Colors to be used for peaks. Order is as peak types, 0 = Unknown, 1 = S1, 2 = S2.
+        Can be any colors accepted by bokeh.
+    :param yscale: Defines scale for main/alt S1 == 0, main/alt S2 == 1, waveform plot == 2. Please
+        note, that the log scale can lead to funny glyph renders for small values.
+    :param log: If true color scale is used for hitpattern plots.
+    :return: bokeh.plotting.figure instance.
+
+    """
+    st = context
+
+    if len(yscale) != 3:
+        raise ValueError(f'"yscale" needs three entries, but you passed {len(yscale)}.')
+
+    if not hasattr(st, "_BOKEH_CONFIGURED_NOTEBOOK"):
+        st._BOKEH_CONFIGURED_NOTEBOOK = True
+        # Configure show to show notebook:
+        from bokeh.io import output_notebook
+
+        output_notebook()
+
+    if len(times) and len(center_times):
+        raise ValueError("Please specify either times or center_times, not both.")
+    if len(times):
+        unique = np.unique(times)
+        field = "time"
+    elif len(center_times):
+        unique = np.unique(center_times)
+        field = "center_time"
+    else:
+        warnings.warn("No times or center_times specified, will not plot any peak in detail.")
+
+    signal = {}
+    s1_keys = []
+    s2_keys = []
+    labels = {}
+    found_s1 = False
+    found_s2 = False
+    for ind, t in enumerate(unique):
+        _p = peaks[peaks[field] == t]
+        if not _p.shape[0]:
+            raise ValueError(f"Could not find peak at center time {t}.")
+        if len(_p) > 1:
+            warnings.warn(f"Found multiple peaks at {field} {t}, using the first one.")
+        p = _p[0]
+        if np.isin(p["type"], [0, 1, 3]):
+            key = f"s{p['type']}_{ind}"
+            if found_s1:
+                key = f"alt_{key}"
+            found_s1 = True
+            s1_keys.append(key)
+        else:
+            key = f"s{p['type']}_{ind}"
+            if found_s2:
+                key = f"alt_{key}"
+            assert "s2" in key, "Only S2 peaks are allowed here."
+            found_s2 = True
+            s2_keys.append(key)
+        signal[key] = _p
+        labels[key] = f"{ind}"
+
+    # Detail plots for selected peaks
+    fig_s1, fig_s2 = plot_detail_plot_s1_s2(
+        signal,
+        s1_keys,
+        s2_keys,
+        labels,
+        colors,
+        title=["S0, S1 and others", "S2 and others"],
+        yscale=yscale[:2],
+    )
+
+    # PMT arrays:
+    # Plot all keys into both arrays:
+    top_array_keys = s2_keys + s1_keys
+    # Plot S1 first then S2 in the bottom array:
+    bottom_array_keys = s1_keys + s2_keys
+
+    fig_top, fig_bottom = plot_pmt_arrays_and_positions(
+        top_array_keys,
+        bottom_array_keys,
+        signal,
+        to_pe,
+        labels,
+        plot_all_pmts,
+        log=log,
+    )
+
+    event = np.zeros(1, dtype=strax.time_fields)
+    event["time"] = peaks[0]["time"]
+    event["endtime"] = strax.endtime(peaks)[-1]
+    waveform = plot_event(peaks, signal, labels, event[0], colors, yscale[-1])
+
+    # Create tile:
+    title = _make_peaks_title(peaks, run_id)
+
+    # Put everything together:
+    if bottom_pmt_array:
+        upper_row = [fig_s1, fig_s2, fig_top, fig_bottom]
+    else:
+        upper_row = [fig_s1, fig_s2, fig_top]
+
+    upper_row = bokeh.layouts.Row(
+        children=upper_row,
+        sizing_mode="scale_width",
+    )
+
+    plots = bokeh.layouts.gridplot(
+        children=[upper_row, waveform],
+        sizing_mode="scale_width",
+        ncols=1,
+        merge_tools=True,
+        toolbar_location="above",
+    )
+    event_display = bokeh.layouts.Column(
+        children=[title, plots],
+        sizing_mode="scale_width",
+        max_width=1600,
+    )
+
+    if _provide_peaks:
+        return event_display, peaks
+
+    return event_display
+
+
 def plot_peak_detail(
     peak,
     time_scalar=1,
@@ -435,10 +590,6 @@ def plot_peak_detail(
     if not fig:
         fig = straxen.bokeh_utils.default_fig(title=f"Main/Alt S{p_type}")
 
-    tt = straxen.bokeh_utils.peak_tool_tip(p_type)
-    tt = [v for k, v in tt.items() if k not in ["time_static", "center_time", "endtime"]]
-    fig.add_tools(bokeh.models.HoverTool(name=label, tooltips=tt))
-
     source = straxen.bokeh_utils.get_peaks_source(
         peak,
         relative_start=peak[0]["time"],
@@ -446,15 +597,19 @@ def plot_peak_detail(
         keep_amplitude_per_sample=False,
     )
 
+    _i = p_type if p_type < len(colors) else 0
     patches = fig.patches(
         source=source,
         legend_label=label,
-        fill_color=colors[p_type],
+        fill_color=colors[_i],
         fill_alpha=0.2,
-        line_color=colors[p_type],
+        line_color=colors[_i],
         line_width=0.5,
         name=label,
     )
+    tt = straxen.bokeh_utils.peak_tool_tip(p_type)
+    tt = [v for k, v in tt.items() if k not in ["time_static", "center_time", "endtime"]]
+    fig.add_tools(bokeh.models.HoverTool(name=label, tooltips=tt, renderers=[patches]))
     fig.xaxis.axis_label = f"Time [{unit}]"
     fig.xaxis.axis_label_text_font_size = "12pt"
     fig.yaxis.axis_label = "Amplitude [pe/ns]"
@@ -499,7 +654,7 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
         )
 
         _i = i if i < len(colors) else 0
-        fig.patches(
+        p = fig.patches(
             source=source,
             fill_color=colors[_i],
             fill_alpha=0.2,
@@ -511,7 +666,7 @@ def plot_peaks(peaks, time_scalar=1, fig=None, colors=("gray", "blue", "green"),
 
         tt = straxen.bokeh_utils.peak_tool_tip(i)
         tt = [v for k, v in tt.items() if k != "time_dynamic"]
-        fig.add_tools(bokeh.models.HoverTool(name=LEGENDS[_i], tooltips=tt))
+        fig.add_tools(bokeh.models.HoverTool(name=LEGENDS[_i], tooltips=tt, renderers=[p]))
         fig.add_tools(bokeh.models.WheelZoomTool(dimensions="width", name="wheel"))
         fig.toolbar.active_scroll = [t for t in fig.tools if t.name == "wheel"][0]
 
@@ -551,10 +706,10 @@ def plot_pmt_array(
         raise ValueError("Can plot PMT array only for a single peak at a time.")
 
     tool_tip = [
-        ("Plot", "$name"),
-        ("Channel", "@pmt"),
-        ("X-Position [cm]", "$x"),
-        ("Y-Position [cm]", "$y"),
+        ("plot", "$name"),
+        ("channel", "@pmt"),
+        ("x [cm]", "$x"),
+        ("y [cm]", "$y"),
         ("area [pe]", "@area"),
     ]
 
@@ -612,9 +767,11 @@ def plot_pmt_array(
         fill_alpha=1,
         line_color="black",
         legend_label=label,
-        name=label + "_pmt_array",
+        name=label + " PMT array",
     )
-    fig.add_tools(bokeh.models.HoverTool(name=label + "_pmt_array", tooltips=tool_tip))
+    fig.add_tools(
+        bokeh.models.HoverTool(name=label + " PMT array", tooltips=tool_tip, renderers=[p])
+    )
     fig.legend.location = "top_left"
     fig.legend.click_policy = "hide"
     fig.legend.orientation = "horizontal"
@@ -677,41 +834,53 @@ def plot_posS2s(peaks, label="", fig=None, s2_type_style_id=0):
     if not peaks.shape:
         peaks = np.array([peaks])
 
-    if not np.all(peaks["type"] == 2):
-        raise ValueError("All peaks must be S2!")
-
     if not fig:
         fig = straxen.bokeh_utils.default_fig()
 
     source = straxen.bokeh_utils.get_peaks_source(peaks)
 
     if s2_type_style_id == 0:
+        color = "red"
         p = fig.cross(
-            source=source, name=label, legend_label=label, color="red", line_width=2, size=12
+            source=source, name=label, legend_label=label, color=color, line_width=2, size=12
         )
-
-    if s2_type_style_id == 1:
+    elif s2_type_style_id == 1:
+        color = "orange"
         p = fig.cross(
             source=source,
             name=label,
             legend_label=label,
-            color="orange",
+            color=color,
             angle=45 / 360 * 2 * np.pi,
             line_width=2,
             size=12,
         )
-
-    if s2_type_style_id == 2:
-        p = fig.diamond_cross(source=source, name=label, legend_label=label, color="red", size=8)
+    else:
+        color = "red"
+        p = fig.diamond_cross(source=source, name=label, legend_label=label, color=color, size=8)
 
     tt = straxen.bokeh_utils.peak_tool_tip(2)
     tt = [v for k, v in tt.items() if k not in ["time_dynamic", "amplitude"]]
     fig.add_tools(
         bokeh.models.HoverTool(
-            name=label, tooltips=[("Position x [cm]", "@x"), ("Position y [cm]", "@y")] + tt
+            name=label,
+            tooltips=[("x [cm]", "@x"), ("y [cm]", "@y")] + tt,
+            renderers=[p],
         )
     )
-    return fig, p
+
+    if "position_contour_cnf" in peaks.dtype.names:
+        # Plotting the contour of the S2
+        c = fig.multi_line(
+            peaks["position_contour_cnf"][:, :, 0].tolist(),
+            peaks["position_contour_cnf"][:, :, 1].tolist(),
+            name=label,
+            legend_label=label,
+            color=color,
+            line_width=1.0,
+        )
+        return fig, [p, c]
+    return fig, [p]
 
 
 def _make_event_title(event, run_id, width=1600):
@@ -734,8 +903,45 @@ def _make_event_title(event, run_id, width=1600):
     event_number = event["event_number"]
     text = (
         f"<h2>Event {event_number} from run {run_id}<br>"
-        f"Recorded at {date[:10]} {date[10:]} UTC,"
-        f" {start_ns} ns - {end_ns} ns </h2>"
+        f"Recorded at {date[:10]} {date[10:]} UTC, {start_ns} ns - {end_ns} ns<br>"
+        f"({start} - {end})</h2>"
+    )
+
+    title = bokeh.models.Div(
+        text=text,
+        styles={
+            "text-align": "left",
+        },
+        sizing_mode="scale_width",
+        width=width,
+        # orientation='vertical',
+        width_policy="fit",
+        margin=(0, 0, -30, 50),
+    )
+    return title
+
+
+def _make_peaks_title(peaks, run_id, width=1600):
+    """Function which makes the title of the plot for the specified peaks.
+
+    Note:
+        To center the title I use a transparent box.
+
+    :param peaks: Peaks which we are plotting
+    :param run_id: run_id
+
+    :return: Title as bokeh.models.Div instance
+
+    """
+    start = peaks["time"].min()
+    date = np.datetime_as_string(start.astype("<M8[ns]"), unit="s")
+    start_ns = start - (start // straxen.units.s) * straxen.units.s
+    end = strax.endtime(peaks).max()
+    end_ns = end - start + start_ns
+    text = (
+        f"<h2>Peaks from run {run_id}<br>"
+        f"Recorded at {date[:10]} {date[10:]} UTC, {start_ns} ns - {end_ns} ns<br>"
+        f"({start} - {end})</h2>"
     )
 
     title = bokeh.models.Div(
