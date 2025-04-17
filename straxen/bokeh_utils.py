@@ -57,6 +57,7 @@ def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_
 
     source = bklt.ColumnDataSource(
         data={
+            "type": peaks["type"],
             "xs": x_p,  # Coordinates for peak patches
             "ys": y_p,
             "x": peaks["x"],  # XY-Pos in PMZ Hitpattern
@@ -65,13 +66,13 @@ def get_peaks_source(peaks, relative_start=0, time_scaler=1, keep_amplitude_per_
             "time": peaks["time"],
             "center_time": peaks["center_time"],
             "endtime": strax.endtime(peaks),
+            "area": peaks["area"],
+            "nhits": peaks["n_hits"],
+            "aft": peaks["area_fraction_top"],
             "width_50": peaks["range_50p_area"] * scaler,
             "width_90": peaks["range_90p_area"] * scaler,
             "rise": peaks["rise_time"] * scaler,
             "rel_center_time": (peaks["center_time"] - peaks["time"]) * scaler,
-            "area": peaks["area"],
-            "aft": peaks["area_fraction_top"],
-            "nhits": peaks["n_hits"],
         }
     )
     return source
@@ -118,26 +119,31 @@ def peak_tool_tip(peak_type):
 
     """
 
-    # Add static time parameters:
-    tool_tip = {
-        "time_static": ("time [ns]", "@time"),
-        "center_time": ("center_time [ns]", "@center_time"),
-        "endtime": ("endtime [ns]", "@endtime"),
-    }
+    tool_tip = dict()
+    tool_tip["type"] = ("type", "@type")
+
+    # Add non-time parameters (results in an ordered tooltip)
+    tool_tip["amplitude"] = ("amplitude [pe/ns]", "$y")
+    tool_tip["area"] = ("area [pe]", "@area")
+    tool_tip["x"] = ("x [cm]", "@x")
+    tool_tip["y"] = ("y [cm]", "@y")
 
     # Now ns/µs parameters for S1 and S2
-    tool_tip["dt"] = ("dt [ns/sample]", "@dt")
     tool_tip["time_dynamic"] = ("time [ns]", "$x")
-    tool_tip["rel_center_time"] = ("center time [ns]", "@rel_center_time")
+    tool_tip["dt"] = ("dt [ns/sample]", "@dt")
     tool_tip["range_50p_width"] = ("50% width [ns]", "@width_50")
     tool_tip["range_90p_width"] = ("90% width [ns]", "@width_90")
     tool_tip["rise_time"] = ("rise time [ns]", "@rise")
+    tool_tip["rel_center_time"] = ("center time [ns]", "@rel_center_time")
 
-    # Add non-time parameters (results in an ordered tooltip)
-    tool_tip["amplitude"] = ("Amplitude [pe/ns]", "$y")
-    tool_tip["area"] = ("area [pe]", "@area")
-    tool_tip["aft"] = ("AFT", "@aft")
+    # Misc parameters
     tool_tip["nhits"] = ("nhits", "@nhits")
+    tool_tip["aft"] = ("AFT", "@aft")
+
+    # Add static time parameters:
+    tool_tip["time_static"] = ("time [ns]", "@time")
+    tool_tip["center_time"] = ("center_time [ns]", "@center_time")
+    tool_tip["endtime"] = ("endtime [ns]", "@endtime")
 
     if peak_type == 2:
         for k, i in tool_tip.items():
