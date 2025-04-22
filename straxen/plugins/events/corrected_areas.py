@@ -90,11 +90,13 @@ class CorrectedAreas(strax.Plugin):
 
     # bias reconstruction maps
     s1_bias_map = straxen.URLConfig(
-        default="itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S1.json",
+        default=
+        "itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S1.json",
         help="Interpolation map for S1 peak bias correction",
     )
     s2_bias_map = straxen.URLConfig(
-        default="itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S2.json",
+        default=
+        "itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S2.json",
         help="Interpolation map for S2 peak bias correction",
     )
 
