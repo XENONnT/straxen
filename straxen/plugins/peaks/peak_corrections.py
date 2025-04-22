@@ -38,8 +38,9 @@ class PeakCorrectedAreas(CorrectedAreas):
     s2_bias_map = straxen.URLConfig(
         default= "constant_dummy_map://0",
         #"itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S2.json",
-        help="Interpolation map for S2 peak bias correction",
+        help="Interpolation map for S1 peak bias correction",
     )
+
 
     def infer_dtype(self):
         dtype = strax.time_fields + [
