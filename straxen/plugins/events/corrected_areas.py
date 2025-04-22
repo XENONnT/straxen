@@ -91,13 +91,12 @@ class CorrectedAreas(strax.Plugin):
     # bias reconstruction maps
     s1_bias_map = straxen.URLConfig(
         default="itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S1.json",
-        help="Interpolation map for S1 peak bias correction"
-     )
+        help="Interpolation map for S1 peak bias correction",
+    )
     s2_bias_map = straxen.URLConfig(
         default="itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S2.json",
-        help="Interpolation map for S2 peak bias correction"
-     )
-
+        help="Interpolation map for S2 peak bias correction",
+    )
 
     def infer_dtype(self):
         dtype = []
@@ -189,7 +188,7 @@ class CorrectedAreas(strax.Plugin):
             ee = {key: self.rel_extraction_eff for key in self.regions}
 
         return seg, avg_seg, ee
-    
+
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result["time"] = events["time"]
@@ -199,11 +198,9 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type in ["", "alt_"]:
             # Added peak_bias_correction_map usage for cs1 correction
-            result[f"{peak_type}cs1_wo_xycorr"] = events[
-                f"{peak_type}s1_area"
-            ] / (1 + self.s1_bias_map(
-                events[f"{peak_type}s1_area"].reshape(-1, 1)
-            ))
+            result[f"{peak_type}cs1_wo_xycorr"] = events[f"{peak_type}s1_area"] / (
+                1 + self.s1_bias_map(events[f"{peak_type}s1_area"].reshape(-1, 1))
+            )
             result[f"{peak_type}cs1_wo_timecorr"] = result[
                 f"{peak_type}cs1_wo_xycorr"
             ] / self.s1_xyz_map(event_positions)
@@ -214,11 +211,9 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type in ["", "alt_"]:
             # Added S2 bias correction
-            result[f"{peak_type}cs2_wo_xycorr"] = events[
-                f"{peak_type}s2_area"
-            ] / (1 + self.s2_bias_map(
-                events[f"{peak_type}s2_area"].reshape(-1, 1)
-            ))
+            result[f"{peak_type}cs2_wo_xycorr"] = events[f"{peak_type}s2_area"] / (
+                1 + self.s2_bias_map(events[f"{peak_type}s2_area"].reshape(-1, 1))
+            )
 
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
             s2_xy_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
