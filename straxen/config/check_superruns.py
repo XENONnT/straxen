@@ -2,7 +2,7 @@ import strax
 import straxen
 
 
-def get_components_wrapper(func):
+def check_superruns_wrapper(func):
     """Check whether all configs for superruns-allowed plugins are the same for subruns."""
 
     def wrapper(self, run_id, targets=tuple(), **kwargs):
@@ -41,7 +41,7 @@ def get_components_wrapper(func):
 
 
 # Manually decorate context class
-_strax_context_decorated = True
+_strax_context_check_superruns_decorated = True
 if "check_superrun_configs" not in strax.Context.takes_config:
     strax.Context = strax.takes_config(
         strax.Option(
@@ -51,7 +51,7 @@ if "check_superrun_configs" not in strax.Context.takes_config:
             help="If True, check whether all subruns' config are the same.",
         ),
     )(strax.Context)
-    _strax_context_decorated = False
+    _strax_context_check_superruns_decorated = False
 if "plugin_attr_convert" not in strax.Context.takes_config:
     strax.Context = strax.takes_config(
         strax.Option(
@@ -61,10 +61,10 @@ if "plugin_attr_convert" not in strax.Context.takes_config:
             help="The attributes that should be get from the plugin.",
         ),
     )(strax.Context)
-    _strax_context_decorated = False
-if not _strax_context_decorated:
+    _strax_context_check_superruns_decorated = False
+if not _strax_context_check_superruns_decorated:
     # Overwrite get_components method
-    strax.Context.get_components = get_components_wrapper(strax.Context.get_components)
+    strax.Context.get_components = check_superruns_wrapper(strax.Context.get_components)
 
 
 @strax.Context.add_method
@@ -87,8 +87,6 @@ def hashed_url_configs(self, configs):
     # get all configs for superruns-allowed plugins if they are str
     hash = dict()
     for key, value in configs.items():
-        if key == "superrun_test_config_a":
-            print("HERE")
         url, plugin = value
         url = straxen.URLConfig.format_url_kwargs(url)
         arg, extra_kwargs = straxen.URLConfig.split_url_kwargs(url)

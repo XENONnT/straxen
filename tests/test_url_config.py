@@ -103,7 +103,7 @@ class AlgorithmPlugin(strax.Plugin):
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO,
     )
-    superrun_test_config_a = straxen.URLConfig(
+    superruns_test_config_a = straxen.URLConfig(
         default=(
             'take://json://{"'
             + nt_test_run_id
@@ -112,8 +112,11 @@ class AlgorithmPlugin(strax.Plugin):
             + '":1}?take=plugin.run_id'
         ),
     )
-    superrun_test_config_b = straxen.URLConfig(
+    superruns_test_config_b = straxen.URLConfig(
         default='take://json://{"cnf":0,"mlp":1}?take=plugin.default_reconstruction_algorithm',
+    )
+    global_version_test_config = straxen.URLConfig(
+        default="format://{version}?version=v0",
     )
 
 
@@ -473,8 +476,8 @@ class TestURLConfig(unittest.TestCase):
             straxen.config.check_urls("cmt")
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-    def test_superrun_safeguard(self):
-        """Test that the superrun safeguard works as expected."""
+    def test_superruns_safeguard(self):
+        """Test that the superruns safeguard works as expected."""
 
         # test all configs can be checked
         st = self.st.new_context()
@@ -499,11 +502,23 @@ class TestURLConfig(unittest.TestCase):
             json.dump(run_doc, fp, default=json_util.default)
         st.define_run("_" + nt_test_run_id, [nt_test_run_id])
         st.get_components("_" + nt_test_run_id, ("test_data",))
-        default = AlgorithmPlugin.takes_config["superrun_test_config_a"].default
-        st.set_config({"superrun_test_config_a": default.replace("run_id", "_run_id")})
+        default = AlgorithmPlugin.takes_config["superruns_test_config_a"].default
+        st.set_config({"superruns_test_config_a": default.replace("run_id", "_run_id")})
         with self.assertRaises(NotImplementedError):
             # the raise NotImplementedError is expected from compute method
             st.get_components("_" + nt_test_run_id, ("test_data",), combining=True)
         with self.assertRaises(ValueError):
             # the raise ValueError is expected from get_components in the wrapper
             st.get_components("_" + nt_test_run_id, ("test_data",))
+
+    @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
+    def test_global_version_safeguard(self):
+        """Test that the global_version safeguard works as expected."""
+
+        # test all configs can be checked
+        st = self.st.new_context()
+        st.set_context_config({"global_version": "global_OFFLINE"})
+        st.register((AlgorithmPlugin,))
+        st.set_config({"global_version_test_config": "format://{version}?version=ONLINE"})
+        with self.assertRaises(ValueError):
+            st.get_components(nt_test_run_id, ("test_data",))
