@@ -9,7 +9,7 @@ def check_global_version_wrapper(func):
         if (
             not self.context_config["check_global_version_configs"]
             or "xedocs_version" not in self.context_config
-            or self.context_config["xedocs_version"] is not None
+            or self.context_config["xedocs_version"] is None
             or self.context_config["xedocs_version"] == "global_ONLINE"
         ):
             return func(self, run_id=run_id, targets=targets, **kwargs)
