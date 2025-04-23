@@ -125,6 +125,11 @@ class CorrectedAreas(strax.Plugin):
                     np.float32,
                     f"Corrected area of {peak_name} S1 (before LY correction) [PE]",
                 ),
+                (
+                    f"{peak_type}cs1_wo_xycorr",
+                    np.float32,
+                    f"Bias Corrected area of {peak_name} S1 [PE]",
+                ),
             ]
             # Updated names and descriptions
             names = ["_wo_xycorr", "_wo_timecorr", "_wo_picorr", "_wo_elifecorr", ""]
@@ -141,22 +146,13 @@ class CorrectedAreas(strax.Plugin):
                     description = " (before " + " + ".join(descriptions[i + 1 :])
                     description += ", after " + " + ".join(descriptions[: i + 1]) + ")"
                 dtype += [
-                    (
-                        f"{peak_type}cs1{name}",
-                        np.float32,
-                        f"Corrected area of {peak_name} S1{description} [PE]",
-                    ),
+
                     (
                         f"{peak_type}cs2{name}",
                         np.float32,
                         f"Corrected area of {peak_name} S2{description} [PE]",
                     ),
-                    # (
-                    #     f"{peak_type}cs1_area_fraction_top{name}",
-                    #     np.float32,
-                    #     (f"Fraction of area seen by the top PMT array for corrected"
-                    #          f"{peak_name} S1{description}"),
-                    # ),
+
                     (
                         f"{peak_type}cs2_area_fraction_top{name}",
                         np.float32,
