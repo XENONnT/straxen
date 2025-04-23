@@ -29,32 +29,32 @@ class PeakCorrectedAreas(CorrectedAreas):
         cache=True,
     )
 
-    # bias reconstruction maps
-    s1_bias_map = straxen.URLConfig(
-        default="itp_map://resource://XENONnT_peak_rec_bias_S1_SR1_v0.json?fmt=json&attr=map",
-        help="Interpolation map for S1 peak bias correction",
-    )
-    s2_bias_map = straxen.URLConfig(
-        default="itp_map://resource://XENONnT_peak_rec_bias_S2_SR1_v0.json?fmt=json&attr=map",
-        help="Interpolation map for S2 peak bias correction",
-    )
+    # # bias reconstruction maps
+    # s1_bias_map = straxen.URLConfig(
+    #     default="itp_map://resource://XENONnT_peak_rec_bias_S1_SR1_v0.json?fmt=json&attr=map",
+    #     help="Interpolation map for S1 peak bias correction",
+    # )
+    # s2_bias_map = straxen.URLConfig(
+    #     default="itp_map://resource://XENONnT_peak_rec_bias_S2_SR1_v0.json?fmt=json&attr=map",
+    #     help="Interpolation map for S2 peak bias correction",
+    # )
 
     def infer_dtype(self):
         dtype = strax.time_fields + [
-            (
-                (
-                    ("Bias-corrected S1 area before xyz correction [PE]"),
-                    "cs1_wo_xycorr",
-                ),
-                np.float32,
-            ),
-            (
-                (
-                    ("Bias-corrected S2 area before xy correction [PE]"),
-                    "cs2_wo_xycorr",
-                ),
-                np.float32,
-            ),
+            # (
+            #     (
+            #         ("Bias-corrected S1 area before xyz correction [PE]"),
+            #         "cs1_wo_xycorr",
+            #     ),
+            #     np.float32,
+            # ),
+            # (
+            #     (
+            #         ("Bias-corrected S2 area before xy correction [PE]"),
+            #         "cs2_wo_xycorr",
+            #     ),
+            #     np.float32,
+            # ),
             (
                 (
                     (
@@ -112,19 +112,19 @@ class PeakCorrectedAreas(CorrectedAreas):
         z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
         result["z_obs_ms"] = z_obs
 
-        # S1 correction factors
-        s1_mask = peaks["type"] == 1
-        if np.any(s1_mask):
-            s1_bias = self.s1_bias_map(peaks["area"][s1_mask].reshape(-1, 1))
-            cs1_wo_xycorr = peaks["area"][s1_mask] / (1 + s1_bias.flatten())
-            result["cs1_wo_xycorr"][s1_mask] = cs1_wo_xycorr
+        # # S1 correction factors
+        # s1_mask = peaks["type"] == 1
+        # if np.any(s1_mask):
+        #     s1_bias = self.s1_bias_map(peaks["area"][s1_mask].reshape(-1, 1))
+        #     cs1_wo_xycorr = peaks["area"][s1_mask] / (1 + s1_bias.flatten())
+        #     result["cs1_wo_xycorr"][s1_mask] = cs1_wo_xycorr
 
-        # S2 correction factors
-        s2_mask = peaks["type"] == 2
-        if np.any(s2_mask):
-            s2_bias = self.s2_bias_map(peaks["area"][s2_mask].reshape(-1, 1))
-            cs2_wo_xycorr = peaks["area"][s2_mask] / (1 + s2_bias.flatten())
-            result["cs2_wo_xycorr"][s2_mask] = cs2_wo_xycorr
+        # # S2 correction factors
+        # s2_mask = peaks["type"] == 2
+        # if np.any(s2_mask):
+        #     s2_bias = self.s2_bias_map(peaks["area"][s2_mask].reshape(-1, 1))
+        #     cs2_wo_xycorr = peaks["area"][s2_mask] / (1 + s2_bias.flatten())
+        #     result["cs2_wo_xycorr"][s2_mask] = cs2_wo_xycorr
 
         peak_positions = np.vstack([peaks["x"], peaks["y"], z_obs]).T
         result["s1_xyz_correction_factor"] = 1 / self.s1_xyz_map(peak_positions)
