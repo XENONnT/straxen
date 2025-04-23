@@ -142,10 +142,21 @@ class CorrectedAreas(strax.Plugin):
                     description += ", after " + " + ".join(descriptions[: i + 1]) + ")"
                 dtype += [
                     (
+                        f"{peak_type}cs1{name}",
+                        np.float32,
+                        f"Corrected area of {peak_name} S1{description} [PE]",
+                    ),
+                    (
                         f"{peak_type}cs2{name}",
                         np.float32,
                         f"Corrected area of {peak_name} S2{description} [PE]",
                     ),
+                    # (
+                    #     f"{peak_type}cs1_area_fraction_top{name}",
+                    #     np.float32,
+                    #     (f"Fraction of area seen by the top PMT array for corrected"
+                    #          f"{peak_name} S1{description}"),
+                    # ),
                     (
                         f"{peak_type}cs2_area_fraction_top{name}",
                         np.float32,
