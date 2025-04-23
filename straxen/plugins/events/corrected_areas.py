@@ -105,14 +105,12 @@ class CorrectedAreas(strax.Plugin):
 
     # bias reconstruction maps
     s1_bias_map = straxen.URLConfig(
-        default="constant_dummy_map://0",
-        # "itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S1.json",
+        default="itp_map://resource://XENONnT_peak_rec_bias_S1_SR1_v0.json?fmt=json",
         help="Interpolation map for S1 peak bias correction",
     )
     s2_bias_map = straxen.URLConfig(
-        default="constant_dummy_map://0",
-        # "itp_map://resource:///project/lgrandi/prajapati/test_itp_map/peak_bias_map_S2.json",
-        help="Interpolation map for S1 peak bias correction",
+        default="itp_map://resource://XENONnT_peak_rec_bias_S2_SR1_v0.json?fmt=json",
+        help="Interpolation map for S2 peak bias correction",
     )
 
     def infer_dtype(self):
