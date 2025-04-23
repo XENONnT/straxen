@@ -31,7 +31,6 @@ class PeakCorrectedAreas(CorrectedAreas):
 
     def infer_dtype(self):
         dtype = strax.time_fields + [
-
             (
                 (
                     (
