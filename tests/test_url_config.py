@@ -517,7 +517,7 @@ class TestURLConfig(unittest.TestCase):
 
         # test all configs can be checked
         st = self.st.new_context()
-        st.set_context_config({"global_version": "global_OFFLINE"})
+        st.set_context_config({"xedocs_version": "global_OFFLINE"})
         st.register((AlgorithmPlugin,))
         st.set_config({"global_version_test_config": "format://{version}?version=ONLINE"})
         with self.assertRaises(ValueError):
