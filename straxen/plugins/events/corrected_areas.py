@@ -103,14 +103,20 @@ class CorrectedAreas(strax.Plugin):
         default=1, help="Scaling factor for cS2 AFT correction due to photon ionization"
     )
 
-    # bias reconstruction maps
+    # S1 Peak Reconstruction Bias Map
     s1_bias_map = straxen.URLConfig(
-        default="itp_map://resource://XENONnT_peak_rec_bias_S1_SR1_v0.json?fmt=json",
-        help="Interpolation map for S1 peak bias correction",
+        default="itp_map://resource://xedocs://peak_reconstruction_bias"
+        "?attr=value&run_id=plugin.run_id&signal=s1&fmt=json&version=ONLINE",
+        help="Interpolation map for S1 peak bias correction. "
+        "Bias is defined as (reconstructed/raw) - 1",
     )
+    
+    # S2 Peak Reconstruction Bias Map
     s2_bias_map = straxen.URLConfig(
-        default="itp_map://resource://XENONnT_peak_rec_bias_S2_SR1_v0.json?fmt=json",
-        help="Interpolation map for S2 peak bias correction",
+        default="itp_map://resource://xedocs://peak_reconstruction_bias"
+        "?attr=value&run_id=plugin.run_id&signal=s2&fmt=json&version=ONLINE",
+        help="Interpolation map for S2 peak bias correction. "  
+        "Bias is defined as (reconstructed/raw) - 1",
     )
 
     def infer_dtype(self):
