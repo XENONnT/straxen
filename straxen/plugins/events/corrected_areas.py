@@ -110,12 +110,12 @@ class CorrectedAreas(strax.Plugin):
         help="Interpolation map for S1 peak bias correction. "
         "Bias is defined as (reconstructed/raw) - 1",
     )
-    
+
     # S2 Peak Reconstruction Bias Map
     s2_bias_map = straxen.URLConfig(
         default="itp_map://resource://xedocs://peak_reconstruction_bias"
         "?attr=value&run_id=plugin.run_id&signal=s2&fmt=json&version=ONLINE",
-        help="Interpolation map for S2 peak bias correction. "  
+        help="Interpolation map for S2 peak bias correction. "
         "Bias is defined as (reconstructed/raw) - 1",
     )
 
