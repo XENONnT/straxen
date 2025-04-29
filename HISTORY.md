@@ -1,3 +1,22 @@
+3.1.5 / 2025-04-28
+-------------------
+* Convert `sr` from attribute of plugin by @dachengx in https://github.com/XENONnT/straxen/pull/1582
+* Fix a parentheses in error message by @dachengx in https://github.com/XENONnT/straxen/pull/1583
+* Added more colors+types to waveform_plot by @MerzJohannes in https://github.com/XENONnT/straxen/pull/1581
+* Add interactive peaks display by @dachengx in https://github.com/XENONnT/straxen/pull/1586
+* Warn `xedocs_version` usage in `xenonnt` by @dachengx in https://github.com/XENONnT/straxen/pull/1587
+* Render hover tool only for targeted plots by @dachengx in https://github.com/XENONnT/straxen/pull/1589
+* Plot CNF contour in event and peaks interactive display by @dachengx in https://github.com/XENONnT/straxen/pull/1590
+* Print time and endtime of event or peaks in the title of interactive display by @dachengx in https://github.com/XENONnT/straxen/pull/1591
+* Make sure `version=ONLINE` is not used when global version is not `global_ONLINE` by @dachengx in https://github.com/XENONnT/straxen/pull/1594
+* Add offline reprocessing storage path in `/dali` by @dachengx in https://github.com/XENONnT/straxen/pull/1595
+
+New Contributors
+* @MerzJohannes made their first contribution in https://github.com/XENONnT/straxen/pull/1581
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.4...v3.1.5
+
+
 3.1.4 / 2025-03-09
 -------------------
 * Set targeted chunk size of hitlets_nv as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1574
