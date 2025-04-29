@@ -11,7 +11,7 @@ class PeakletPositions(PeakPositionsBase):
     child_plugin = True
     provides = "peaklet_positions"
     depends_on = (
-        "peaklet_positions_cnf",
+        # "peaklet_positions_cnf",
         "peaklet_positions_mlp",
     )
 
