@@ -185,18 +185,6 @@ class CorrectedAreas(strax.Plugin):
                 ),
             ]
             # 3. All corrections except photon ionization correction
-            dtype += [
-                (
-                    f"{peak_type}cs2_wo_picorr",
-                    np.float32,
-                    f"Corrected area of {peak_name} S2 (without photon ionization correction) [PE]",
-                ),
-                (
-                    f"{peak_type}cs2_area_fraction_top_wo_picorr",
-                    np.float32,
-                    f"Fraction of area seen by the top PMT array for corrected {peak_name} S2 (without photon ionization correction)",
-                ),
-            ]
             # 4. All corrections except electron lifetime correction
             dtype += [
                 (
@@ -375,19 +363,5 @@ class CorrectedAreas(strax.Plugin):
             
             result[f"{peak_type}cs2_wo_segee"] = cs2_wo_segee
             result[f"{peak_type}cs2_area_fraction_top_wo_segee"] = cs2_top_wo_segee / cs2_wo_segee
-            
-            # 3. All corrections except photon ionization correction
-            # Use the already calculated values from the main correction pipeline
-            # Apply xy correction, SEG/EE, and electron lifetime, but not photon ionization
-            # Note: cs2_wo_picorr was already calculated earlier in the standard correction pipeline
-            # but that was before electron lifetime correction, so we need to apply it now
-            result[f"{peak_type}cs2_wo_picorr"] = cs2_wo_picorr * elife_correction
-            # We also need to update the area fraction top
-            result[f"{peak_type}cs2_area_fraction_top_wo_picorr"] = result[f"{peak_type}cs2_area_fraction_top_wo_picorr"]
-            
-            # 4. All corrections except electron lifetime correction
-            # Use the already calculated values from the main correction pipeline
-            result[f"{peak_type}cs2_wo_elife"] = result[f"{peak_type}cs2_wo_elifecorr"]
-            result[f"{peak_type}cs2_area_fraction_top_wo_elife"] = result[f"{peak_type}cs2_area_fraction_top_wo_elifecorr"]
             
         return result
