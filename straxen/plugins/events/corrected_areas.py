@@ -184,20 +184,6 @@ class CorrectedAreas(strax.Plugin):
                     f"Fraction of area seen by the top PMT array for corrected {peak_name} S2 (without SEG/EE correction)",
                 ),
             ]
-            # 3. All corrections except photon ionization correction
-            # 4. All corrections except electron lifetime correction
-            dtype += [
-                (
-                    f"{peak_type}cs2_wo_elife",
-                    np.float32,
-                    f"Corrected area of {peak_name} S2 (without electron lifetime correction) [PE]",
-                ),
-                (
-                    f"{peak_type}cs2_area_fraction_top_wo_elife",
-                    np.float32,
-                    f"Fraction of area seen by the top PMT array for corrected {peak_name} S2 (without electron lifetime correction)",
-                ),
-            ]
         return dtype
 
     def ab_region(self, x, y):
