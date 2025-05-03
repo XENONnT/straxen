@@ -25,10 +25,19 @@ class CorrectedAreas(strax.Plugin):
     N-1 corrections are also provided, where each variable has all corrections
     applied except for one specific correction. This allows studying the impact
     of individual corrections.
+    
+    The following corrections are applied:
+    - Peak reconstruction bias correction (corrects for bias in peak finding algorithm)
+    - S1 xyz position correction (light collection efficiency)
+    - S2 xy position correction (light collection efficiency)
+    - Time-dependent light yield correction
+    - Single electron gain (SEG) and extraction efficiency (EE) correction (partition,time)
+    - Photon ionization correction for S2 bottom
+    - Electron lifetime correction
 
     """
 
-    __version__ = "0.5.4"
+    __version__ = "0.5.5"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -149,8 +158,8 @@ class CorrectedAreas(strax.Plugin):
                     f"Corrected area of {peak_name} S1 (without peak bias correction) [PE]",
                 ),
             ]
-            names = ["_wo_timecorr", "_wo_picorr", "_wo_elifecorr", ""]
-            descriptions = ["S2 xy", "SEG/EE", "photon ionization", "elife"]
+            names = ["_wo_timecorr", "_wo_picorr", "_wo_elifecorr", "_wo_peakbiascorr", ""]
+            descriptions = ["S2 xy", "SEG/EE", "photon ionization", "peak bias", "elife"]
             for i, name in enumerate(names):
                 if i == len(names) - 1:
                     description = ""
@@ -312,6 +321,7 @@ class CorrectedAreas(strax.Plugin):
         # now can start doing corrections
         for peak_type in ["", "alt_"]:
             # Bias correction for S2
+            # The bias is defined as (reconstructed/raw) - 1, so we divide by (1 + bias) to get the corrected value
             s2_bias_correction = 1 + self.s2_bias_map(events[f"{peak_type}s2_area"].reshape(-1, 1))
             s2_bias_corrected = events[f"{peak_type}s2_area"] / s2_bias_correction
 
@@ -379,7 +389,9 @@ class CorrectedAreas(strax.Plugin):
             ]
 
             # Calculate N-1 corrections for S2
-
+            # For each N-1 correction, we apply all corrections except the specific one being studied.
+            # This allows analyzing the impact of each individual correction on the final result.
+            
             # 1. All corrections except S2 xy position correction
             # Start with raw S2 area
             s2_area = events[f"{peak_type}s2_area"]
@@ -388,10 +400,15 @@ class CorrectedAreas(strax.Plugin):
 
             # Apply all corrections except xy position correction
             cs2_top_wo_xycorr = (
-                s2_area_top / seg_ee_corr * self.cs2_bottom_top_ratio_correction * elife_correction
+                s2_bias_corrected
+                * events[f"{peak_type}s2_area_fraction_top"]
+                / seg_ee_corr 
+                * self.cs2_bottom_top_ratio_correction 
+                * elife_correction
             )
             cs2_bottom_wo_xycorr = (
-                s2_area_bottom
+                s2_bias_corrected
+                * (1 - events[f"{peak_type}s2_area_fraction_top"])
                 / seg_ee_corr
                 * self.cs2_bottom_top_ratio_correction
                 * elife_correction
@@ -406,10 +423,14 @@ class CorrectedAreas(strax.Plugin):
             # 2. All corrections except SEG/EE correction
             # Apply xy correction, photon ionization, and electron lifetime, but not SEG/EE
             cs2_top_wo_segee = (
-                cs2_top_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
+                cs2_top_xycorr 
+                * self.cs2_bottom_top_ratio_correction 
+                * elife_correction
             )
             cs2_bottom_wo_segee = (
-                cs2_bottom_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
+                cs2_bottom_xycorr 
+                * self.cs2_bottom_top_ratio_correction 
+                * elife_correction
             )
             cs2_wo_segee = cs2_top_wo_segee + cs2_bottom_wo_segee
 
