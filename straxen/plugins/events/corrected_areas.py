@@ -25,7 +25,7 @@ class CorrectedAreas(strax.Plugin):
     N-1 corrections are also provided, where each variable has all corrections
     applied except for one specific correction. This allows studying the impact
     of individual corrections.
-    
+
     The following corrections are applied:
     - Peak reconstruction bias correction (corrects for bias in peak finding algorithm)
     - S1 xyz position correction (light collection efficiency)
@@ -391,7 +391,7 @@ class CorrectedAreas(strax.Plugin):
             # Calculate N-1 corrections for S2
             # For each N-1 correction, we apply all corrections except the specific one being studied.
             # This allows analyzing the impact of each individual correction on the final result.
-            
+
             # 1. All corrections except S2 xy position correction
             # Start with raw S2 area
             s2_area = events[f"{peak_type}s2_area"]
@@ -402,8 +402,8 @@ class CorrectedAreas(strax.Plugin):
             cs2_top_wo_xycorr = (
                 s2_bias_corrected
                 * events[f"{peak_type}s2_area_fraction_top"]
-                / seg_ee_corr 
-                * self.cs2_bottom_top_ratio_correction 
+                / seg_ee_corr
+                * self.cs2_bottom_top_ratio_correction
                 * elife_correction
             )
             cs2_bottom_wo_xycorr = (
@@ -423,14 +423,10 @@ class CorrectedAreas(strax.Plugin):
             # 2. All corrections except SEG/EE correction
             # Apply xy correction, photon ionization, and electron lifetime, but not SEG/EE
             cs2_top_wo_segee = (
-                cs2_top_xycorr 
-                * self.cs2_bottom_top_ratio_correction 
-                * elife_correction
+                cs2_top_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
             )
             cs2_bottom_wo_segee = (
-                cs2_bottom_xycorr 
-                * self.cs2_bottom_top_ratio_correction 
-                * elife_correction
+                cs2_bottom_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
             )
             cs2_wo_segee = cs2_top_wo_segee + cs2_bottom_wo_segee
 
