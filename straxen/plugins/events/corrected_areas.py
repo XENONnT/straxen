@@ -291,19 +291,15 @@ class CorrectedAreas(strax.Plugin):
             # Bias correction for S1
             s1_bias_correction = 1 + self.s1_bias_map(events[f"{peak_type}s1_area"].reshape(-1, 1))
             s1_bias_corrected = events[f"{peak_type}s1_area"] / s1_bias_correction
-            
+
             # Standard S1 corrections
             s1_xyz_correction = self.s1_xyz_map(event_positions)
-            result[f"{peak_type}cs1_wo_timecorr"] = (
-                s1_bias_corrected / s1_xyz_correction
-            )
+            result[f"{peak_type}cs1_wo_timecorr"] = s1_bias_corrected / s1_xyz_correction
             result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
 
             # N-1 correction for S1: all corrections except position (xyz map)
-            result[f"{peak_type}cs1_wo_xyzcorr"] = (
-                s1_bias_corrected / self.rel_light_yield
-            )
-            
+            result[f"{peak_type}cs1_wo_xyzcorr"] = s1_bias_corrected / self.rel_light_yield
+
             # N-1 correction for S1: all corrections except bias correction
             result[f"{peak_type}cs1_wo_peakbiascorr"] = (
                 events[f"{peak_type}s1_area"] / s1_xyz_correction / self.rel_light_yield
@@ -318,7 +314,7 @@ class CorrectedAreas(strax.Plugin):
             # Bias correction for S2
             s2_bias_correction = 1 + self.s2_bias_map(events[f"{peak_type}s2_area"].reshape(-1, 1))
             s2_bias_corrected = events[f"{peak_type}s2_area"] / s2_bias_correction
-            
+
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
 
@@ -326,15 +322,11 @@ class CorrectedAreas(strax.Plugin):
             # this is for S2-only events which don't have drift time info
             s2_xy_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
             cs2_top_xycorr = (
-                s2_bias_corrected
-                * events[f"{peak_type}s2_area_fraction_top"]
-                / s2_xy_top
+                s2_bias_corrected * events[f"{peak_type}s2_area_fraction_top"] / s2_xy_top
             )
             s2_xy_bottom = self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
             cs2_bottom_xycorr = (
-                s2_bias_corrected
-                * (1 - events[f"{peak_type}s2_area_fraction_top"])
-                / s2_xy_bottom
+                s2_bias_corrected * (1 - events[f"{peak_type}s2_area_fraction_top"]) / s2_xy_bottom
             )
 
             # collect electron lifetime correction
@@ -426,13 +418,15 @@ class CorrectedAreas(strax.Plugin):
 
             # 3. All corrections except bias correction
             cs2_top_wo_peakbiascorr = (
-                cs2_top_xycorr / s2_bias_correction 
-                * self.cs2_bottom_top_ratio_correction 
+                cs2_top_xycorr
+                / s2_bias_correction
+                * self.cs2_bottom_top_ratio_correction
                 * elife_correction
             )
             cs2_bottom_wo_peakbiascorr = (
-                cs2_bottom_xycorr / s2_bias_correction 
-                * self.cs2_bottom_top_ratio_correction 
+                cs2_bottom_xycorr
+                / s2_bias_correction
+                * self.cs2_bottom_top_ratio_correction
                 * elife_correction
             )
             cs2_wo_peakbiascorr = cs2_top_wo_peakbiascorr + cs2_bottom_wo_peakbiascorr
