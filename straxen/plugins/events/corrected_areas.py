@@ -168,7 +168,10 @@ class CorrectedAreas(strax.Plugin):
                 (
                     f"{peak_type}cs2_area_fraction_top_wo_xycorr",
                     np.float32,
-                    f"Fraction of area seen by the top PMT array for corrected {peak_name} S2 (without xy position correction)",
+                    (
+                        f"Fraction of area seen by the top PMT array for corrected "
+                        f"{peak_name} S2 (without xy position correction)"
+                    ),
                 ),
             ]
             # 2. All corrections except SEG/EE correction
@@ -181,7 +184,10 @@ class CorrectedAreas(strax.Plugin):
                 (
                     f"{peak_type}cs2_area_fraction_top_wo_segee",
                     np.float32,
-                    f"Fraction of area seen by the top PMT array for corrected {peak_name} S2 (without SEG/EE correction)",
+                    (
+                        f"Fraction of area seen by the top PMT array for corrected "
+                        f"{peak_name} S2 (without SEG/EE correction)"
+                    ),
                 ),
             ]
         return dtype
