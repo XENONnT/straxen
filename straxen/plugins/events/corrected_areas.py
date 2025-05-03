@@ -21,7 +21,7 @@ class CorrectedAreas(strax.Plugin):
         There are now 3 components of cS2s: cs2_top, cS2_bottom and cs2.
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
-        
+
     N-1 corrections are also provided, where each variable has all corrections
     applied except for one specific correction. This allows studying the impact
     of individual corrections.
@@ -156,7 +156,7 @@ class CorrectedAreas(strax.Plugin):
                         ),
                     ),
                 ]
-            
+
             # Add N-1 corrections for S2
             # 1. All corrections except S2 xy position correction
             dtype += [
@@ -260,11 +260,15 @@ class CorrectedAreas(strax.Plugin):
         for peak_type in ["", "alt_"]:
             # Standard S1 corrections
             s1_xyz_correction = self.s1_xyz_map(event_positions)
-            result[f"{peak_type}cs1_wo_timecorr"] = events[f"{peak_type}s1_area"] / s1_xyz_correction
+            result[f"{peak_type}cs1_wo_timecorr"] = (
+                events[f"{peak_type}s1_area"] / s1_xyz_correction
+            )
             result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
-            
+
             # N-1 correction for S1: all corrections except position (xyz map)
-            result[f"{peak_type}cs1_wo_xyzcorr"] = events[f"{peak_type}s1_area"] / self.rel_light_yield
+            result[f"{peak_type}cs1_wo_xyzcorr"] = (
+                events[f"{peak_type}s1_area"] / self.rel_light_yield
+            )
 
         # S2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
@@ -338,30 +342,43 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs2_area_fraction_top"] = result[
                 f"{peak_type}cs2_area_fraction_top_wo_elifecorr"
             ]
-            
+
             # Calculate N-1 corrections for S2
-            
+
             # 1. All corrections except S2 xy position correction
             # Start with raw S2 area
             s2_area = events[f"{peak_type}s2_area"]
             s2_area_top = s2_area * events[f"{peak_type}s2_area_fraction_top"]
             s2_area_bottom = s2_area * (1 - events[f"{peak_type}s2_area_fraction_top"])
-            
+
             # Apply all corrections except xy position correction
-            cs2_top_wo_xycorr = s2_area_top / seg_ee_corr * self.cs2_bottom_top_ratio_correction * elife_correction
-            cs2_bottom_wo_xycorr = s2_area_bottom / seg_ee_corr * self.cs2_bottom_top_ratio_correction * elife_correction
+            cs2_top_wo_xycorr = (
+                s2_area_top / seg_ee_corr * self.cs2_bottom_top_ratio_correction * elife_correction
+            )
+            cs2_bottom_wo_xycorr = (
+                s2_area_bottom
+                / seg_ee_corr
+                * self.cs2_bottom_top_ratio_correction
+                * elife_correction
+            )
             cs2_wo_xycorr = cs2_top_wo_xycorr + cs2_bottom_wo_xycorr
-            
+
             result[f"{peak_type}cs2_wo_xycorr"] = cs2_wo_xycorr
-            result[f"{peak_type}cs2_area_fraction_top_wo_xycorr"] = cs2_top_wo_xycorr / cs2_wo_xycorr
-            
+            result[f"{peak_type}cs2_area_fraction_top_wo_xycorr"] = (
+                cs2_top_wo_xycorr / cs2_wo_xycorr
+            )
+
             # 2. All corrections except SEG/EE correction
             # Apply xy correction, photon ionization, and electron lifetime, but not SEG/EE
-            cs2_top_wo_segee = cs2_top_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
-            cs2_bottom_wo_segee = cs2_bottom_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
+            cs2_top_wo_segee = (
+                cs2_top_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
+            )
+            cs2_bottom_wo_segee = (
+                cs2_bottom_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
+            )
             cs2_wo_segee = cs2_top_wo_segee + cs2_bottom_wo_segee
-            
+
             result[f"{peak_type}cs2_wo_segee"] = cs2_wo_segee
             result[f"{peak_type}cs2_area_fraction_top_wo_segee"] = cs2_top_wo_segee / cs2_wo_segee
-            
+
         return result
