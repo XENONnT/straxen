@@ -107,6 +107,22 @@ class CorrectedAreas(strax.Plugin):
         default=1, help="Scaling factor for cS2 AFT correction due to photon ionization"
     )
 
+    # S1 Peak Reconstruction Bias Map
+    s1_bias_map = straxen.URLConfig(
+        default="itp_map://resource://xedocs://peak_reconstruction_bias"
+        "?attr=value&run_id=plugin.run_id&signal=s1&fmt=json&version=ONLINE",
+        help="Interpolation map for S1 peak bias correction. "
+        "Bias is defined as (reconstructed/raw) - 1",
+    )
+
+    # S2 Peak Reconstruction Bias Map
+    s2_bias_map = straxen.URLConfig(
+        default="itp_map://resource://xedocs://peak_reconstruction_bias"
+        "?attr=value&run_id=plugin.run_id&signal=s2&fmt=json&version=ONLINE",
+        help="Interpolation map for S2 peak bias correction. "
+        "Bias is defined as (reconstructed/raw) - 1",
+    )
+
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
@@ -125,6 +141,12 @@ class CorrectedAreas(strax.Plugin):
                     f"{peak_type}cs1_wo_xyzcorr",
                     np.float32,
                     f"Corrected area of {peak_name} S1 (without xyz position correction) [PE]",
+                ),
+                # N-1 correction for S1: all corrections except bias correction
+                (
+                    f"{peak_type}cs1_wo_peakbiascorr",
+                    np.float32,
+                    f"Corrected area of {peak_name} S1 (without peak bias correction) [PE]",
                 ),
             ]
             names = ["_wo_timecorr", "_wo_picorr", "_wo_elifecorr", ""]
@@ -190,6 +212,22 @@ class CorrectedAreas(strax.Plugin):
                     ),
                 ),
             ]
+            # 3. All corrections except bias correction
+            dtype += [
+                (
+                    f"{peak_type}cs2_wo_peakbiascorr",
+                    np.float32,
+                    f"Corrected area of {peak_name} S2 (without peak bias correction) [PE]",
+                ),
+                (
+                    f"{peak_type}cs2_area_fraction_top_wo_peakbiascorr",
+                    np.float32,
+                    (
+                        f"Fraction of area seen by the top PMT array for corrected "
+                        f"{peak_name} S2 (without peak bias correction)"
+                    ),
+                ),
+            ]
         return dtype
 
     def ab_region(self, x, y):
@@ -250,16 +288,25 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events["x"], events["y"], events["z"]]).T
 
         for peak_type in ["", "alt_"]:
+            # Bias correction for S1
+            s1_bias_correction = 1 + self.s1_bias_map(events[f"{peak_type}s1_area"].reshape(-1, 1))
+            s1_bias_corrected = events[f"{peak_type}s1_area"] / s1_bias_correction
+            
             # Standard S1 corrections
             s1_xyz_correction = self.s1_xyz_map(event_positions)
             result[f"{peak_type}cs1_wo_timecorr"] = (
-                events[f"{peak_type}s1_area"] / s1_xyz_correction
+                s1_bias_corrected / s1_xyz_correction
             )
             result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
 
             # N-1 correction for S1: all corrections except position (xyz map)
             result[f"{peak_type}cs1_wo_xyzcorr"] = (
-                events[f"{peak_type}s1_area"] / self.rel_light_yield
+                s1_bias_corrected / self.rel_light_yield
+            )
+            
+            # N-1 correction for S1: all corrections except bias correction
+            result[f"{peak_type}cs1_wo_peakbiascorr"] = (
+                events[f"{peak_type}s1_area"] / s1_xyz_correction / self.rel_light_yield
             )
 
         # S2 corrections
@@ -268,6 +315,10 @@ class CorrectedAreas(strax.Plugin):
 
         # now can start doing corrections
         for peak_type in ["", "alt_"]:
+            # Bias correction for S2
+            s2_bias_correction = 1 + self.s2_bias_map(events[f"{peak_type}s2_area"].reshape(-1, 1))
+            s2_bias_corrected = events[f"{peak_type}s2_area"] / s2_bias_correction
+            
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
 
@@ -275,13 +326,13 @@ class CorrectedAreas(strax.Plugin):
             # this is for S2-only events which don't have drift time info
             s2_xy_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
             cs2_top_xycorr = (
-                events[f"{peak_type}s2_area"]
+                s2_bias_corrected
                 * events[f"{peak_type}s2_area_fraction_top"]
                 / s2_xy_top
             )
             s2_xy_bottom = self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
             cs2_bottom_xycorr = (
-                events[f"{peak_type}s2_area"]
+                s2_bias_corrected
                 * (1 - events[f"{peak_type}s2_area_fraction_top"])
                 / s2_xy_bottom
             )
@@ -372,5 +423,23 @@ class CorrectedAreas(strax.Plugin):
 
             result[f"{peak_type}cs2_wo_segee"] = cs2_wo_segee
             result[f"{peak_type}cs2_area_fraction_top_wo_segee"] = cs2_top_wo_segee / cs2_wo_segee
+
+            # 3. All corrections except bias correction
+            cs2_top_wo_peakbiascorr = (
+                cs2_top_xycorr / s2_bias_correction 
+                * self.cs2_bottom_top_ratio_correction 
+                * elife_correction
+            )
+            cs2_bottom_wo_peakbiascorr = (
+                cs2_bottom_xycorr / s2_bias_correction 
+                * self.cs2_bottom_top_ratio_correction 
+                * elife_correction
+            )
+            cs2_wo_peakbiascorr = cs2_top_wo_peakbiascorr + cs2_bottom_wo_peakbiascorr
+
+            result[f"{peak_type}cs2_wo_peakbiascorr"] = cs2_wo_peakbiascorr
+            result[f"{peak_type}cs2_area_fraction_top_wo_peakbiascorr"] = (
+                cs2_top_wo_peakbiascorr / cs2_wo_peakbiascorr
+            )
 
         return result
