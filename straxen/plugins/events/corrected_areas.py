@@ -321,7 +321,7 @@ class CorrectedAreas(strax.Plugin):
         # now can start doing corrections
         for peak_type in ["", "alt_"]:
             # Bias correction for S2
-            # The bias is defined as (reconstructed/raw) - 1, 
+            # The bias is defined as (reconstructed/raw) - 1,
             # so we divide by (1 + bias) to get the corrected value
             s2_bias_area = events[f"{peak_type}s2_area"].reshape(-1, 1)
             s2_bias_correction = 1 + self.s2_bias_map(s2_bias_area)
