@@ -322,7 +322,8 @@ class CorrectedAreas(strax.Plugin):
         for peak_type in ["", "alt_"]:
             # Bias correction for S2
             # The bias is defined as (reconstructed/raw) - 1, so we divide by (1 + bias) to get the corrected value
-            s2_bias_correction = 1 + self.s2_bias_map(events[f"{peak_type}s2_area"].reshape(-1, 1))
+            s2_bias_area = events[f"{peak_type}s2_area"].reshape(-1, 1)
+            s2_bias_correction = 1 + self.s2_bias_map(s2_bias_area)
             s2_bias_corrected = events[f"{peak_type}s2_area"] / s2_bias_correction
 
             # S2(x,y) corrections use the observed S2 positions
@@ -389,9 +390,9 @@ class CorrectedAreas(strax.Plugin):
             ]
 
             # Calculate N-1 corrections for S2
-            # For each N-1 correction, we apply all corrections except the specific one being studied.
-            # This allows analyzing the impact of each individual correction on the final
-            # result.
+            # For each N-1 correction, we apply all corrections except the specific one
+            # being studied. This allows analyzing the impact of each individual correction
+            # on the final result.
 
             # 1. All corrections except S2 xy position correction
             # Start with bias-corrected S2 area directly
