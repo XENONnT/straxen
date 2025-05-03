@@ -221,22 +221,7 @@ class CorrectedAreas(strax.Plugin):
                     ),
                 ),
             ]
-            # 3. All corrections except bias correction
-            dtype += [
-                (
-                    f"{peak_type}cs2_wo_peakbiascorr",
-                    np.float32,
-                    f"Corrected area of {peak_name} S2 (without peak bias correction) [PE]",
-                ),
-                (
-                    f"{peak_type}cs2_area_fraction_top_wo_peakbiascorr",
-                    np.float32,
-                    (
-                        f"Fraction of area seen by the top PMT array for corrected "
-                        f"{peak_name} S2 (without peak bias correction)"
-                    ),
-                ),
-            ]
+            # Note: cs2_wo_peakbiascorr is already included in the names array above
         return dtype
 
     def ab_region(self, x, y):
