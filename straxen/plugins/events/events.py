@@ -12,10 +12,7 @@ class Events(strax.OverlapWindowPlugin):
     An event is defined by peak(s) in fixed range of time around a peak
     which satisfies certain conditions:
         1. The triggering peak must have a certain area.
-        2. The triggering peak must have less than
-           "trigger_max_competing" peaks. (A competing peak must have a
-           certain area fraction of the triggering peak and must be in a
-           window close to the main peak)
+        2. The triggering peak must have less than "trigger_max_proximity".
 
     Note:
         The time range which defines an event gets chopped at the chunk
@@ -46,17 +43,24 @@ class Events(strax.OverlapWindowPlugin):
     )
 
     trigger_min_area = straxen.URLConfig(
-        default=100,
+        default=120,
         type=(int, float),
         help="Peaks must have more area (PE) than this to cause events",
     )
 
-    trigger_max_competing = straxen.URLConfig(
-        default=7,
-        type=int,
-        help="Peaks must have FEWER nearby larger or slightly smaller peaks to cause events",
+    trigger_feature = straxen.URLConfig(
+        default="proximity_score",
+        type=str,
+        help="Feature as event building criterion",
     )
 
+    trigger_max_proximity = straxen.URLConfig(
+        default=1.5e-3,
+        type=(int, float),
+        help="Peaks must have less proximity score to cause events",
+    )
+
+    # TODO: extand the padding to cover all multiple scattering
     left_event_extension = straxen.URLConfig(
         default=int(0.25e6),
         type=(int, float),
@@ -79,12 +83,6 @@ class Events(strax.OverlapWindowPlugin):
         help="Total length of the TPC from the bottom of gate to the top of cathode wires [cm]",
     )
 
-    exclude_s1_as_triggering_peaks = straxen.URLConfig(
-        default=True,
-        type=bool,
-        help="If true exclude S1s as triggering peaks.",
-    )
-
     event_s1_min_coincidence = straxen.URLConfig(
         default=2,
         infer_type=False,
@@ -96,6 +94,12 @@ class Events(strax.OverlapWindowPlugin):
 
     s1_min_coincidence = straxen.URLConfig(
         default=2, type=int, help="Minimum tight coincidence necessary to make an S1"
+    )
+
+    event_exclude_s3 = straxen.URLConfig(
+        default=True,
+        type=bool,
+        help="Event will not be built if S3 is present in the window",
     )
 
     diagnose_overlapping = straxen.URLConfig(
@@ -120,15 +124,8 @@ class Events(strax.OverlapWindowPlugin):
 
     def _is_triggering(self, peaks):
         _is_triggering = peaks["area"] > self.trigger_min_area
-        _is_triggering &= peaks["n_competing"] <= self.trigger_max_competing
-        _is_triggering &= np.isin(peaks["type"], [1, 2])
-        # have to consider the peak with type 20
-        if self.exclude_s1_as_triggering_peaks:
-            _is_triggering &= peaks["type"] == 2
-        else:
-            is_not_s1 = peaks["type"] != 1
-            has_tc_large_enough = peaks["tight_coincidence"] >= self.event_s1_min_coincidence
-            _is_triggering &= is_not_s1 | has_tc_large_enough
+        _is_triggering &= peaks["type"] == 2
+        _is_triggering &= peaks[self.trigger_feature] <= self.trigger_max_proximity
         return _is_triggering
 
     def compute(self, peaks, start, end):
@@ -147,13 +144,24 @@ class Events(strax.OverlapWindowPlugin):
         # Don't extend beyond the chunk boundaries
         # This will often happen for events near the invalid boundary of the
         # overlap processing (which should be thrown away)
+        # The different chunking causes different results, but this is
+        # NOT tracked by lineage
         t0 = np.clip(t0, start, end)
         t1 = np.clip(t1, start, end)
 
         result = np.zeros(len(t0), self.dtype)
         result["time"] = t0
         result["endtime"] = t1
+
+        if self.event_exclude_s3:
+            # type 3 high energy gas scintillation xenon:xenonnt:lsanchez:som_sr1b_summary_note
+            split_peaks = strax.split_by_containment(peaks, result)
+            has_s3 = np.array([np.any(sp["type"] == 3) for sp in split_peaks]).astype(bool)
+            result = result[~has_s3]
+
+        # because this is an overlap window plugin, event_number is not continuous
         result["event_number"] = np.arange(len(result)) + self.events_seen
+        self.events_seen += len(result)
 
         if not result.size > 0:
             print("Found chunk without events?!")
@@ -162,7 +170,5 @@ class Events(strax.OverlapWindowPlugin):
             # Check if the event windows overlap
             _event_window_do_not_overlap = (strax.endtime(result)[:-1] - result["time"][1:]) <= 0
             assert np.all(_event_window_do_not_overlap), "Events not disjoint"
-
-        self.events_seen += len(result)
 
         return result

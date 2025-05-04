@@ -56,6 +56,20 @@ class EventNearestTriggering(strax.Plugin):
                     ),
                     (
                         (
+                            f"proximity_score {common_descr} {direction} of {main_peak_desc}",
+                            f"{main_peak}{direction}_proximity_score",
+                        ),
+                        np.float32,
+                    ),
+                    (
+                        (
+                            f"n_competing_left {common_descr} {direction} of {main_peak_desc}",
+                            f"{main_peak}{direction}_n_competing_left",
+                        ),
+                        np.int32,
+                    ),
+                    (
+                        (
                             f"n_competing {common_descr} {direction} of {main_peak_desc}",
                             f"{main_peak}{direction}_n_competing",
                         ),
@@ -91,6 +105,8 @@ class EventNearestTriggering(strax.Plugin):
                             "endtime",
                             "center_time",
                             "type",
+                            "proximity_score",
+                            "n_competing_left",
                             "n_competing",
                             "area",
                         ]:
