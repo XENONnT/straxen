@@ -22,12 +22,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
     Note: Types FAR_XYPOS_S2_TYPE (20) and WIDE_XYPOS_S2_TYPE (22) are still S2s,
     but they do not participate in the event building.
 
-    The algorithm merges S2 peaklets when they are close in (t, x, y). But if a group of peaklets is dense in time but sparse in (x, y),
-    the following steps are conducted:
+    The algorithm merges S2 peaklets when they are close in (t, x, y). But if a group of peaklets
+    is dense in time but sparse in (x, y), the following steps are conducted:
 
     1. Merge these peaklets that are dense in (x, y).
-    2. Assign the peaklets that are dense in time but not dense in (x, y) by type 20, they are usually PI or DE.
-    3. If the sum of nearby type 20 is large compared to the merged peak, assign the merged peak as type 22, because it is usually PI.
+    2. Assign the peaklets that are dense in time but not dense in (x, y) by type 20,
+        they are usually PI or DE.
+    3. If the sum of nearby type 20 is large compared to the merged peak,
+        assign the merged peak as type 22, because it is usually PI.
 
     Reference:
     xenon:xenonnt:analysis:s2_merging_time_position
