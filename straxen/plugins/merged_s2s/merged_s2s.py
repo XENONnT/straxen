@@ -14,11 +14,10 @@ export, __all__ = strax.exporter()
 
 @export
 class MergedS2s(strax.OverlapWindowPlugin):
-    """
-    Merge together peaklets if peak finding favours that they would form a single peak instead.
-    Technically, the S2 merging algorithm merges S2 peaklets into S2 peaks.
-    By introducing more information about the waveform and (x, y) distribution of potential groups of peaklets,
-    the algorithm removes PI and DE population from S2 peaks.
+    """Merge together peaklets if peak finding favours that they would form a single peak instead.
+    Technically, the S2 merging algorithm merges S2 peaklets into S2 peaks. By introducing more
+    information about the waveform and (x, y) distribution of potential groups of peaklets, the
+    algorithm removes PI and DE population from S2 peaks.
 
     Note: Types FAR_XYPOS_S2_TYPE (20) and WIDE_XYPOS_S2_TYPE (22) are still S2s,
     but they do not participate in the event building.
