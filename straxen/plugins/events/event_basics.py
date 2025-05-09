@@ -126,8 +126,8 @@ class EventBasics(strax.Plugin):
             ("range_90p_area", np.float32, "width, 90% area [ns]"),
             ("rise_time", np.float32, "time between 10% and 50% area quantiles [ns]"),
             ("area_fraction_top", np.float32, "fraction of area seen by the top PMT array"),
-            ("tight_coincidence", np.int16, "channel within tight range of mean"),
-            ("n_saturated_channels", np.int16, "total number of saturated channels"),
+            ("tight_coincidence", np.int16, "Channel within tight range of mean"),
+            ("n_saturated_channels", np.int16, "Total number of saturated channels"),
         )
 
     def setup(self):
