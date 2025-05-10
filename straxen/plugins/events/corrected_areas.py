@@ -218,13 +218,12 @@ class CorrectedAreas(strax.Plugin):
 
         return seg, avg_seg, ee
 
-
     def rel_light_yield_correction(self, events):
         """Compute relative light yield correction (z- and t-dependent)."""
 
         z = events["z"]
         time = events["time"]
-        
+
         relLY = self.rel_light_yield
         slope = self.slope_rel_ly[self.sr]
         a = slope * (relLY - 1)
@@ -241,7 +240,6 @@ class CorrectedAreas(strax.Plugin):
         relLY_corr[lowPI_selection] = relLY
 
         return relLY_corr
-    
 
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
@@ -260,7 +258,7 @@ class CorrectedAreas(strax.Plugin):
                 event_positions
             )
 
-            # Apply relative LY correction 
+            # Apply relative LY correction
             relLY_corr = self.rel_light_yield_correction(events)
             result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / relLY_corr
 
