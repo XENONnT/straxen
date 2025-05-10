@@ -76,11 +76,34 @@ class CorrectedAreas(strax.Plugin):
         help="Relative extraction efficiency for this run (allows for time dependence)",
     )
 
+    sr = straxen.URLConfig(
+        default="science_run://plugin.run_id?&phase=False",
+        help="Science run to be used for the corrections. It can affect the parameters of the corrections.",
+    )
+
     # relative light yield
     # defaults to no correction
     rel_light_yield = straxen.URLConfig(
         default="xedocs://relative_light_yield?attr=value&run_id=plugin.run_id&version=ONLINE",
         help="Relative light yield (allows for time dependence)",
+    )
+
+    # b parameter for z-dependent relative light yield correction
+    b_rel_ly = straxen.URLConfig(
+        default={"sr0": 0, "sr1": 0, "sr2": 97.718},
+        help="b parameter for z-dependent relative light yield correction",
+    )
+
+    # slope parameter for z-dependent relative light yield correction
+    slope_rel_ly = straxen.URLConfig(
+        default={"sr0": 0, "sr1": 0, "sr2": -6.323e-5},
+        help="Slope parameter for z-dependent relative light yield correction",
+    )
+
+    # date before which the z-dependent correction is applied
+    lowPI_date = straxen.URLConfig(
+        default=1733428781045000000,
+        help="Date beyond which PI strenght is minimal, and the z-dependent correction is no more applied",
     )
 
     # Single electron gain partition
@@ -195,6 +218,31 @@ class CorrectedAreas(strax.Plugin):
 
         return seg, avg_seg, ee
 
+
+    def rel_light_yield_correction(self, events):
+        """Compute relative light yield correction (z- and t-dependent)."""
+
+        z = events["z"]
+        time = events["time"]
+        
+        relLY = self.rel_light_yield
+        slope = self.slope_rel_ly[self.sr]
+        a = slope * (relLY - 1)
+        b = self.b_rel_ly[self.sr]
+
+        # Time selection for minimal PI region
+        lowPI_selection = time > self.lowPI_date
+
+        # Compute full z- and t-dependent correction
+        relLY_zt_corr = relLY * (a * (z**2 + b * z) + 1)
+
+        # Overwrite with t-only correction for low PI region
+        relLY_corr = relLY_zt_corr.copy()
+        relLY_corr[lowPI_selection] = relLY
+
+        return relLY_corr
+    
+
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result["time"] = events["time"]
@@ -206,10 +254,15 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events["x"], events["y"], events["z"]]).T
 
         for peak_type in ["", "alt_"]:
+
+            # Apply S1xyz correction
             result[f"{peak_type}cs1_wo_timecorr"] = events[f"{peak_type}s1_area"] / self.s1_xyz_map(
                 event_positions
             )
-            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
+
+            # Apply relative LY correction 
+            relLY_corr = self.rel_light_yield_correction(events)
+            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / relLY_corr
 
         # S2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
