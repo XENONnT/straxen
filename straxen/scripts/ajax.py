@@ -33,7 +33,6 @@ from straxen import daq_core
 from straxen.daq_core import ceph_folder, output_folder, pre_folder, non_registered_folder
 import strax
 
-
 ajax_thresholds = {
     # Remove the live data only if this many seconds old
     "remove_live_after": 24 * 3600,  # s

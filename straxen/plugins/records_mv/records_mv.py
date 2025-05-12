@@ -4,7 +4,6 @@ import straxen
 from straxen.plugins.defaults import MV_PREAMBLE, MV_HIT_DEFAULTS
 from straxen.plugins.records_nv.records_nv import nVETOPulseProcessing
 
-
 export, __all__ = strax.exporter()
 
 

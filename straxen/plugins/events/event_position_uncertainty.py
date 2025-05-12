@@ -4,7 +4,6 @@ import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 from straxen.plugins.peaklets.peaklet_positions_cnf import PeakletPositionsCNF
 
-
 export, __all__ = strax.exporter()
 
 
