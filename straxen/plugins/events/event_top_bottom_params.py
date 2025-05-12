@@ -10,7 +10,7 @@ class EventTopBottomParams(strax.Plugin):
     """Pluging that computes timing characteristics of top and bottom waveforms based on waveforms
     stored at event level for main/alt S1/S2."""
 
-    depends_on = ("event_info", "event_waveform")
+    depends_on = ("event_basics", "event_waveform")
     provides = "event_top_bottom_params"
     __version__ = "0.0.1"
 
@@ -22,7 +22,7 @@ class EventTopBottomParams(strax.Plugin):
             "alt_s1": "alternative S1",
             "alt_s2": "alternative S2",
         }
-        ev_info_fields = self.deps["event_info"].dtype.fields
+        ev_info_fields = self.deps["event_basics"].dtype.fields
         dtype = []
         # populating APC and waveform samples
         self.ptypes = ["s1", "s2", "alt_s1", "alt_s2"]
@@ -32,7 +32,7 @@ class EventTopBottomParams(strax.Plugin):
                 dtype += [
                     (
                         (
-                            f"Central time for {infoline[type_]} for {arr_} PMTs [ ns ]",
+                            f"Central time for {infoline[type_]} for {arr_} PMTs [ns]",
                             f"{type_}_center_time_{arr_}",
                         ),
                         ev_info_fields[f"{type_}_center_time"][0],
@@ -79,7 +79,7 @@ class EventTopBottomParams(strax.Plugin):
                     (
                         (
                             "Difference between center times of top and bottom arrays for"
-                            f" {infoline[type_]} [ ns ]"
+                            f" {infoline[type_]} [ns]"
                         ),
                         f"{type_}_center_time_diff_top_bot",
                     ),
