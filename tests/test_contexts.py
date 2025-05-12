@@ -5,7 +5,6 @@ import unittest
 import straxen
 from straxen.contexts import xenonnt, xenonnt_online, xenonnt_led
 
-
 ##
 # XENONnT
 ##
