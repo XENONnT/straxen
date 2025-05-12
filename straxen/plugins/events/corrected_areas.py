@@ -214,7 +214,7 @@ class CorrectedAreas(strax.Plugin):
         b = self.b_rel_light_yield
 
         # Compute full z- and t-dependent correction
-        rel_ly_zt_corr = self.rel_light_yield * (a * (events["z"]**2 + b * events["z"]) + 1)
+        rel_ly_zt_corr = self.rel_light_yield * (a * (events["z"] ** 2 + b * events["z"]) + 1)
 
         return rel_ly_zt_corr
 
