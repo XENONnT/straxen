@@ -2,6 +2,7 @@ import numpy as np
 import numba
 import strax
 import straxen
+from straxen.plugins.defaults import UNCERTAIN_XYPOS_S2_TYPE
 
 
 export, __all__ = strax.exporter()
@@ -12,7 +13,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
     """Look for peaks around a peak to determine how many peaks are in proximity (in time) of a
     peak."""
 
-    __version__ = "0.5.0"
+    __version__ = "0.5.1"
 
     depends_on = "peak_basics"
     dtype = [
@@ -57,7 +58,7 @@ class PeakProximity(strax.OverlapWindowPlugin):
 
     def compute(self, peaks):
         # only consider S1 and S2 peaks
-        mask = np.isin(peaks["type"], [1, 2])
+        mask = np.isin(peaks["type"], [1, 2, UNCERTAIN_XYPOS_S2_TYPE])
         windows = strax.touching_windows(peaks[mask], peaks, window=self.nearby_window)
         n_left, n_tot = self.find_n_competing(
             peaks[mask], peaks, windows, fraction=self.min_area_fraction
