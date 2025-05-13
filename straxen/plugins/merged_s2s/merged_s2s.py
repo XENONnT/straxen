@@ -489,6 +489,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged[is_s2] = _merged_s2
         merged[is_s0] = _merged_s0
 
+        # of course all merged S2s are merged
+        merged_s2s["merged"] = True
+
         return merged_s2s, merged
 
     @staticmethod
