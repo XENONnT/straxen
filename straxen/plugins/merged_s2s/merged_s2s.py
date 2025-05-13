@@ -442,6 +442,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 max_unmerged=self.unmerged_thresholds,
             )
         else:
+            _merged_s0 = np.zeros(len(peaklets), dtype=bool)
             merged_s2s = self.merge_peaklets(
                 peaklets,
                 start_merge_at,
