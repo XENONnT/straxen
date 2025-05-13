@@ -49,7 +49,7 @@ class EnhancedPeakletClassification(strax.Plugin):
 
         results = strax.merge_arrs([peaklets], dtype=self.dtype, replacing=True)
         mask = self.apply(peaklets, self.cnf_contour_area_coeff)
-        results[results["type"] == 2] = np.where(
+        results["type"][results["type"] == 2] = np.where(
             mask[results["type"] == 2], 2, UNCERTAIN_XYPOS_S2_TYPE
         )
 
