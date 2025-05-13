@@ -307,9 +307,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         # "merged" will be set as False automatically
         _peaklets = strax.merge_arrs(
             [peaklets, np.zeros(len(peaklets), dtype=self.indicator_dtype)],
-            dtype=strax.merged_dtype(
-                (self.deps["peaklets"].dtype_for("peaklets"), self.indicator_dtype)
-            ),
+            dtype=strax.merged_dtype((peaklets.dtype, self.indicator_dtype)),
         )
 
         if self.use_uncertainty_weights:
