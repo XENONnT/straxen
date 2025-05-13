@@ -54,6 +54,7 @@ class PeakBasicsVanilla(strax.Plugin):
                 np.int16,
             ),
             (("Classification of the peak(let)", "type"), np.int8),
+            (("Peak is merged from peaklet", "merged"), bool),
             (
                 ("Largest time difference between apexes of hits inside peak [ns]", "max_diff"),
                 np.int32,
@@ -80,7 +81,7 @@ class PeakBasicsVanilla(strax.Plugin):
         p = peaks
         r = np.zeros(len(p), self.dtype)
         needed_fields = "time center_time length dt median_time area area_fraction_top type "
-        needed_fields += "max_diff min_diff first_channel last_channel"
+        needed_fields += "merged max_diff min_diff first_channel last_channel"
         for q in needed_fields.split():
             r[q] = p[q]
         r["endtime"] = p["time"] + p["dt"] * p["length"]
