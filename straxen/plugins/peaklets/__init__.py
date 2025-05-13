@@ -12,3 +12,6 @@ from .peaklet_positions_cnf import *
 
 from . import peaklet_positions_mlp
 from .peaklet_positions_mlp import *
+
+from . import enhanced_peaklet_classification
+from .enhanced_peaklet_classification import *
