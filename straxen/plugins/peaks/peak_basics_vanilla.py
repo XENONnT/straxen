@@ -54,7 +54,7 @@ class PeakBasicsVanilla(strax.Plugin):
                 np.int16,
             ),
             (("Classification of the peak(let)", "type"), np.int8),
-            (("Peak is merged from peaklet", "merged"), bool),
+            (("Is merged from peaklet", "merged"), bool),
             (
                 ("Largest time difference between apexes of hits inside peak [ns]", "max_diff"),
                 np.int32,
