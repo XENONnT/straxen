@@ -2,7 +2,7 @@ from typing import Tuple
 import numpy as np
 import strax
 import straxen
-from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, UNCERTAIN_XYPOS_S2_TYPE
 
 
 class EnhancedPeakletClassification(strax.Plugin):
@@ -48,8 +48,7 @@ class EnhancedPeakletClassification(strax.Plugin):
             raise ValueError(f"{name} is not in the input peaklets dtype")
 
         results = strax.merge_arrs([peaklets], dtype=self.dtype, replacing=True)
-        results[results["type"] == 2] = self.apply(
-            peaklets[peaklets["type"] == 2], self.cnf_contour_area_coeff
-        )
+        mask = self.apply(peaklets, self.cnf_contour_area_coeff)
+        results[results["type"] == 2] = np.where(mask, 2, UNCERTAIN_XYPOS_S2_TYPE)
 
         return results
