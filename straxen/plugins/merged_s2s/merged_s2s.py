@@ -254,11 +254,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged_s2s_dtype = strax.merged_dtype(
             (peaklet_classification_dtype, peaklets_dtype, self.indicator_dtype)
         )
-        enhanced_peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
-            "peaklet_classification"
-        )
         enhanced_peaklet_classification_dtype = strax.merged_dtype(
-            (enhanced_peaklet_classification_dtype, self.indicator_dtype)
+            (peaklet_classification_dtype, self.indicator_dtype)
         )
         return dict(
             merged_s2s=merged_s2s_dtype,
