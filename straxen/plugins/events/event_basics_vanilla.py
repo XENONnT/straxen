@@ -150,7 +150,7 @@ class EventBasicsVanilla(strax.Plugin):
             ("area_fraction_top", np.float32, "fraction of area seen by the top PMT array"),
             ("tight_coincidence", np.int16, "channel within tight range of mean"),
             ("n_saturated_channels", np.int16, "total number of saturated channels"),
-            ("merged", bool, "is merged from peaklet"),
+            ("merged", bool, "is merged from peaklets"),
         )
 
     def setup(self):

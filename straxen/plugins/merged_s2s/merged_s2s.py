@@ -227,7 +227,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     indicator_dtype = np.dtype(
-        [(("Peaklet is merging input or peak is merged from peaklet", "merged"), bool)]
+        [(("Peaklet is merging input or peak is merged from peaklets", "merged"), bool)]
     )
     copied_dtype = np.dtype(
         [
