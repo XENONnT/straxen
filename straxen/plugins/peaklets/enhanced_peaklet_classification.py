@@ -12,9 +12,9 @@ class EnhancedPeakletClassification(strax.Plugin):
     depends_on: Tuple[str, ...] = (
         "peaklets",
         f"peaklet_positions_{DEFAULT_POSREC_ALGO}",
-        "merged_peaklet_classification",
+        "enhanced_peaklet_classification",
     )
-    provides = "enhanced_peaklet_classification"
+    provides = "_enhanced_peaklet_classification"
     data_kind = "peaklets"
 
     default_reconstruction_algorithm = straxen.URLConfig(
@@ -28,7 +28,7 @@ class EnhancedPeakletClassification(strax.Plugin):
     )
 
     def infer_dtype(self):
-        return self.deps["merged_peaklet_classification"].dtype_for("merged_peaklet_classification")
+        return self.deps["enhanced_peaklet_classification"].dtype_for("enhanced_peaklet_classification")
 
     @staticmethod
     def apply(peaklets, coefficients):

@@ -45,9 +45,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
         "peaklet_classification",
         "lone_hits",
     )
-    provides: Union[Tuple[str, ...], str] = ("merged_s2s", "merged_peaklet_classification")
+    provides: Union[Tuple[str, ...], str] = ("merged_s2s", "enhanced_peaklet_classification")
     data_kind: Union[Dict[str, str], str] = dict(
-        merged_s2s="merged_s2s", merged_peaklet_classification="peaklets"
+        merged_s2s="merged_s2s", enhanced_peaklet_classification="peaklets"
     )
 
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
@@ -254,7 +254,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         )
         return dict(
             merged_s2s=merged_s2s_dtype,
-            merged_peaklet_classification=merged_peaklet_classification_dtype,
+            enhanced_peaklet_classification=merged_peaklet_classification_dtype,
         )
 
     def setup(self):
@@ -301,17 +301,17 @@ class MergedS2s(strax.OverlapWindowPlugin):
             if name not in peaklets.dtype.names:
                 raise ValueError(f"{name} is not in the input peaklets dtype")
 
-        # initialize merged_peaklet_classification
-        merged_peaklet_classification = np.zeros(
-            len(peaklets), dtype=self.dtype_for("merged_peaklet_classification")
+        # initialize enhanced_peaklet_classification
+        enhanced_peaklet_classification = np.zeros(
+            len(peaklets), dtype=self.dtype_for("enhanced_peaklet_classification")
         )
         # copy fields, especially type
-        for d in merged_peaklet_classification.dtype.names:
-            merged_peaklet_classification[d] = peaklets[d]
+        for d in enhanced_peaklet_classification.dtype.names:
+            enhanced_peaklet_classification[d] = peaklets[d]
 
         if self.no_merging(peaklets):
             empty_result = self.empty_result()
-            empty_result["merged_peaklet_classification"] = merged_peaklet_classification
+            empty_result["enhanced_peaklet_classification"] = enhanced_peaklet_classification
             return empty_result
 
         # make sure the peaklets are not overwritten
@@ -325,10 +325,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         # mark the peaklets can be merged by time-density but not
         # by position-density as type FAR_XYPOS_S2_TYPE
-        merged_peaklet_classification["type"][is_s2 & ~merged] = FAR_XYPOS_S2_TYPE
+        enhanced_peaklet_classification["type"][is_s2 & ~merged] = FAR_XYPOS_S2_TYPE
 
         return dict(
-            merged_s2s=merged_s2s, merged_peaklet_classification=merged_peaklet_classification
+            merged_s2s=merged_s2s, enhanced_peaklet_classification=enhanced_peaklet_classification
         )
 
     def merge(self, _peaklets, lone_hits, start, end):

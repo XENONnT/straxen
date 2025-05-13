@@ -12,9 +12,9 @@ class PeakPositionsMLP(PeakPositionsBase):
     algorithm = "mlp"
     depends_on = (
         "peaklet_positions_mlp",
-        "enhanced_peaklet_classification",
+        "_enhanced_peaklet_classification",
         "merged_s2s",
-        "enhanced_merged_s2_classification",
+        "_enhanced_merged_s2_classification",
         "merged_s2_positions_mlp",
     )
     provides = "peak_positions_mlp"

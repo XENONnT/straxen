@@ -21,9 +21,9 @@ class PeaksVanilla(strax.Plugin):
 
     depends_on: Union[Tuple[str, ...], str] = (
         "peaklets",
-        "enhanced_peaklet_classification",
+        "_enhanced_peaklet_classification",
         "merged_s2s",
-        "enhanced_merged_s2_classification",
+        "_enhanced_merged_s2_classification",
     )
     data_kind = "peaks"
     provides = "peaks"
@@ -44,11 +44,11 @@ class PeaksVanilla(strax.Plugin):
     )
 
     def infer_dtype(self):
-        # In case enhanced_peaklet_classification has more fields than peaklets,
+        # In case _enhanced_peaklet_classification has more fields than peaklets,
         # we need to merge them
         peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
-        peaklet_classification_dtype = self.deps["enhanced_peaklet_classification"].dtype_for(
-            "enhanced_peaklet_classification"
+        peaklet_classification_dtype = self.deps["_enhanced_peaklet_classification"].dtype_for(
+            "_enhanced_peaklet_classification"
         )
         merged_dtype = strax.merged_dtype((peaklets_dtype, peaklet_classification_dtype))
         return merged_dtype
