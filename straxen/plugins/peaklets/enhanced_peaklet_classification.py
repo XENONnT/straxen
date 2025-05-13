@@ -27,7 +27,7 @@ class EnhancedPeakletClassification(strax.Plugin):
     @staticmethod
     def apply(peaklets):
         mask = (
-            peaklets["width"][:, 5] * 1e3
+            peaklets["width"][:, 5] / 1e3
             < 24.59 * np.exp(-1.35 * (np.log10(peaklets["area"]) - 1.99)) + 9.93
         )
         # only apply the selection on type 2, after the classification during S2 merging
