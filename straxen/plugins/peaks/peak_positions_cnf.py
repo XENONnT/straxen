@@ -14,6 +14,7 @@ class PeakPositionsCNF(PeakPositionsBase):
         "peaklet_positions_cnf",
         "enhanced_peaklet_classification",
         "merged_s2s",
+        "enhanced_merged_s2_classification",
         "merged_s2_positions_cnf",
     )
     provides = "peak_positions_cnf"

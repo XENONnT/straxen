@@ -23,6 +23,7 @@ class PeaksVanilla(strax.Plugin):
         "peaklets",
         "enhanced_peaklet_classification",
         "merged_s2s",
+        "enhanced_merged_s2_classification",
     )
     data_kind = "peaks"
     provides = "peaks"
