@@ -44,7 +44,7 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
       Type 1: S1 interactions produced by excited xenon molecules in the liquid xenon
       Type 2: S2 interactions produced when freed electrons in the LXe breach the liquid
               gas interface.
-      Type 3: Gas events. S1 interactions that occur on the GXe instead of the liquid. 
+      Type 3: Gas events. S1 interactions that occur on the GXe instead of the liquid.
               Have S1 waveform shape, with higher AFT.
     """
 
