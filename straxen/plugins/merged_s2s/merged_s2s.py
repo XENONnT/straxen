@@ -37,7 +37,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
     """
 
-    __version__ = "2.0.0"
+    __version__ = "2.0.1"
 
     depends_on: Tuple[str, ...] = (
         "peaklets",
@@ -226,6 +226,9 @@ class MergedS2s(strax.OverlapWindowPlugin):
         default=True, type=bool, track=False, help="Whether to disable the progress bar"
     )
 
+    indicator_dtype = np.dtype(
+        [(("Peaklet is merging input or peak is merged from peaklets", "merged"), bool)]
+    )
     copied_dtype = np.dtype(
         [
             ("time", np.int64),
@@ -248,9 +251,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
         # It must be first classification then peaklet
         # Otherwise strax will raise an error
         # when checking for the returned dtype!
-        merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype))
-        enhanced_peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
-            "peaklet_classification"
+        merged_s2s_dtype = strax.merged_dtype(
+            (peaklet_classification_dtype, peaklets_dtype, self.indicator_dtype)
+        )
+        enhanced_peaklet_classification_dtype = strax.merged_dtype(
+            (peaklet_classification_dtype, self.indicator_dtype)
         )
         return dict(
             merged_s2s=merged_s2s_dtype,
@@ -296,36 +301,44 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return np.sum(is_s2) <= 1 or self.max_gap < 0
 
     def compute(self, peaklets, lone_hits, start, end):
+        # "merged" will be set as False automatically
+        _peaklets = strax.merge_arrs(
+            [peaklets, np.zeros(len(peaklets), dtype=self.indicator_dtype)],
+            dtype=strax.merged_dtype((peaklets.dtype, self.indicator_dtype)),
+        )
+
         if self.use_uncertainty_weights:
             name = f"position_contour_{self.default_reconstruction_algorithm}"
-            if name not in peaklets.dtype.names:
+            if name not in _peaklets.dtype.names:
                 raise ValueError(f"{name} is not in the input peaklets dtype")
 
         # initialize enhanced_peaklet_classification
+        # "merged" will be set as False automatically
         enhanced_peaklet_classification = np.zeros(
-            len(peaklets), dtype=self.dtype_for("enhanced_peaklet_classification")
+            len(_peaklets), dtype=self.dtype_for("enhanced_peaklet_classification")
         )
         # copy fields, especially type
         for d in enhanced_peaklet_classification.dtype.names:
-            enhanced_peaklet_classification[d] = peaklets[d]
+            enhanced_peaklet_classification[d] = _peaklets[d]
 
-        if self.no_merging(peaklets):
+        if self.no_merging(_peaklets):
             empty_result = self.empty_result()
             empty_result["enhanced_peaklet_classification"] = enhanced_peaklet_classification
             return empty_result
 
         # make sure the peaklets are not overwritten
-        peaklets.flags.writeable = False
+        _peaklets.flags.writeable = False
 
-        is_s2 = peaklets["type"] == 2
+        is_s2 = _peaklets["type"] == 2
 
         # peaklets might be overwritten in the merge method
         # so do not reuse the peaklets after this line
-        merged_s2s, merged = self.merge(peaklets, lone_hits, start, end)
+        merged_s2s, not_excluded, merged = self.merge(_peaklets, lone_hits, start, end)
 
         # mark the peaklets can be merged by time-density but not
         # by position-density as type FAR_XYPOS_S2_TYPE
-        enhanced_peaklet_classification["type"][is_s2 & ~merged] = FAR_XYPOS_S2_TYPE
+        enhanced_peaklet_classification["type"][is_s2 & ~not_excluded] = FAR_XYPOS_S2_TYPE
+        enhanced_peaklet_classification["merged"][merged] = True
 
         return dict(
             merged_s2s=merged_s2s, enhanced_peaklet_classification=enhanced_peaklet_classification
@@ -344,8 +357,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if not (self._have_data("data_top") and self._have_data("data_start")):
             peaklets = np.zeros(
                 is_s2.sum(),
-                dtype=strax.peak_dtype(
-                    n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
+                dtype=strax.merged_dtype(
+                    (
+                        strax.peak_dtype(
+                            n_channels=self.n_tpc_pmts, store_data_top=True, store_data_start=True
+                        ),
+                        self.indicator_dtype,
+                    )
                 ),
             )
             strax.copy_to_buffer(_peaklets[is_s2], peaklets, "_add_data_top_or_start_field")
@@ -357,7 +375,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         max_buffer = int(self.max_duration // strax.gcd_of_array(peaklets["dt"]))
 
-        start_merge_at, end_merge_at, _merged = self.get_merge_instructions(
+        # _not_excluded is the mask of the peaklets that are not excluded by (x, y) merging
+        start_merge_at, end_merge_at, _not_excluded = self.get_merge_instructions(
             peaklets,
             start,
             end,
@@ -388,6 +407,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
             raise ValueError("data_top or data_start is not in the peaklets dtype")
 
+        _merged_s2 = np.zeros(len(peaklets), dtype=bool)
+        for i in range(len(start_merge_at)):
+            sl = slice(start_merge_at[i], end_merge_at[i])
+            _merged_s2[sl] = True
+        # exclude the peaklets that are not merged by (x, y)
+        _merged_s2[~_not_excluded] = False
+
         # have to redo the merging to prevent numerical instability
         is_s0 = _peaklets["type"] == 0
         if self.merge_s0 and len(start_merge_at) and is_s0.sum() > 0:
@@ -396,9 +422,10 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s_window = np.zeros(len(start_merge_at), dtype=strax.time_fields)
             for i in range(len(start_merge_at)):
                 sl = slice(start_merge_at[i], end_merge_at[i])
-                merged_s2s_window["time"][i] = peaklets["time"][sl][_merged[sl]][0]
-                merged_s2s_window["endtime"][i] = endtime[sl][_merged[sl]][-1]
+                merged_s2s_window["time"][i] = peaklets["time"][sl][_not_excluded[sl]][0]
+                merged_s2s_window["endtime"][i] = endtime[sl][_not_excluded[sl]][-1]
             # the S0s that should be merged should fully be contained
+            _merged_s0 = strax.fully_contained_in(_peaklets[is_s0], merged_s2s_window) != -1
             merged_s0s = strax.split_by_containment(_peaklets[is_s0], merged_s2s_window)
             # offsets of indices
             increments = np.array([len(m) for m in merged_s0s], dtype=int)
@@ -408,7 +435,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             if np.min(_end_merge_at - _start_merge_at) < 2:
                 raise ValueError("You are merging nothing!")
             # prepare for peaklets including S0s
-            __merged = np.hstack([_merged, np.full(increments.sum(), True)])
+            __merged = np.hstack([_not_excluded, np.full(increments.sum(), True)])
             _peaklets = np.hstack([peaklets, np.hstack(merged_s0s)])
             argsort = strax.stable_argsort(_peaklets["time"])
             merged_s2s = self.merge_peaklets(
@@ -420,11 +447,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 max_unmerged=self.unmerged_thresholds,
             )
         else:
+            _merged_s0 = np.zeros(is_s0.sum(), dtype=bool)
             merged_s2s = self.merge_peaklets(
                 peaklets,
                 start_merge_at,
                 end_merge_at,
-                _merged,
+                _not_excluded,
                 max_buffer,
                 max_unmerged=self.unmerged_thresholds,
             )
@@ -466,9 +494,15 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         # make sure merged has same length as peaklets
         merged = np.zeros(len(is_s2), dtype=bool)
-        merged[is_s2] = _merged
+        merged[is_s2] = _merged_s2
+        merged[is_s0] = _merged_s0
+        not_excluded = np.ones(len(is_s2), dtype=bool)
+        not_excluded[is_s2] = _not_excluded
 
-        return merged_s2s, merged
+        # of course all merged S2s are merged
+        merged_s2s["merged"] = True
+
+        return merged_s2s, not_excluded, merged
 
     @staticmethod
     def get_left_right(peaklet):
@@ -829,14 +863,14 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged,
         max_buffer=int(1e5),
         max_unmerged=None,
-        merged_all=False,
+        return_all_peaks=False,
     ):
-        if merged_all:
+        if return_all_peaks:
             # execute earlier to prevent peaklets from being overwritten
             # mark the peaklets can be merged by time-density but not
             # by position-density as type FAR_XYPOS_S2_TYPE
-            _merged_s2s = np.copy(peaklets[~merged])
-            _merged_s2s["type"] = FAR_XYPOS_S2_TYPE
+            _far_xypos = np.copy(peaklets[~merged])
+            _far_xypos["type"] = FAR_XYPOS_S2_TYPE
         # mark the peaklets can be merged by time-density and position-density as type 2
         merged_s2s = strax.merge_peaks(
             peaklets,
@@ -845,6 +879,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged=merged,
             max_buffer=max_buffer,
         )
+        # we do not do another round of classification for simplicity
         merged_s2s["type"] = 2
 
         # if the number of type 20 peaklets inside a peak is larger than the threshold
@@ -868,8 +903,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
             mask |= (area_de > max_unmerged[1]) & (area_de > area * max_unmerged[2])
             merged_s2s["type"] = np.where(mask, WIDE_XYPOS_S2_TYPE, merged_s2s["type"])
 
-        if merged_all:
-            merged_s2s = strax.sort_by_time(np.concatenate([_merged_s2s, merged_s2s]))
+        if return_all_peaks:
+            merged_s2s = strax.sort_by_time(np.concatenate([_far_xypos, merged_s2s]))
         return merged_s2s
 
 
