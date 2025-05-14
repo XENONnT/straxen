@@ -1,3 +1,4 @@
+import numpy as np
 import strax
 from straxen.plugins.defaults import HE_PREAMBLE
 from straxen.plugins.peaks.peaks_vanilla import PeaksVanilla
@@ -16,7 +17,17 @@ class PeaksHighEnergy(PeaksVanilla):
     child_ends_with = "_he"
 
     def infer_dtype(self):
-        return self.deps["peaklets_he"].dtype_for("peaklets")
+        return strax.merged_dtype(
+            (
+                self.deps["peaklets_he"].dtype_for("peaklets"),
+                self.deps["merged_s2s_he"].indicator_dtype,
+            )
+        )
 
     def compute(self, peaklets_he, merged_s2s_he):
-        return super().compute(peaklets_he, merged_s2s_he)
+        indicator_dtype = self.deps["merged_s2s_he"].indicator_dtype
+        _peaklets_he = strax.merge_arrs(
+            [peaklets_he, np.zeros(len(peaklets_he), dtype=indicator_dtype)],
+            dtype=strax.merged_dtype((peaklets_he.dtype, indicator_dtype)),
+        )
+        return super().compute(_peaklets_he, merged_s2s_he)
