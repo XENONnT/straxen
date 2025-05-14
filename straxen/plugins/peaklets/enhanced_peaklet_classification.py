@@ -8,7 +8,7 @@ from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, UNCERTAIN_XYPOS_S2_TYP
 class EnhancedPeakletClassification(strax.Plugin):
     """Classify peaklets based on additional features and criteria."""
 
-    __version__ = "0.0.0"
+    __version__ = "0.0.1"
     depends_on: Tuple[str, ...] = (
         "peaklets",
         f"peaklet_positions_{DEFAULT_POSREC_ALGO}",
@@ -31,6 +31,7 @@ class EnhancedPeakletClassification(strax.Plugin):
             < 24.59 * np.exp(-1.35 * (np.log10(peaklets["area"]) - 1.99)) + 9.93
         )
         # only apply the selection on type 2, after the classification during S2 merging
+        mask |= peaklets["area"] > 2e4
         mask |= peaklets["type"] != 2
         return mask
 
