@@ -36,6 +36,16 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
     This correction/plugin is currently on the testing phase, feel free to use it if you are
     curious or just want to test it or try it out but note this is note ready to be used in
     analysis.
+
+    Here data will be classified into one of four types:
+      Type 0: Unknown, these are all data that associated with being non-physical like
+              dark counts or unknown signals that do not seem to come from interactions
+              of interest in our detector.
+      Type 1: S1 interactions produced by excited xenon molecules in the liquid xenon
+      Type 2: S2 interactions produced when freed electrons in the LXe breach the liquid
+              gas interface.
+      Type 3: Gas events. S1 interactions that occur on the GXe instead of the liquid. 
+              Have S1 waveform shape, with higher AFT.
     """
 
     __version__ = "0.2.1"
