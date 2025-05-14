@@ -115,12 +115,15 @@ def xenonnt(
     _rucio_local_path: Optional[str] = None,
     _raw_paths: List[str] = ["/dali/lgrandi/xenonnt/raw"],
     _processed_paths: List[str] = [
-        "/dali/lgrandi/xenonnt/processed",
-        "/project2/lgrandi/xenonnt/processed",
         "/project/lgrandi/xenonnt/processed",
         "/project/lgrandi/xenonnt/processed_sr2_offline_round_1",
         "/project/lgrandi/xenonnt/processed_sr2_offline_round_2",
         "/project/lgrandi/xenonnt/processed_sr2_offline_round_3",
+        "/project2/lgrandi/xenonnt/processed",
+        "/dali/lgrandi/xenonnt/processed",
+        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_1",
+        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_2",
+        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_3",
     ],
     # Testing options
     _database_init: bool = True,
