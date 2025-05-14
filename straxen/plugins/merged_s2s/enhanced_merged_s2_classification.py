@@ -6,6 +6,7 @@ class EnhancedMergedS2Classification(EnhancedPeakletClassification):
     """Classify merged S2s based on additional features and criteria."""
 
     __version__ = "0.0.0"
+    child_plugin = True
     depends_on = ("merged_s2s", f"merged_s2_positions_{DEFAULT_POSREC_ALGO}")
     provides = "enhanced_merged_s2_classification"
     data_kind = "merged_s2s"
