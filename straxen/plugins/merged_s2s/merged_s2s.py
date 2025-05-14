@@ -333,11 +333,11 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         # peaklets might be overwritten in the merge method
         # so do not reuse the peaklets after this line
-        merged_s2s, merged = self.merge(_peaklets, lone_hits, start, end)
+        merged_s2s, not_excluded, merged = self.merge(_peaklets, lone_hits, start, end)
 
         # mark the peaklets can be merged by time-density but not
         # by position-density as type FAR_XYPOS_S2_TYPE
-        enhanced_peaklet_classification["type"][is_s2 & ~merged] = FAR_XYPOS_S2_TYPE
+        enhanced_peaklet_classification["type"][is_s2 & ~not_excluded] = FAR_XYPOS_S2_TYPE
         enhanced_peaklet_classification["merged"][merged] = True
 
         return dict(
@@ -375,7 +375,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
 
         max_buffer = int(self.max_duration // strax.gcd_of_array(peaklets["dt"]))
 
-        start_merge_at, end_merge_at, _merged_s2 = self.get_merge_instructions(
+        # _not_excluded is the mask of the peaklets that are not excluded by (x, y) merging
+        start_merge_at, end_merge_at, _not_excluded = self.get_merge_instructions(
             peaklets,
             start,
             end,
@@ -406,6 +407,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
             raise ValueError("data_top or data_start is not in the peaklets dtype")
 
+        _merged_s2 = np.zeros(len(peaklets), dtype=bool)
+        for i in range(len(start_merge_at)):
+            sl = slice(start_merge_at[i], end_merge_at[i])
+            _merged_s2[sl] = True
+        # exclude the peaklets that are not merged by (x, y)
+        _merged_s2[~_not_excluded] = False
+
         # have to redo the merging to prevent numerical instability
         is_s0 = _peaklets["type"] == 0
         if self.merge_s0 and len(start_merge_at) and is_s0.sum() > 0:
@@ -414,8 +422,8 @@ class MergedS2s(strax.OverlapWindowPlugin):
             merged_s2s_window = np.zeros(len(start_merge_at), dtype=strax.time_fields)
             for i in range(len(start_merge_at)):
                 sl = slice(start_merge_at[i], end_merge_at[i])
-                merged_s2s_window["time"][i] = peaklets["time"][sl][_merged_s2[sl]][0]
-                merged_s2s_window["endtime"][i] = endtime[sl][_merged_s2[sl]][-1]
+                merged_s2s_window["time"][i] = peaklets["time"][sl][_not_excluded[sl]][0]
+                merged_s2s_window["endtime"][i] = endtime[sl][_not_excluded[sl]][-1]
             # the S0s that should be merged should fully be contained
             _merged_s0 = strax.fully_contained_in(_peaklets[is_s0], merged_s2s_window) != -1
             merged_s0s = strax.split_by_containment(_peaklets[is_s0], merged_s2s_window)
@@ -427,7 +435,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             if np.min(_end_merge_at - _start_merge_at) < 2:
                 raise ValueError("You are merging nothing!")
             # prepare for peaklets including S0s
-            __merged = np.hstack([_merged_s2, np.full(increments.sum(), True)])
+            __merged = np.hstack([_not_excluded, np.full(increments.sum(), True)])
             _peaklets = np.hstack([peaklets, np.hstack(merged_s0s)])
             argsort = strax.stable_argsort(_peaklets["time"])
             merged_s2s = self.merge_peaklets(
@@ -444,7 +452,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
                 peaklets,
                 start_merge_at,
                 end_merge_at,
-                _merged_s2,
+                _not_excluded,
                 max_buffer,
                 max_unmerged=self.unmerged_thresholds,
             )
@@ -488,11 +496,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged = np.zeros(len(is_s2), dtype=bool)
         merged[is_s2] = _merged_s2
         merged[is_s0] = _merged_s0
+        not_excluded = np.ones(len(is_s2), dtype=bool)
+        not_excluded[is_s2] = _not_excluded
 
         # of course all merged S2s are merged
         merged_s2s["merged"] = True
 
-        return merged_s2s, merged
+        return merged_s2s, not_excluded, merged
 
     @staticmethod
     def get_left_right(peaklet):
