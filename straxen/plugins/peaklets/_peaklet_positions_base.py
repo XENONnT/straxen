@@ -75,13 +75,15 @@ class PeakletPositionsBase(strax.Plugin):
                 f"Setting model to None for {self.__class__.__name__} will "
                 f"set only nans as output for {self.algorithm}"
             )
+        else:
+            if self.fix_steps_per_execution and hasattr(model, "steps_per_execution"):
+                if getattr(model, "steps_per_execution", None) is None:
+                    model.steps_per_execution = 1
         if isinstance(model, str):
             raise ValueError(
                 f"open files from tf:// protocol! Got {model} "
                 "instead, see tests/test_posrec.py for examples."
             )
-        if getattr(model, "steps_per_execution", None) is None:
-            model.steps_per_execution = 1
         return model
 
     def compute(self, peaklets):
