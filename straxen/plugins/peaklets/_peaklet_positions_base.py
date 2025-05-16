@@ -33,6 +33,16 @@ class PeakletPositionsBase(strax.Plugin):
         default=straxen.n_top_pmts, infer_type=False, help="Number of top PMTs"
     )
 
+    fix_steps_per_execution = straxen.URLConfig(
+        track=False,
+        default=True,
+        infer_type=False,
+        help=(
+            "Fix steps_per_execution to 1 for the model, "
+            "this is a patch when keras and tensorflow are not fully compatible"
+        ),
+    )
+
     def infer_dtype(self):
         if self.algorithm is None:
             raise NotImplementedError(
@@ -70,6 +80,8 @@ class PeakletPositionsBase(strax.Plugin):
                 f"open files from tf:// protocol! Got {model} "
                 "instead, see tests/test_posrec.py for examples."
             )
+        if getattr(model, "steps_per_execution", None) is None:
+            model.steps_per_execution = 1
         return model
 
     def compute(self, peaklets):
