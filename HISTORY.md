@@ -1,3 +1,10 @@
+3.2.1 / 2025-05-18
+-------------------
+* Set Sum(S2 / dt) as S2 Time Shadow, not Max(S2 / dt) anymore by @dachengx in https://github.com/XENONnT/straxen/pull/1609
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.0...v3.2.1
+
+
 3.2.0 / 2025-05-16
 -------------------
 * Also retries multiple time when downloading chunks by @dachengx in https://github.com/XENONnT/straxen/pull/1601
