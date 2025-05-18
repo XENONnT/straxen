@@ -35,7 +35,7 @@ class PeakShadow(strax.OverlapWindowPlugin):
     )
 
     shadow_sum = straxen.URLConfig(
-        default={"s1_time_shadow": False, "s2_time_shadow": False, "s2_position_shadow": False},
+        default={"s1_time_shadow": False, "s2_time_shadow": True, "s2_position_shadow": False},
         type=dict,
         track=True,
         help="Whether the shadow should be summed up rather than taking the largest one",
