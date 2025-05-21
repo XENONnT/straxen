@@ -75,3 +75,6 @@ from .event_nearest_triggering import *
 
 from . import event_se_score
 from .event_se_score import *
+
+from . import s1_waferform_long
+from .s1_waferform_long import *
