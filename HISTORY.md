@@ -1,3 +1,43 @@
+3.2.1 / 2025-05-18
+-------------------
+* Set Sum(S2 / dt) as S2 Time Shadow, not Max(S2 / dt) anymore by @dachengx in https://github.com/XENONnT/straxen/pull/1609
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.0...v3.2.1
+
+
+3.2.0 / 2025-05-16
+-------------------
+* Also retries multiple time when downloading chunks by @dachengx in https://github.com/XENONnT/straxen/pull/1601
+* Do not depend anything on `event_info` by @dachengx in https://github.com/XENONnT/straxen/pull/1602
+* Add more docstring of MergedS2s by @dachengx in https://github.com/XENONnT/straxen/pull/1599
+* Use numbered version of `docformatter` by @dachengx in https://github.com/XENONnT/straxen/pull/1603
+* Update docstring by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1606
+* Add a field `merged` to `peak_basics` indicating whether it is merged from peaklets by @dachengx in https://github.com/XENONnT/straxen/pull/1604
+* Force `steps_per_execution` to be not None by @dachengx in https://github.com/XENONnT/straxen/pull/1607
+* Anti-AC new events building by @dachengx in https://github.com/XENONnT/straxen/pull/1563
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.5...v3.2.0
+
+
+3.1.5 / 2025-04-28
+-------------------
+* Convert `sr` from attribute of plugin by @dachengx in https://github.com/XENONnT/straxen/pull/1582
+* Fix a parentheses in error message by @dachengx in https://github.com/XENONnT/straxen/pull/1583
+* Added more colors+types to waveform_plot by @MerzJohannes in https://github.com/XENONnT/straxen/pull/1581
+* Add interactive peaks display by @dachengx in https://github.com/XENONnT/straxen/pull/1586
+* Warn `xedocs_version` usage in `xenonnt` by @dachengx in https://github.com/XENONnT/straxen/pull/1587
+* Render hover tool only for targeted plots by @dachengx in https://github.com/XENONnT/straxen/pull/1589
+* Plot CNF contour in event and peaks interactive display by @dachengx in https://github.com/XENONnT/straxen/pull/1590
+* Print time and endtime of event or peaks in the title of interactive display by @dachengx in https://github.com/XENONnT/straxen/pull/1591
+* Make sure `version=ONLINE` is not used when global version is not `global_ONLINE` by @dachengx in https://github.com/XENONnT/straxen/pull/1594
+* Add offline reprocessing storage path in `/dali` by @dachengx in https://github.com/XENONnT/straxen/pull/1595
+
+New Contributors
+* @MerzJohannes made their first contribution in https://github.com/XENONnT/straxen/pull/1581
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.4...v3.1.5
+
+
 3.1.4 / 2025-03-09
 -------------------
 * Set targeted chunk size of hitlets_nv as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1574

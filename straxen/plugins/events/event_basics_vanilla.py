@@ -141,6 +141,8 @@ class EventBasicsVanilla(strax.Plugin):
             ("n_channels", np.int16, "count of contributing PMTs"),
             ("top_n_channels", np.int16, "count of contributing top PMTs"),
             ("n_hits", np.int32, "count of hits contributing at least one sample to the peak"),
+            ("proximity_score", np.float32, "proximity score in (time, space)"),
+            ("n_competing_left", np.int32, "number of competing peaks left of the main peak"),
             ("n_competing", np.int32, "number of competing peaks"),
             ("max_pmt", np.int16, "PMT number which contributes the most PE"),
             ("max_pmt_area", np.float32, "area in the largest-contributing PMT (PE)"),
@@ -150,6 +152,7 @@ class EventBasicsVanilla(strax.Plugin):
             ("area_fraction_top", np.float32, "fraction of area seen by the top PMT array"),
             ("tight_coincidence", np.int16, "channel within tight range of mean"),
             ("n_saturated_channels", np.int16, "total number of saturated channels"),
+            ("merged", bool, "is merged from peaklets"),
         )
 
     def setup(self):
