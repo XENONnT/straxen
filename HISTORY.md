@@ -1,3 +1,24 @@
+3.2.1 / 2025-05-18
+-------------------
+* Set Sum(S2 / dt) as S2 Time Shadow, not Max(S2 / dt) anymore by @dachengx in https://github.com/XENONnT/straxen/pull/1609
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.0...v3.2.1
+
+
+3.2.0 / 2025-05-16
+-------------------
+* Also retries multiple time when downloading chunks by @dachengx in https://github.com/XENONnT/straxen/pull/1601
+* Do not depend anything on `event_info` by @dachengx in https://github.com/XENONnT/straxen/pull/1602
+* Add more docstring of MergedS2s by @dachengx in https://github.com/XENONnT/straxen/pull/1599
+* Use numbered version of `docformatter` by @dachengx in https://github.com/XENONnT/straxen/pull/1603
+* Update docstring by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1606
+* Add a field `merged` to `peak_basics` indicating whether it is merged from peaklets by @dachengx in https://github.com/XENONnT/straxen/pull/1604
+* Force `steps_per_execution` to be not None by @dachengx in https://github.com/XENONnT/straxen/pull/1607
+* Anti-AC new events building by @dachengx in https://github.com/XENONnT/straxen/pull/1563
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.5...v3.2.0
+
+
 3.1.5 / 2025-04-28
 -------------------
 * Convert `sr` from attribute of plugin by @dachengx in https://github.com/XENONnT/straxen/pull/1582
