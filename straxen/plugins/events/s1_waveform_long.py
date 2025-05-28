@@ -2,6 +2,9 @@ import numba
 import numpy as np
 import strax
 import straxen
+from straxen,plugins.peaklets.peaklets import Peaklets
+
+export, __all__ = strax.exporter()
 
 N_WAVEFORM_SAMPLES = 512
 WAVEFORM_LEFT_WINDOW = 256
@@ -18,7 +21,8 @@ tmp_container_dtype = [
     ("s1_data_long_type_mask", (np.int16, N_WAVEFORM_SAMPLES)),
 ]
 
-class S1WaveformLong(straxen.Peaklets):
+@export
+class S1WaveformLong(Peaklets):
 
     """Build the waveform around the main S1 peak"""
 
