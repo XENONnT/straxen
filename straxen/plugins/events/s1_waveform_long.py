@@ -2,7 +2,7 @@ import numba
 import numpy as np
 import strax
 import straxen
-from straxen,plugins.peaklets.peaklets import Peaklets
+from straxen.plugins.peaklets.peaklets import Peaklets
 
 export, __all__ = strax.exporter()
 
