@@ -200,7 +200,7 @@ class MultiPeakMSData(strax.Plugin):
         # apply Z bias correction
         z_dv_delta = self.z_bias_map(np.array([r_obs, z]).T, map_name="z_bias_map")
         corr_pos = np.vstack([x, y, z - z_dv_delta]).T  # (N, 3)
-                        # apply r bias correction
+        # apply r bias correction
         delta_r = self.map(corr_pos)
         with np.errstate(invalid="ignore", divide="ignore"):
             r_cor = r_obs + delta_r
@@ -249,7 +249,7 @@ class MultiPeakMSData(strax.Plugin):
             result[i]["s2_x_position_i"][:n_s2_peaks_in_event] = x_obs
             result[i]["s2_y_position_i"][:n_s2_peaks_in_event] = y_obs
             result[i]["s2_z_position_i"][:n_s2_peaks_in_event] = z_obs
-            
+
             (
                 result[i]["s2_x_position_corr_i"][:n_s2_peaks_in_event],
                 result[i]["s2_y_position_corr_i"][:n_s2_peaks_in_event],
@@ -307,9 +307,6 @@ class MultiPeakMSData(strax.Plugin):
             result[i]["s2_sum"][:n_peaks_in_event] = np.nansum(peaks_in_event[cond]["area"])
             result[i]["cs2_sum"][:n_peaks_in_event] = np.nansum(peaks_in_event[cond]["cs2"])
             
-
-            #print(f"--- Event {i}: result['cs2_sum'][i] = {result[i]['cs2_sum'][:n_peaks_in_event]}")
-
             result[i]["cs2_wo_timecorr_sum"][:n_peaks_in_event] = np.nansum(peaks_in_event[cond]["cs2_wo_timecorr"])
             result[i]["cs2_wo_elifecorr_sum"][:n_peaks_in_event] = np.nansum(peaks_in_event[cond]["cs2_wo_elifecorr"])
             result[i]["s1_sum"][:n_peaks_in_event] = np.nansum(peaks_in_event["area"]) 
@@ -328,13 +325,6 @@ class MultiPeakMSData(strax.Plugin):
                         peaks_in_event[cond]["cs2_area_fraction_top"], weights=peaks_in_event[cond]["cs2"]
                     )
                 result[i]["multiplicity"][:n_peaks_in_event] = len(peaks_in_event[cond]["area"])
-
-            if (len(s2_peaks['cs2']) > 1):
-                #print(f"Event {i}: (s2_peaks_alt_cs2 - event['alt_cs2'])/event['alt_cs2']: {(s2_peaks['cs2'][1] - event['alt_cs2'])*100/event['alt_cs2']} %")
-                print(f"Event {i}: event['r']: {event['r']}, S2_r_corr[0]: {result[i]['s2_r_position_corr_i'][0]}")
-
-            if (len(s2_peaks['cs2']) > 1):
-                print(f"Event {i}: event['alt_s2_area']: {event['alt_s2_area']}, s2_area_peak_1: {result[i]['s2_area_i'][1]}")
 
         result["time"] = events["time"]
         result["endtime"] = strax.endtime(events)
