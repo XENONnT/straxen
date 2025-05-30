@@ -33,17 +33,6 @@ class MultiPeakMSData(strax.Plugin):
     save_when = strax.SaveWhen.TARGET
 
     # config options don't double cache things from the resource cache!
-    g1 = straxen.URLConfig(
-        default="bodega://g1?bodega_version=v2",
-        help="S1 gain in PE / photons produced",
-    )
-    
-    g2 = straxen.URLConfig(
-        default="bodega://g2?bodega_version=v2",
-        help="S2 gain in PE / electrons produced",
-    )
-    
-    lxe_w = straxen.URLConfig(default=13.7e-3, help="LXe work function in quanta/keV")
     
     electron_drift_velocity = straxen.URLConfig(
         default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
@@ -183,7 +172,7 @@ class MultiPeakMSData(strax.Plugin):
     def correct_positions(self, x, y, z):
         """
         This function, inspired by the event_positions method, 
-        corrects the event positions by applying Z-bias and radial bias corrections.
+        corrects the event positions by applying Z-bias and FDC corrections.
 
         Parameters:
         -----------
