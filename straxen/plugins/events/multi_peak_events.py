@@ -31,8 +31,6 @@ class MultiPeakMSData(strax.Plugin):
     provides = "multi_peak_ms_naive_data"
     data_kind = "events"
     save_when = strax.SaveWhen.TARGET
-
-    # config options don't double cache things from the resource cache!
     
     electron_drift_velocity = straxen.URLConfig(
         default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
@@ -73,67 +71,42 @@ class MultiPeakMSData(strax.Plugin):
     dtype = [
         (("Sum of S1 areas in event", "s1_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
         (("Corrected S1 area based on average position of S2s in event", "cs1_multi"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            ((("Corrected S1 area based on average position of S2s in event before time-dep LY correction"), "cs1_multi_wo_timecorr",),
-                np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Sum of S2 areas in event", "s2_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Sum of corrected S2 areas in event", "cs2_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Corrected area of S2 i", "cs2_area_i"),  np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Corrected AFT per S2 i","cs2_aft_i"),  np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Corrected area wo time correctionper S2 i","cs2_wo_timecorr_i"),  np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Sum of corrected S2 areas in event S2 before elife correction",
-                    "cs2_wo_timecorr_sum",), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT
-            ),
-            (("Sum of corrected S2 areas in event before SEG/EE and elife corrections",
-                    "cs2_wo_elifecorr_sum",), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT
-            ),
-            (("Average of S2 area fraction top in event", "cs2_area_fraction_top_avg"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Sum of the energy estimates in event", "ces_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Sum of the charge estimates in event", "e_charge_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Average x position of S2s in event", "x_avg"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Average y position of S2s in event", "y_avg"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Average observed z position of energy deposits in event", "z_obs_avg"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Number of S2s in event", "multiplicity"), np.int32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-#-------------------------------------------------------------------------------------------------
-
-            (("Main S2 width, 50% area [ns]", "s2_range_50p_area"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Main S1 width, 50% area [ns]", "s1_range_50p_area"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
-            (("Main S1 width, 90% area [ns]", "s1_range_90p_area"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Main S1 area fraction top", "s1_area_fraction_top"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
-            (("Main interaction r-position, field-distortion corrected [cm]", "r"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Main interaction z-position, field-distortion corrected [cm]", "z"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Alternate S1 area, uncorrected [PE]", "alt_s1_area"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
-            (("Alternate S2 area, uncorrected [PE]", "alt_s2_area"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Main S1 center time [ns]", "s1_center_time"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
-            (("Main S1 time [ns]", "s1_time"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
-            (("Drift time between main S1 and S2 [ns]", "drift_time"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Main S1 area [PE]", "s1_area"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
-            (("Main S2 area [PE]", "s2_area"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Corrected area of alternate S2 [PE]", "alt_cs2"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Fraction of area seen by the top PMT array for corrected alternate S2", "alt_cs2_area_fraction_top_wo_timecorr"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Fraction of area seen by the top PMT array for corrected main S2", "cs2_area_fraction_top_wo_timecorr"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-            (("Corrected area of alternate S2 (before SEG/EE + photon ionization, after S2 xy + elife) [PE]", "alt_cs2_wo_timecorr"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-#-------------------------------------------------------------------------------------------------
-        (
-            ("time difference of S1 peaks to event start time", "s1_delta_time_i"),
-            np.int64,
-            MAX_NUMBER_OF_S1_PEAKS_PER_EVENT,
-        ),
-        (
-            ("time difference of S2 peaks to event start time", "s2_delta_time_i"),
-            np.int64,
-            MAX_NUMBER_OF_S2_PEAKS_PER_EVENT,
-        ),
-        (
-            ("sample width in ns of the S1 waveform", "s1_peak_dt_i"),
-            np.int32,
-            MAX_NUMBER_OF_S1_PEAKS_PER_EVENT,
-        ),
-        (
-            ("sample width in ns of the S2 waveform", "s2_peak_dt_i"),
-            np.int32,
-            MAX_NUMBER_OF_S2_PEAKS_PER_EVENT,
-        ),
-
+        (("Corrected S1 area based on average position of S2s in event before time-dep LY correction", "cs1_multi_wo_timecorr"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Sum of S2 areas in event", "s2_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Sum of corrected S2 areas in event", "cs2_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Corrected area of S2 i", "cs2_area_i"),  np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Corrected AFT per S2 i","cs2_aft_i"),  np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Corrected area wo time correctionper S2 i","cs2_wo_timecorr_i"),  np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Sum of corrected S2 areas in event S2 before elife correction", "cs2_wo_timecorr_sum",), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Sum of corrected S2 areas in event before SEG/EE and elife corrections", "cs2_wo_elifecorr_sum",), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Average of S2 area fraction top in event", "cs2_area_fraction_top_avg"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Sum of the energy estimates in event", "ces_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Sum of the charge estimates in event", "e_charge_sum"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Average x position of S2s in event", "x_avg"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Average y position of S2s in event", "y_avg"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Average observed z position of energy deposits in event", "z_obs_avg"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Number of S2s in event", "multiplicity"), np.int32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Main S2 width, 50% area [ns]", "s2_range_50p_area"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Main S1 width, 50% area [ns]", "s1_range_50p_area"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
+        (("Main S1 width, 90% area [ns]", "s1_range_90p_area"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Main S1 area fraction top", "s1_area_fraction_top"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
+        (("Main interaction r-position, field-distortion corrected [cm]", "r"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Main interaction z-position, field-distortion corrected [cm]", "z"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Alternate S1 area, uncorrected [PE]", "alt_s1_area"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
+        (("Alternate S2 area, uncorrected [PE]", "alt_s2_area"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Main S1 center time [ns]", "s1_center_time"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
+        (("Main S1 time [ns]", "s1_time"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
+        (("Drift time between main S1 and S2 [ns]", "drift_time"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Main S1 area [PE]", "s1_area"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
+        (("Main S2 area [PE]", "s2_area"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Corrected area of alternate S2 [PE]", "alt_cs2"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Fraction of area seen by the top PMT array for corrected alternate S2", "alt_cs2_area_fraction_top_wo_timecorr"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Fraction of area seen by the top PMT array for corrected main S2", "cs2_area_fraction_top_wo_timecorr"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("Corrected area of alternate S2 (before SEG/EE + photon ionization, after S2 xy + elife) [PE]", "alt_cs2_wo_timecorr"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+        (("time difference of S1 peaks to event start time", "s1_delta_time_i"), np.int64, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT,),
+        (("time difference of S2 peaks to event start time", "s2_delta_time_i"), np.int64, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT,),
+        (("sample width in ns of the S1 waveform", "s1_peak_dt_i"), np.int32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT,),
+        (("sample width in ns of the S2 waveform", "s2_peak_dt_i"), np.int32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT,),
         (("x position of S2 i", "s2_x_position_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
         (("y position of S2 i", "s2_y_position_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
         (("z position of S2 i", "s2_z_position_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
@@ -145,21 +118,9 @@ class MultiPeakMSData(strax.Plugin):
         (("area fraction top of S1 i", "s1_aft_i"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
         (("area of S2 i", "s2_area_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
         (("area of S1 i", "s1_area_i"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
-        (
-            ("Sum Waveform of S1 peaks", "s1_waveform_i"),
-            np.float32,
-            (MAX_NUMBER_OF_S1_PEAKS_PER_EVENT, PEAK_WAVEFORM_LENGTH),
-        ),
-        (
-            ("Sum Waveform of S2 peaks", "s2_waveform_i"),
-            np.float32,
-            (MAX_NUMBER_OF_S2_PEAKS_PER_EVENT, PEAK_WAVEFORM_LENGTH),
-        ),
-        (
-            ("PMT Hitpattern of S2 Peaks", "s2_area_per_channel_i"),
-            np.float32,
-            (MAX_NUMBER_OF_S2_PEAKS_PER_EVENT, HIT_PATTERN_LENGTH),
-        ),
+        (("Sum Waveform of S1 peaks", "s1_waveform_i"), np.float32, (MAX_NUMBER_OF_S1_PEAKS_PER_EVENT, PEAK_WAVEFORM_LENGTH),),
+        (("Sum Waveform of S2 peaks", "s2_waveform_i"), np.float32, (MAX_NUMBER_OF_S2_PEAKS_PER_EVENT, PEAK_WAVEFORM_LENGTH),),
+        (("PMT Hitpattern of S2 Peaks", "s2_area_per_channel_i"), np.float32, (MAX_NUMBER_OF_S2_PEAKS_PER_EVENT, HIT_PATTERN_LENGTH),),
         
         *strax.time_fields,
     ]
@@ -189,7 +150,7 @@ class MultiPeakMSData(strax.Plugin):
         # apply Z bias correction
         z_dv_delta = self.z_bias_map(np.array([r_obs, z]).T, map_name="z_bias_map")
         corr_pos = np.vstack([x, y, z - z_dv_delta]).T  # (N, 3)
-        # apply r bias correction
+        # apply FDC correction
         delta_r = self.map(corr_pos)
         with np.errstate(invalid="ignore", divide="ignore"):
             r_cor = r_obs + delta_r
@@ -213,9 +174,6 @@ class MultiPeakMSData(strax.Plugin):
             if len(peaks_in_event) == 0:
                 continue
 
-            # ---------------------------
-            # Peak processing
-            # ---------------------------
             s1_peaks = peaks_in_event[peaks_in_event["type"] == 1]
             s2_peaks = peaks_in_event[peaks_in_event["type"] == 2]
 
@@ -260,9 +218,7 @@ class MultiPeakMSData(strax.Plugin):
             result[i]["cs2_area_i"][:n_s2_peaks_in_event] =  s2_peaks["cs2"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT] 
             result[i]['cs2_aft_i'][:n_s2_peaks_in_event] =  s2_peaks["cs2_area_fraction_top"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT] 
             result[i]["cs2_wo_timecorr_i"][:n_s2_peaks_in_event] =  s2_peaks["cs2_wo_timecorr"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
-            # ---------------------------
-            # event_info plugin features
-            # ---------------------------
+
             n_peaks_in_event = len(peaks_in_event)
 
             result[i]["s1_area"][:n_peaks_in_event] = event["s1_area"]
@@ -285,13 +241,8 @@ class MultiPeakMSData(strax.Plugin):
             result[i]["alt_cs2_area_fraction_top_wo_timecorr"][:n_peaks_in_event] = event["alt_cs2_area_fraction_top_wo_timecorr"]
             result[i]["cs2_area_fraction_top_wo_timecorr"][:n_peaks_in_event] = event["cs2_area_fraction_top_wo_timecorr"]            
 
-            # ---------------------------
-            # multi_scatter plugin features
-            # ---------------------------
-
             cond = (peaks_in_event["type"] == 2) & (peaks_in_event["drift_time"] > 0)
             cond &= (peaks_in_event["drift_time"] < self.ms_window_fac * self.drift_time_max) & (peaks_in_event["cs2"] > 0)
-
 
             result[i]["s2_sum"][:n_peaks_in_event] = np.nansum(peaks_in_event[cond]["area"])
             result[i]["cs2_sum"][:n_peaks_in_event] = np.nansum(peaks_in_event[cond]["cs2"])
