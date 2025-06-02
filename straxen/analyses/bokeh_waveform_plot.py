@@ -459,6 +459,7 @@ def peaks_display_interactive(
         unique = np.unique(center_times)
         field = "center_time"
     else:
+        unique = []
         warnings.warn("No times or center_times specified, will not plot any peak in detail.")
 
     signal = {}
