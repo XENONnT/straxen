@@ -83,6 +83,18 @@ class CorrectedAreas(strax.Plugin):
         help="Relative light yield (allows for time dependence)",
     )
 
+    # b parameter for z-dependent relative light yield correction
+    b_rel_light_yield = straxen.URLConfig(
+        default=0.0,
+        help="b parameter for z-dependent relative light yield correction",
+    )
+
+    # slope parameter for z-dependent relative light yield correction
+    slope_rel_light_yield = straxen.URLConfig(
+        default=0.0,
+        help="Slope parameter for z-dependent relative light yield correction",
+    )
+
     # Single electron gain partition
     # AB and CD partitons distiguished based on
     # linear and circular regions
@@ -215,6 +227,17 @@ class CorrectedAreas(strax.Plugin):
 
         return seg, avg_seg, ee
 
+    def rel_light_yield_correction(self, events):
+        """Compute relative light yield correction (z- and t-dependent)."""
+
+        a = self.slope_rel_light_yield * (self.rel_light_yield - 1)
+        b = self.b_rel_light_yield
+
+        # Compute full z- and t-dependent correction
+        rel_ly_zt_corr = self.rel_light_yield * (a * (events["z"] ** 2 + b * events["z"]) + 1)
+
+        return rel_ly_zt_corr
+
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result["time"] = events["time"]
@@ -227,10 +250,13 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs1_wo_xycorr"] = events[f"{peak_type}s1_area"] / (
                 1 + self.s1_bias_map(events[f"{peak_type}s1_area"].reshape(-1, 1))
             )
+            # Apply S1xyz correction
             result[f"{peak_type}cs1_wo_timecorr"] = result[
                 f"{peak_type}cs1_wo_xycorr"
             ] / self.s1_xyz_map(event_positions)
-            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
+            # Apply relative LY correction
+            rel_ly_corr = self.rel_light_yield_correction(events)
+            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / rel_ly_corr
 
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
         seg, avg_seg, ee = self.seg_ee_correction_preparation()
