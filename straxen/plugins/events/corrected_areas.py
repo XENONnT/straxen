@@ -144,7 +144,7 @@ class CorrectedAreas(strax.Plugin):
                     f"Corrected area of {peak_name} S1 (before LY correction) [PE]",
                 ),
                 (
-                    f"{peak_type}cs1_wo_xycorr",
+                    f"{peak_type}cs1_wo_xyzcorr",
                     np.float32,
                     f"Bias Corrected area of {peak_name} S1 [PE]",
                 ),
@@ -247,12 +247,12 @@ class CorrectedAreas(strax.Plugin):
 
         for peak_type in ["", "alt_"]:
             # Added peak_bias_correction_map usage for cs1 correction
-            result[f"{peak_type}cs1_wo_xycorr"] = events[f"{peak_type}s1_area"] / (
+            result[f"{peak_type}cs1_wo_xyzcorr"] = events[f"{peak_type}s1_area"] / (
                 1 + self.s1_bias_map(events[f"{peak_type}s1_area"].reshape(-1, 1))
             )
             # Apply S1xyz correction
             result[f"{peak_type}cs1_wo_timecorr"] = result[
-                f"{peak_type}cs1_wo_xycorr"
+                f"{peak_type}cs1_wo_xyzcorr"
             ] / self.s1_xyz_map(event_positions)
             # Apply relative LY correction
             rel_ly_corr = self.rel_light_yield_correction(events)
