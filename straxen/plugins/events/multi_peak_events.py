@@ -16,16 +16,12 @@ class MultiPeakMSData(strax.Plugin):
     __version__ = "0.1.0"
 
     depends_on = (
+                "peaks",
                 "event_info",
-                "events", 
-                "corrected_areas",
-                "event_basics",
-                "event_positions",
-                "peak_positions", 
                 "peak_basics", 
                 "peak_corrections",
-                "peaks",
                 "peak_per_event", 
+                "peak_positions", 
                  )
 
     provides = "multi_peak_ms_naive_data"
@@ -67,7 +63,7 @@ class MultiPeakMSData(strax.Plugin):
         type=(int, float),
         help="Max drift time window to look for peaks in multiple scatter events",
     )
-    
+        
     dtype = [  
     (("time difference of S1 peaks to event start time", "s1_delta_time_i"), np.int64, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
     (("time difference of S2 peaks to event start time", "s2_delta_time_i"), np.int64, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
@@ -82,9 +78,9 @@ class MultiPeakMSData(strax.Plugin):
     (("Corrected r position of S2 i", "s2_r_position_corr_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
     (("Area fraction top of S1 i", "s1_aft_i"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
     (("Area fraction top of S2 i", "s2_aft_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-    (("Sum Waveform of S1 peaks", "s1_waveform_i"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
-    (("Sum Waveform of S2 peaks", "s2_waveform_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-    (("PMT Hitpattern of S2 peaks", "s2_area_per_channel_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
+    (("Sum Waveform of S1 peaks", "s1_waveform_i"), np.float32, (MAX_NUMBER_OF_S1_PEAKS_PER_EVENT, PEAK_WAVEFORM_LENGTH)),
+    (("Sum Waveform of S2 peaks", "s2_waveform_i"), np.float32, (MAX_NUMBER_OF_S2_PEAKS_PER_EVENT, PEAK_WAVEFORM_LENGTH)),
+    (("PMT Hitpattern of S2 peaks", "s2_area_per_channel_i"), np.float32, (MAX_NUMBER_OF_S2_PEAKS_PER_EVENT, HIT_PATTERN_LENGTH)),
     (("Area of S2 i", "s2_area_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
     (("Area of S1 i", "s1_area_i"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
     (("Corrected area of S2 i", "cs2_area_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
@@ -92,7 +88,7 @@ class MultiPeakMSData(strax.Plugin):
     (("Corrected area fraction top w/o time correction of S2 i", "cs2_wo_timecorr_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
     *strax.time_fields,
     ]
-    
+
     def setup(self):
         self.drift_time_max = int(self.max_drift_length / self.electron_drift_velocity)
         self.coordinate_scales = [1.0, 1.0, -self.electron_drift_velocity]
@@ -117,7 +113,7 @@ class MultiPeakMSData(strax.Plugin):
             
         # apply Z bias correction
         z_dv_delta = self.z_bias_map(np.array([r_obs, z]).T, map_name="z_bias_map")
-        corr_pos = np.vstack([x, y, z - z_dv_delta]).T 
+        corr_pos = np.vstack([x, y, z - z_dv_delta]).T  # (N, 3)
         # apply FDC correction
         delta_r = self.map(corr_pos)
         with np.errstate(invalid="ignore", divide="ignore"):
@@ -132,7 +128,7 @@ class MultiPeakMSData(strax.Plugin):
         return x_cor, y_cor, z_cor, r_cor
     
     def compute(self, peaks, events):
-        
+
         peaks = peaks[peaks["type"] != 0]
         split_peaks = strax.split_by_containment(peaks, events)
         result = np.zeros(len(events), dtype=self.dtype)
