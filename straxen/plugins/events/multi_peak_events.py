@@ -133,7 +133,7 @@ class MultiPeakMSData(strax.Plugin):
         split_peaks = strax.split_by_containment(peaks, events)
         result = np.zeros(len(events), dtype=self.dtype)
 
-        for i, (event, peaks_in_event) in enumerate(zip(events, split_peaks)):
+        for i, (_, peaks_in_event) in enumerate(zip(events, split_peaks)):
 
             if len(peaks_in_event) == 0:
                 continue
