@@ -78,3 +78,6 @@ from .event_se_score import *
 
 from . import s1_waveform_long
 from .s1_waveform_long import *
+
+from . import multi_peak_events
+from .multi_peak_events import *
