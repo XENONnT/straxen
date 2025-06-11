@@ -181,6 +181,8 @@ class MultiPeakMSData(strax.Plugin):
             result[i]['cs2_aft_i'][:n_s2_peaks_in_event] =  s2_peaks["cs2_area_fraction_top"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT] 
             result[i]["cs2_wo_timecorr_i"][:n_s2_peaks_in_event] =  s2_peaks["cs2_wo_timecorr"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
             
+            result["time"] = event["time"]
+            result["endtime"] = strax.endtime(event)
         return result
 
         
