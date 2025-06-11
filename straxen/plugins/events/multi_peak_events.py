@@ -24,7 +24,7 @@ class MultiPeakMSData(strax.Plugin):
                 "peak_positions", 
                  )
 
-    provides = "multi_peak_ms_naive_data"
+    provides = "multi_peak_ms_naive"
     data_kind = "events"
     save_when = strax.SaveWhen.TARGET
     
