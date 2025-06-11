@@ -78,8 +78,6 @@ class MultiPeakMSData(strax.Plugin):
     (("Corrected r position of S2 i", "s2_r_position_corr_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
     (("Area fraction top of S1 i", "s1_aft_i"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
     (("Area fraction top of S2 i", "s2_aft_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
-    (("Sum Waveform of S1 peaks", "s1_waveform_i"), np.float32, (MAX_NUMBER_OF_S1_PEAKS_PER_EVENT, PEAK_WAVEFORM_LENGTH)),
-    (("Sum Waveform of S2 peaks", "s2_waveform_i"), np.float32, (MAX_NUMBER_OF_S2_PEAKS_PER_EVENT, PEAK_WAVEFORM_LENGTH)),
     (("PMT Hitpattern of S2 peaks", "s2_area_per_channel_i"), np.float32, (MAX_NUMBER_OF_S2_PEAKS_PER_EVENT, HIT_PATTERN_LENGTH)),
     (("Area of S2 i", "s2_area_i"), np.float32, MAX_NUMBER_OF_S2_PEAKS_PER_EVENT),
     (("Area of S1 i", "s1_area_i"), np.float32, MAX_NUMBER_OF_S1_PEAKS_PER_EVENT),
@@ -171,8 +169,6 @@ class MultiPeakMSData(strax.Plugin):
             result[i]["s1_aft_i"][:n_s1_peaks_in_event] = s1_peaks["area_fraction_top"][:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
             result[i]["s2_aft_i"][:n_s2_peaks_in_event] = s2_peaks["area_fraction_top"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
 
-            result[i]["s1_waveform_i"][:n_s1_peaks_in_event] = s1_peaks["data"][:MAX_NUMBER_OF_S1_PEAKS_PER_EVENT]
-            result[i]["s2_waveform_i"][:n_s2_peaks_in_event] = s2_peaks["data"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
 
             result[i]["s2_area_per_channel_i"][:n_s2_peaks_in_event] = s2_peaks["area_per_channel"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
             result[i]["s2_area_i"][:n_s2_peaks_in_event] = s2_peaks["area"][:MAX_NUMBER_OF_S2_PEAKS_PER_EVENT]
