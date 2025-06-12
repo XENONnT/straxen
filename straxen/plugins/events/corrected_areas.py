@@ -120,7 +120,8 @@ class CorrectedAreas(strax.Plugin):
         default="itp_map://resource://xedocs://peak_reconstruction_bias"
         "?attr=value&run_id=plugin.run_id&signal=s1&fmt=json&version=ONLINE",
         help="Interpolation map for S1 peak bias correction. "
-        "Bias is defined as (reconstructed/raw) - 1. So, the bias correction is reconstructed/(1+bias).",
+        "Bias is defined as (reconstructed/raw) - 1." 
+        "So, the bias correction is reconstructed/(1+bias).",
     )
 
     # S2 Peak Reconstruction Bias Map
@@ -128,7 +129,8 @@ class CorrectedAreas(strax.Plugin):
         default="itp_map://resource://xedocs://peak_reconstruction_bias"
         "?attr=value&run_id=plugin.run_id&signal=s2&fmt=json&version=ONLINE",
         help="Interpolation map for S2 peak bias correction. "
-        "Bias is defined as (reconstructed/raw) - 1. So, the bias correction is reconstructed/(1+bias).",
+        "Bias is defined as (reconstructed/raw) - 1." 
+        "So, the bias correction is reconstructed/(1+bias).",
     )
 
     def infer_dtype(self):
