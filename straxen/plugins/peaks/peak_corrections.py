@@ -34,7 +34,7 @@ class PeakCorrectedAreas(CorrectedAreas):
             (
                 (
                     ("Bias-corrected S1 area before xyz correction [PE]"),
-                    "cs1_wo_xycorr",
+                    "cs1_wo_xyzcorr",
                 ),
                 np.float32,
             ),
@@ -106,8 +106,8 @@ class PeakCorrectedAreas(CorrectedAreas):
         s1_mask = peaks["type"] == 1
         if np.any(s1_mask):
             s1_bias = self.s1_bias_map(peaks["area"][s1_mask].reshape(-1, 1))
-            cs1_wo_xycorr = peaks["area"][s1_mask] / (1 + s1_bias.flatten())
-            result["cs1_wo_xycorr"][s1_mask] = cs1_wo_xycorr
+            cs1_wo_xyzcorr = peaks["area"][s1_mask] / (1 + s1_bias.flatten())
+            result["cs1_wo_xyzcorr"][s1_mask] = cs1_wo_xyzcorr
 
         # S2 correction factors
         s2_mask = peaks["type"] == 2
