@@ -1,6 +1,7 @@
 import numpy as np
 import straxen
 import strax
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 export, __all__ = strax.exporter()
 
@@ -27,6 +28,10 @@ class MultiPeakMSData(strax.Plugin):
     provides = "multi_peak_ms_naive"
     data_kind = "events"
     save_when = strax.SaveWhen.TARGET
+
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
     
     electron_drift_velocity = straxen.URLConfig(
         default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
