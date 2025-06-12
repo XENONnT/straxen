@@ -17,7 +17,7 @@ class EventBasicsVanilla(strax.Plugin):
 
     """
 
-    __version__ = "1.3.5"
+    __version__ = "1.4.0"
 
     depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity")
     provides = "event_basics"
@@ -353,7 +353,7 @@ class EventBasicsVanilla(strax.Plugin):
 
         # areas before main S2
         if len(largest_s2s):
-            peaks_before_ms2 = peaks[peaks["time"] < largest_s2s[0]["time"]]
+            peaks_before_ms2 = peaks[peaks["center_time"] < largest_s2s[0]["center_time"]]
             result["area_before_main_s2"] = np.sum(peaks_before_ms2["area"])
 
             s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2["type"] == 2]
