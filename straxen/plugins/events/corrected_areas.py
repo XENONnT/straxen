@@ -265,14 +265,14 @@ class CorrectedAreas(strax.Plugin):
         # S2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
         seg, avg_seg, ee = self.seg_ee_correction_preparation()
-        
+
         # now can start doing corrections
         for peak_type in ["", "alt_"]:
             # Added S2 bias correction
             result[f"{peak_type}cs2_wo_xycorr"] = events[f"{peak_type}s2_area"] / (
                 1 + self.s2_bias_map(events[f"{peak_type}s2_area"].reshape(-1, 1))
             )
-            
+
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
             # corrected S2 with S2(x,y) map only, i.e. no elife correction
@@ -294,7 +294,7 @@ class CorrectedAreas(strax.Plugin):
             # use drift time computed using the main S1.
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f"{el_string}drift_time"] / self.elife)
-            
+
             # collect SEG and EE corrections
             seg_ee_corr = np.zeros(len(events))
             for partition, func in self.regions.items():
@@ -306,7 +306,7 @@ class CorrectedAreas(strax.Plugin):
             cs2_xycorr = cs2_top_xycorr + cs2_bottom_xycorr
             result[f"{peak_type}cs2_wo_timecorr"] = cs2_xycorr * elife_correction
             result[f"{peak_type}cs2_area_fraction_top_wo_timecorr"] = cs2_top_xycorr / cs2_xycorr
-            
+
             # apply SEG and EE correction
             cs2_top_wo_picorr = cs2_top_xycorr / seg_ee_corr
             cs2_bottom_wo_picorr = cs2_bottom_xycorr / seg_ee_corr
@@ -320,7 +320,7 @@ class CorrectedAreas(strax.Plugin):
             cs2_top_wo_elifecorr = cs2_top_wo_picorr
             cs2_bottom_wo_elifecorr = cs2_bottom_wo_picorr * self.cs2_bottom_top_ratio_correction
             cs2_wo_elifecorr = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
-            
+
             # scale top and bottom to ensure total cS2 is conserved, since the time
             # dependence of it has been already corrected by SEG correction
             cs2_top_wo_elifecorr *= cs2_wo_picorr / cs2_wo_elifecorr
