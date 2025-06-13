@@ -374,7 +374,7 @@ class EventBasicsVanilla(strax.Plugin):
             s2_before_ms2 = peaks_before_ms2 & (peaks["type"] == 2)
             if np.any(s2_before_ms2):
                 i = np.arange(len(peaks))[s2_before_ms2][
-                    np.argmax(peaks["area"][s2_before_ms2]).items()
+                    np.argmax(peaks["area"][s2_before_ms2]).item()
                 ]
                 result["large_s2_before_main_s2_area"] = peaks["area"][i]
                 result["large_s2_before_main_s2_index"] = i
