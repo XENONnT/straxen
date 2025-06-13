@@ -123,7 +123,11 @@ class EventBasicsVanilla(strax.Plugin):
             (f"alt_s2_x", np.float32, f"Alternate S2 reconstructed X position, uncorrected [cm]"),
             (f"alt_s2_y", np.float32, f"Alternate S2 reconstructed Y position, uncorrected [cm]"),
             (f"area_before_main_s2", np.float32, f"Sum of areas before Main S2 [PE]"),
-            (f"large_s2_before_main_s2", np.float32, f"The largest S2 before the Main S2 [PE]"),
+            (
+                f"large_s2_before_main_s2_area",
+                np.float32,
+                f"The largest S2 before the Main S2 [PE]",
+            ),
             (
                 f"large_s2_before_main_s2_index",
                 np.int32,
@@ -372,7 +376,7 @@ class EventBasicsVanilla(strax.Plugin):
                 i = np.arange(len(peaks))[s2_before_ms2][
                     np.argmax(peaks["area"][s2_before_ms2]).items()
                 ]
-                result["large_s2_before_main_s2"] = peaks["area"][i]
+                result["large_s2_before_main_s2_area"] = peaks["area"][i]
                 result["large_s2_before_main_s2_index"] = i
                 result["large_s2_before_main_s2_center_time"] = peaks["center_time"][i]
         return result
