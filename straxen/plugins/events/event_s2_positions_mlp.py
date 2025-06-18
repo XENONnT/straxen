@@ -13,15 +13,8 @@ class EventS2PositionMLP(EventS2PositionBase):
     algorithm = "mlp"
     provides = "event_s2_positions_mlp"
 
-    tf_event_model_mlp = straxen.URLConfig(
-        default=(
-            "tf://"
-            "resource://"
-            f"cmt://{algorithm}_model"
-            "?version=ONLINE"
-            "&run_id=plugin.run_id"
-            "&fmt=abs_path"
-        ),
+    tf_model_mlp = straxen.URLConfig(
+        default="tf://resource://xnt_mlp_SR0_mix_2000031_2000021_20211211.keras?fmt=abs_path",
         help=(
             'MLP model. Should be opened using the "tf" descriptor. '
             'Set to "None" to skip computation'

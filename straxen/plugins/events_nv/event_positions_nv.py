@@ -54,7 +54,7 @@ class nVETOEventPositions(strax.Plugin):
         angle = get_average_angle(hits_in_events, self.pmt_properties)
         event_angles["angle"] = angle
         compute_positions(event_angles, hits_in_events, self.pmt_properties)
-        strax.copy_to_buffer(events_nv, event_angles, f"_copy_events_nv")
+        strax.copy_to_buffer(events_nv, event_angles, "_copy_events_nv")
 
         return event_angles
 
@@ -189,7 +189,7 @@ def _circ_angle(x: float, y: float) -> float:
         angle = np.abs(np.arctan(x / y))
         return 3 / 2 * np.pi + angle
     elif x == 0 and y == 0:
-        return np.NaN
+        return np.nan
     else:
         print(x, y)
         raise ValueError("It should be impossible to arrive here, but somehow we managed.")

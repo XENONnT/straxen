@@ -1,46 +1,58 @@
 import os
 import warnings
-from copy import deepcopy
 from typing import Dict, Any, List, Optional
 from immutabledict import immutabledict
 import socket
 
-from pandas.util._decorators import deprecate_kwarg
 import strax
 import straxen
 
 from straxen import HAVE_ADMIX
 
 common_opts: Dict[str, Any] = dict(
-    register_all=[],
-    # Register all peak/pulse processing by hand as 1T does not need to have
-    # the high-energy plugins.
+    register_all=[straxen.plugins],
     register=[
         straxen.PulseProcessing,
         straxen.Peaklets,
-        straxen.PeakletClassification,
+        straxen.PeakletClassificationSOM,
         straxen.MergedS2s,
-        straxen.Peaks,
-        straxen.PeakBasics,
+        straxen.PeaksSOM,
+        straxen.PeakBasicsSOM,
         straxen.PeakProximity,
         straxen.Events,
-        straxen.EventBasics,
+        straxen.EventBasicsSOM,
         straxen.EventPositions,
         straxen.CorrectedAreas,
         straxen.EnergyEstimates,
         straxen.EventInfoDouble,
         straxen.DistinctChannels,
+        straxen.PeakPositionsMLP,
+        straxen.PeakPositionsCNF,
     ],
     check_available=("peak_basics", "event_basics"),
     store_run_fields=("name", "number", "start", "end", "livetime", "mode", "source"),
+    use_per_run_defaults=False,
 )
 
-xnt_common_config = dict(
+
+common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
-    gain_model="cmt://to_pe_model?version=ONLINE&run_id=plugin.run_id",
-    gain_model_nv="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id",
-    gain_model_mv="cmt://to_pe_model_mv?version=ONLINE&run_id=plugin.run_id",
+    gain_model=(
+        "list-to-array://xedocs://pmt_area_to_pes"
+        "?as_list=True&sort=pmt&detector=tpc"
+        "&run_id=plugin.run_id&version=ONLINE&attr=value"
+    ),
+    gain_model_nv=(
+        "list-to-array://xedocs://pmt_area_to_pes"
+        "?as_list=True&sort=pmt&detector=neutron_veto"
+        "&run_id=plugin.run_id&version=ONLINE&attr=value"
+    ),
+    gain_model_mv=(
+        "list-to-array://xedocs://pmt_area_to_pes"
+        "?as_list=True&sort=pmt&detector=muon_veto"
+        "&run_id=plugin.run_id&version=ONLINE&attr=value"
+    ),
     channel_map=immutabledict(
         # (Minimum channel, maximum channel)
         # Channels must be listed in a ascending order!
@@ -50,98 +62,12 @@ xnt_common_config = dict(
         aqmon_nv=(808, 815),  # nveto acquisition monitor
         tpc_blank=(999, 999),
         mv=(1000, 1083),
-        aux_mv=(1084, 1087),  # Aux mv channel 2 empty  1 pulser and 1 GPS
+        aux_mv=(1084, 1087),  # Aux mv channel 2 empty 1 pulser and 1 GPS
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999),
     ),
-    # Clustering/classification parameters
-    # Event level parameters
-    fdc_map=(
-        "itp_map://"
-        "resource://"
-        "cmt://"
-        "format://fdc_map_{alg}"
-        "?alg=plugin.default_reconstruction_algorithm"
-        "&version=ONLINE"
-        "&run_id=plugin.run_id"
-        "&fmt=binary"
-        "&scale_coordinates=plugin.coordinate_scales"
-    ),
-    z_bias_map=(
-        "itp_map://"
-        "resource://"
-        "XnT_z_bias_map_chargeup_20230329.json.gz?"
-        "fmt=json.gz"
-        "&method=RegularGridInterpolator"
-    ),
 )
-# these are placeholders to avoid calling cmt with non integer run_ids. Better solution pending.
-# s1,s2 and fd corrections are still problematic
-xnt_simulation_config = deepcopy(xnt_common_config)
-xnt_simulation_config.update(
-    gain_model="legacy-to-pe://to_pe_placeholder",
-    gain_model_nv="legacy-to-pe://adc_nv",
-    gain_model_mv="legacy-to-pe://adc_mv",
-    elife=1e6,
-)
-
-# Plugins in these files have nT plugins, E.g. in pulse&peak(let)
-# processing there are plugins for High Energy plugins. Therefore, do not
-# st.register_all in 1T contexts.
-xnt_common_opts = common_opts.copy()
-xnt_common_opts.update(
-    {
-        "register": list(common_opts["register"])
-        + [
-            straxen.PeakletSOMClass,
-            straxen.PeaksSOMClassification,
-            straxen.EventSOMClassification,
-        ],
-        "register_all": list(common_opts["register_all"])
-        + [
-            straxen.plugins,
-        ],
-        "use_per_run_defaults": False,
-    }
-)
-
-
-##
-# XENONnT
-##
-
-
-def xenonnt(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=False, **kwargs):
-    """XENONnT context."""
-    if not _from_cutax and cmt_version != "global_ONLINE":
-        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
-    st = straxen.contexts.xenonnt_online(**kwargs)
-    st.apply_cmt_version(cmt_version)
-
-    if xedocs_version is not None:
-        st.apply_xedocs_configs(version=xedocs_version, **kwargs)
-
-    return st
-
-
-def xenonnt_som(cmt_version="global_ONLINE", xedocs_version=None, _from_cutax=False, **kwargs):
-    """XENONnT context for the SOM."""
-
-    st = straxen.contexts.xenonnt(
-        cmt_version=cmt_version, xedocs_version=xedocs_version, _from_cutax=_from_cutax, **kwargs
-    )
-    del st._plugin_class_registry["peaklet_classification"]
-    st.register(
-        (
-            straxen.PeakletClassificationSOM,
-            straxen.PeaksSOM,
-            straxen.PeakBasicsSOM,
-            straxen.EventBasicsSOM,
-        )
-    )
-
-    return st
 
 
 def find_rucio_local_path(include_rucio_local, _rucio_local_path):
@@ -172,11 +98,7 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     return _include_rucio_local, __rucio_local_path
 
 
-@deprecate_kwarg("_minimum_run_number", "minimum_run_number")
-@deprecate_kwarg("_maximum_run_number", "maximum_run_number")
-@deprecate_kwarg("_include_rucio_remote", "include_rucio_remote")
-@deprecate_kwarg("_add_online_monitor_frontend", "include_online_monitor")
-def xenonnt_online(
+def xenonnt(
     output_folder: str = "./strax_data",
     we_are_the_daq: bool = False,
     minimum_run_number: int = 7157,
@@ -187,17 +109,23 @@ def xenonnt_online(
     include_rucio_local: bool = False,
     # Frontend options
     download_heavy: bool = False,
+    remove_heavy: bool = False,
     _auto_append_rucio_local: bool = True,
     _rucio_path: str = "/dali/lgrandi/rucio/",
     _rucio_local_path: Optional[str] = None,
     _raw_paths: List[str] = ["/dali/lgrandi/xenonnt/raw"],
     _processed_paths: List[str] = [
-        "/dali/lgrandi/xenonnt/processed",
-        "/project2/lgrandi/xenonnt/processed",
         "/project/lgrandi/xenonnt/processed",
+        "/project/lgrandi/xenonnt/processed_sr2_offline_round_1",
+        "/project/lgrandi/xenonnt/processed_sr2_offline_round_2",
+        "/project/lgrandi/xenonnt/processed_sr2_offline_round_3",
+        "/project2/lgrandi/xenonnt/processed",
+        "/dali/lgrandi/xenonnt/processed",
+        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_1",
+        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_2",
+        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_3",
     ],
     # Testing options
-    _context_config_overwrite: Optional[dict] = None,
     _database_init: bool = True,
     _forbid_creation_of: Optional[dict] = None,
     **kwargs,
@@ -215,13 +143,13 @@ def xenonnt_online(
         wants to do a fuzzy search in the data the runs database is out of sync with rucio
     :param download_heavy: bool, whether or not to allow downloads of heavy data (raw_records*, less
         the aqmon)
+    :param remove_heavy: bool, whether or not to remove the heavy data after reading
     :param _auto_append_rucio_local: bool, whether or not to automatically append the rucio local
         path
     :param _rucio_path: str, path of rucio
     :param _rucio_local_path: str, path of local RSE of rucio. Only use for testing!
     :param _raw_paths: list[str], common path of the raw-data
     :param _processed_paths: list[str]. common paths of output data
-    :param _context_config_overwrite: dict, overwrite config
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form being written (raw_records*
         is always forbidden).
@@ -229,9 +157,14 @@ def xenonnt_online(
     :return: strax.Context
 
     """
-    context_options = {**straxen.contexts.xnt_common_opts, **kwargs}
+    if "xedocs_version" in kwargs:
+        warnings.warn(
+            "Please use xenonnt_* instead of xenonnt if you want to specify xedocs_version"
+        )
 
-    st = strax.Context(config=straxen.contexts.xnt_common_config, **context_options)
+    context_options = {**straxen.contexts.common_opts, **kwargs}
+
+    st = strax.Context(config=straxen.contexts.common_config, **context_options)
     st.register(
         [
             straxen.DAQReader,
@@ -284,6 +217,7 @@ def xenonnt_online(
         rucio_frontend = straxen.RucioRemoteFrontend(
             staging_dir=os.path.join(output_folder, "rucio"),
             download_heavy=download_heavy,
+            remove_heavy=remove_heavy,
         )
         st.storage += [rucio_frontend]
 
@@ -320,12 +254,52 @@ def xenonnt_online(
             )
         }
     )
-    if _context_config_overwrite is not None:
-        warnings.warn(
-            f"_context_config_overwrite is deprecated, please pass to context as kwargs",
-            DeprecationWarning,
+
+    return st
+
+
+if "xedocs_version" not in strax.Context.takes_config:
+    strax.Context = strax.takes_config(
+        strax.Option(
+            name="xedocs_version",
+            default=None,
+            type=str,
+            help="The version of the xedocs database to use",
+        ),
+    )(strax.Context)
+
+
+@strax.Context.add_method
+def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> None:
+    import xedocs
+
+    if isinstance(db, str):
+        func = getattr(xedocs.databases, db)
+        db_kwargs = straxen.filter_kwargs(func, kwargs)
+        db = func(**db_kwargs)
+
+    filter_kwargs = {k: v for k, v in kwargs.items() if k in db.context_configs.schema.__fields__}
+
+    docs = db.context_configs.find_docs(**filter_kwargs)
+
+    global_config = {doc.config_name: doc.value for doc in docs}
+
+    if len(global_config):
+        context.set_config(global_config)
+        context.set_context_config({"xedocs_version": filter_kwargs["version"]})
+    else:
+        raise KeyError(
+            f"Could not find any context configs matching {filter_kwargs} in the xedocs database"
         )
-        st.set_context_config(_context_config_overwrite)
+
+
+def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
+    """XENONnT context."""
+    if not _from_cutax and xedocs_version != "global_ONLINE":
+        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
+
+    st = straxen.contexts.xenonnt(**kwargs)
+    st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
     return st
 
@@ -335,7 +309,7 @@ def xenonnt_led(**kwargs):
     st.set_context_config(
         {
             "check_available": ("raw_records", "led_calibration"),
-            "free_options": list(xnt_common_config.keys()),
+            "free_options": list(common_config.keys()),
         }
     )
     # Return a new context with only raw_records and led_calibration registered
@@ -352,28 +326,3 @@ def xenonnt_led(**kwargs):
     )
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
-
-
-##
-# XENON1T, see straxen/legacy
-##
-
-
-def demo():
-    """Return strax context used in the straxen demo notebook."""
-    return straxen.legacy.contexts_1t.demo()
-
-
-def fake_daq():
-    """Context for processing fake DAQ data in the current directory."""
-    return straxen.legacy.contexts_1t.fake_daq()
-
-
-def xenon1t_dali(output_folder="./strax_data", build_lowlevel=False, **kwargs):
-    return straxen.legacy.contexts_1t.xenon1t_dali(
-        output_folder=output_folder, build_lowlevel=build_lowlevel, **kwargs
-    )
-
-
-def xenon1t_led(**kwargs):
-    return straxen.legacy.contexts_1t.xenon1t_led(**kwargs)

@@ -1,9 +1,9 @@
-import strax
-import straxen
-import utilix
 import numpy as np
 import pandas as pd
 import datetime
+import utilix
+import strax
+import straxen
 
 from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 from scipy.interpolate import interp1d
@@ -15,7 +15,7 @@ class GpsSync(strax.OverlapWindowPlugin):
     1. Finds the TTL GPS pulses coming into the AM from the gps
     module and their pairs coming from the module for the
     correspondent run.
-      2. Corrects the timestamp of all events by linearly interpolating
+    2. Corrects the timestamp of all events by linearly interpolating
     between the previous and next sync pulses.
 
     """
@@ -51,7 +51,7 @@ class GpsSync(strax.OverlapWindowPlugin):
     def get_window_size(self):
         # Use a large window to ensure that multiple GPS pulses are found
         # within the current chunk. Specified window is in nanoseconds.
-        return int(120 * 10**9)
+        return int(120 * straxen.units.s)
 
     def setup(self):
         # Load GPS-module pulses
@@ -65,7 +65,7 @@ class GpsSync(strax.OverlapWindowPlugin):
         nanoseconds unix time."""
         gps_info = self.gps_times_from_runid(self.run_id)
         gps_info["pulse_time"] = np.int64(gps_info["gps_sec"] * 1e9) + np.int64(gps_info["gps_ns"])
-        gps_array = np.sort(gps_info["pulse_time"])
+        gps_array = strax.stable_sort(gps_info["pulse_time"])
         return gps_array
 
     def gps_times_from_runid(self, run_id):
@@ -101,8 +101,8 @@ class GpsSync(strax.OverlapWindowPlugin):
 
         """
         _gps_pulses = np.zeros(len(gps_pulse_time), strax.time_fields)
-        _gps_pulses["time"] = gps_pulse_time - int(vicinity * 10**9)
-        _gps_pulses["endtime"] = gps_pulse_time + int(vicinity * 10**9)
+        _gps_pulses["time"] = gps_pulse_time - int(vicinity * straxen.units.s)
+        _gps_pulses["endtime"] = gps_pulse_time + int(vicinity * straxen.units.s)
 
         _gps_truth = np.zeros(len(gps_truth_time), strax.time_fields)
         _gps_truth["time"] = gps_truth_time

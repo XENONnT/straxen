@@ -1,5 +1,4 @@
 import warnings
-
 import urllib
 import time
 from datetime import datetime
@@ -191,7 +190,7 @@ class SCADAInterface:
         df = df.tz_localize(tz="UTC")
         df.index.rename("time UTC", inplace=True)
 
-        if (end // 10**9) > now.astype(np.int64):
+        if (end // straxen.units.s) > now.astype(np.int64):
             df.loc[now:, :] = np.nan
 
         return df
@@ -206,7 +205,7 @@ class SCADAInterface:
             # User specified a valid context and run_id, so get the start
             # and end time for our query:
             if isinstance(run_id, (list, tuple)):
-                run_id = np.sort(run_id)  # Do not trust the user's
+                run_id = strax.stable_sort(run_id)  # Do not trust the user's
                 start, _ = self.context.to_absolute_time_range(run_id[0], **time_selection_kwargs)
                 _, end = self.context.to_absolute_time_range(run_id[-1], **time_selection_kwargs)
             else:
@@ -241,20 +240,20 @@ class SCADAInterface:
             )
 
         now = np.datetime64("now")
-        if (end // 10**9) > now.astype(np.int64):
+        if (end // straxen.units.s) > now.astype(np.int64):
             mes = (
                 "You are asking for an endtime which is in the future,"
                 " I may be written by a physicist, but I am neither self-"
                 "aware nor can I predict the future like they can. You "
-                f"asked for the endtime: {end // 10**9} but current utc "
+                f"asked for the endtime: {end // straxen.units.s} but current utc "
                 f"time is {now.astype(np.int64)}. I will return for the values for the "
                 "corresponding times as nans instead."
             )
             warnings.warn(mes)
 
         # Chop start/end time if precision is higher then seconds level.
-        start = (start // 10**9) * 10**9
-        end = (end // 10**9) * 10**9
+        start = (start // straxen.units.s) * straxen.units.s
+        end = (end // straxen.units.s) * straxen.units.s
 
         return int(start), int(end), now
 
@@ -303,9 +302,11 @@ class SCADAInterface:
         if query_type_lab:
             # In the lab case we get interpolated data without nans so the df can be set
             # accordingly.
-            seconds = np.arange(start, end + 1, 10**9 * every_nth_value)
+            seconds = np.arange(start, end + 1, straxen.units.s * every_nth_value)
         else:
-            seconds = np.arange(start, end + 1, 10**9)  # +1 to make sure endtime is included
+            seconds = np.arange(
+                start, end + 1, straxen.units.s
+            )  # +1 to make sure endtime is included
 
         df = pd.DataFrame()
         df.loc[:, "time"] = seconds
@@ -320,7 +321,7 @@ class SCADAInterface:
             # This is only needed in case of raw data since here it can
             # happen that the user queries a range without any data.
             temp_df = self._query(
-                query, self.SCLastValue_URL, end=(start // 10**9) + 1
+                query, self.SCLastValue_URL, end=(start // straxen.units.s) + 1
             )  # +1 since it is end before exclusive
 
             # Store value as first value in our df
@@ -329,7 +330,7 @@ class SCADAInterface:
         else:
             offset = 0
 
-        one_year_in_ns = int(24 * 3600 * 360 * 10**9)
+        one_year_in_ns = int(24 * 3600 * 360 * straxen.units.s)
         starts = np.arange(start + offset, end, one_year_in_ns)
         if len(starts):
             ends = starts + one_year_in_ns
@@ -402,8 +403,8 @@ class SCADAInterface:
             temp_df = self._query(
                 query,
                 self.SCData_URL,
-                start=(start // 10**9),
-                end=(end // 10**9),
+                start=(start // straxen.units.s),
+                end=(end // straxen.units.s),
                 query_type_lab=query_type_lab,
                 seconds_interval=seconds_interval,
                 raise_error_message=False,  # No valid value in query range...
@@ -412,12 +413,12 @@ class SCADAInterface:
                 # In case WebInterface does not return any data, e.g. if query range too small
                 break
 
-            times = (temp_df["timestampseconds"].values * 10**9).astype("<M8[ns]")
+            times = (temp_df["timestampseconds"].values * straxen.units.s).astype("<M8[ns]")
             result_dataframe.loc[times, parameter_name] = temp_df.loc[:, "value"].values
-            endtime = temp_df["timestampseconds"].values[-1].astype(np.int64) * 10**9
+            endtime = temp_df["timestampseconds"].values[-1].astype(np.int64) * straxen.units.s
             start = endtime  # Next query should start at the last time seen.
             ntries += 1
-            if not (len(temp_df) == 35000 and endtime != end // 10**9):
+            if not (len(temp_df) == 35000 and endtime != end // straxen.units.s):
                 # Max query are 35000 values, if end is reached the
                 # length of the dataframe is either smaller or the last
                 # time value is equivalent to queried range.
@@ -631,10 +632,10 @@ def convert_time_zone(df, tz):
     :return: pandas.DataFrame with converted time index.
 
     Notes:
-        1. ) The input pandas.DataFrame must be indexed via datetime
+        1.) The input pandas.DataFrame must be indexed via datetime
         objects which are timezone aware.
 
-        2.)  You can find a complete list of available timezones via:
+        2.) You can find a complete list of available timezones via:
         ```
         import pytz
         pytz.all_timezones

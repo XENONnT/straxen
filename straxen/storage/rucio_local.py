@@ -27,9 +27,9 @@ class RucioLocalFrontend(strax.StorageFrontend):
     storage_type = strax.StorageType.LOCAL
     local_prefixes = {
         "UC_DALI_USERDISK": "/dali/lgrandi/rucio/",
-        "SDSC_USERDISK": "/expanse/lustre/projects/chi135/shockley/rucio",
+        "SDSC_USERDISK": "/expanse/lustre/projects/chi135/shockley/rucio/",
     }
-    local_rses = {"UC_DALI_USERDISK": r".rcc.", "SDSC_USERDISK": r".sdsc."}
+    local_rses = {"UC_DALI_USERDISK": r"^dali(\w*).rcc.", "SDSC_USERDISK": r".sdsc."}
 
     def __init__(self, path=None, *args, **kwargs):
         kwargs.setdefault("readonly", True)
@@ -145,7 +145,7 @@ class RucioLocalBackend(strax.FileSytemBackend):
     def _get_metadata(self, did: str, **kwargs):
         scope, name = did.split(":")
         number, dtype, hsh = parse_rucio_did(did)
-        metadata_json = f"{dtype}-{hsh}-metadata.json"
+        metadata_json = strax.RUN_METADATA_PATTERN % f"{dtype}-{hsh}"
         metadata_did = f"{scope}:{metadata_json}"
 
         metadata_path = rucio_path(self.rucio_dir, metadata_did)

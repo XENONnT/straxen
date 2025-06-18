@@ -4,7 +4,7 @@ if [ ! -z "$RUNDB_API_URL" ]
 then
 cat > $HOME/.xenon_config <<EOF
 [basic]
-logging_level=debug
+logging_level=DEBUG
 
 [RunDB]
 rundb_api_url = $RUNDB_API_URL

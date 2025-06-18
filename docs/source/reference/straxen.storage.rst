@@ -4,14 +4,6 @@ straxen.storage package
 Submodules
 ----------
 
-straxen.storage.mongo\_storage module
--------------------------------------
-
-.. automodule:: straxen.storage.mongo_storage
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 straxen.storage.online\_monitor\_frontend module
 ------------------------------------------------
 

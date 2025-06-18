@@ -153,7 +153,7 @@ class TestCoincidence(unittest.TestCase):
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
 def test_nv_for_dummy_rr():
     """Basic test to run the nv rr for dummy raw-records."""
-    st = straxen.test_utils.nt_test_context(deregister=())
+    st = straxen.test_utils.nt_test_context("xenonnt_online", deregister=())
     st.context_config["forbid_creation_of"] = tuple()
     st.register(straxen.test_utils.DummyRawRecords)
     st.make(straxen.test_utils.nt_test_run_id, "hitlets_nv")

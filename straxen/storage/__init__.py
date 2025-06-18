@@ -10,5 +10,5 @@ from . import rucio_local
 from . import rundb
 from .rundb import *
 
-from . import mongo_storage
-from .mongo_storage import *
+from utilix import mongo_storage
+from utilix.mongo_storage import *

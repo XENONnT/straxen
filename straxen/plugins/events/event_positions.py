@@ -12,8 +12,8 @@ class EventPositions(strax.Plugin):
     """Computes the observed and corrected position for the main S1/S2 pairs in an event.
 
     For XENONnT data, it returns the FDC corrected positions of the
-    default_reconstruction_algorithm. In case the fdc_map is given as a file (not through CMT), then
-    the coordinate system should be given as (x, y, z), not (x, y, drift_time).
+    default_reconstruction_algorithm. In case the fdc_map is given as a file (not through xedocs),
+    then the coordinate system should be given as (x, y, z), not (x, y, drift_time).
 
     """
 
@@ -26,27 +26,30 @@ class EventPositions(strax.Plugin):
     )
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
 
     electron_drift_time_gate = straxen.URLConfig(
-        default="cmt://electron_drift_time_gate?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_time_gates?attr=value&run_id=plugin.run_id&version=ONLINE",
         help="Electron drift time from the gate in ns",
         cache=True,
     )
 
     fdc_map = straxen.URLConfig(
+        default="xedocs://fdc_maps"
+        "?algorithm=plugin.default_reconstruction_algorithm&run_id=plugin.run_id"
+        "&attr=map&scale_coordinates=plugin.coordinate_scale&version=ONLINE",
         infer_type=False,
         help="3D field distortion correction map path",
-        default="legacy-fdc://xenon1t_sr0_sr1?run_id=plugin.run_id",
     )
 
     z_bias_map = straxen.URLConfig(
+        default="itp_map://resource://XnT_z_bias_map_chargeup_20230329.json.gz"
+        "?fmt=json.gz&method=RegularGridInterpolator",
         infer_type=False,
         help="Map of Z bias due to non uniform drift velocity/field",
-        default="legacy-z_bias://0",
     )
 
     def infer_dtype(self):

@@ -32,6 +32,9 @@ class nVETOHitlets(strax.Plugin):
 
     parallel = "process"
     rechunk_on_save = True
+    # To reduce the number of chunks, we increase the target size
+    # This would not harm memory usage, because we rechunk on load
+    chunk_target_size_mb = 2000
     compressor = "zstd"
 
     depends_on = "records_nv"
@@ -54,11 +57,7 @@ class nVETOHitlets(strax.Plugin):
         track=True,
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_nveto_pmts, or a number, "
-            'or a string like "pmt_commissioning_initial" which means calling '
-            "hitfinder_thresholds.py, "
-            "or a tuple like (correction=str, version=str, nT=boolean), "
-            "which means we are using cmt."
+            "Specify as a tuple of length n_nveto_pmts, or a number."
         ),
     )
 
@@ -81,26 +80,6 @@ class nVETOHitlets(strax.Plugin):
         ),
     )
 
-    entropy_template_nv = straxen.URLConfig(
-        default="flat",
-        track=True,
-        infer_type=False,
-        help=(
-            'Template data is compared with in conditional entropy. Can be either "flat" or an '
-            "template array."
-        ),
-    )
-
-    entropy_square_data_nv = straxen.URLConfig(
-        default=False,
-        track=True,
-        infer_type=False,
-        help=(
-            "Parameter which decides if data is first squared before normalized and compared to "
-            "the template."
-        ),
-    )
-
     channel_map = straxen.URLConfig(
         track=False,
         type=immutabledict,
@@ -108,7 +87,16 @@ class nVETOHitlets(strax.Plugin):
     )
 
     gain_model_nv = straxen.URLConfig(
-        default="cmt://to_pe_model_nv?version=ONLINE&run_id=plugin.run_id",
+        default=(
+            "list-to-array://"
+            "xedocs://pmt_area_to_pes"
+            "?as_list=True"
+            "&sort=pmt"
+            "&detector=neutron_veto"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+            "&attr=value"
+        ),
         infer_type=False,
         help="PMT gain model. Specify as (model_type, model_config, nT = True)",
     )
@@ -123,8 +111,7 @@ class nVETOHitlets(strax.Plugin):
         self.to_pe = np.zeros(self.channel_range[1] + 1, dtype=np.float32)
         self.to_pe[self.channel_range[0] :] = to_pe[:]
 
-        # Check config of `hit_min_amplitude_nv` and define hit thresholds
-        # if cmt config
+        # Assign attribute that might be used in daughter classes:
         self.hit_thresholds = self.hit_min_amplitude_nv
 
     def compute(self, records_nv, start, end):
@@ -156,8 +143,6 @@ class nVETOHitlets(strax.Plugin):
         # Compute other hitlet properties:
         # We have to loop here 3 times over all hitlets...
         strax.hitlet_properties(temp_hitlets)
-        entropy = strax.conditional_entropy(temp_hitlets, template="flat", square_data=False)
-        temp_hitlets["entropy"][:] = entropy
 
         # Remove data field:
         hitlets = np.zeros(len(temp_hitlets), dtype=strax.hitlet_dtype())
@@ -165,15 +150,15 @@ class nVETOHitlets(strax.Plugin):
         return strax.sort_by_time(hitlets)
 
 
-def remove_switched_off_channels(hits, to_pe):
-    """Removes hits which were found in a channel without any gain.
+def remove_switched_off_channels(records, to_pe):
+    """Removes records of channels which gain was set to zero.
 
-    :param hits: Hits found in records.
+    :param records Hits found in records.
     :param to_pe: conversion factor from ADC per sample.
-    :return: Hits
+    :return: records
 
     """
     channel_off = np.argwhere(to_pe == 0).flatten()
-    mask_off = np.isin(hits["channel"], channel_off)
-    hits = hits[~mask_off]
-    return hits
+    mask_off = np.isin(records["channel"], channel_off)
+    records = records[~mask_off]
+    return records

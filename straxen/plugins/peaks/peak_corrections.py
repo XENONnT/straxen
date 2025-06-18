@@ -18,19 +18,33 @@ class PeakCorrectedAreas(CorrectedAreas):
     provides = "peak_corrections"
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
 
     electron_drift_time_gate = straxen.URLConfig(
-        default="cmt://electron_drift_time_gate?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_time_gates?attr=value&run_id=plugin.run_id&version=ONLINE",
         help="Electron drift time from the gate in ns",
         cache=True,
     )
 
     def infer_dtype(self):
         dtype = strax.time_fields + [
+            (
+                (
+                    ("Bias-corrected S1 area before xyz correction [PE]"),
+                    "cs1_wo_xyzcorr",
+                ),
+                np.float32,
+            ),
+            (
+                (
+                    ("Bias-corrected S2 area before xy correction [PE]"),
+                    "cs2_wo_xycorr",
+                ),
+                np.float32,
+            ),
             (
                 (
                     (
@@ -88,7 +102,20 @@ class PeakCorrectedAreas(CorrectedAreas):
         z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
         result["z_obs_ms"] = z_obs
 
-        # Get S1 correction factors
+        # S1 correction factors
+        s1_mask = peaks["type"] == 1
+        if np.any(s1_mask):
+            s1_bias = self.s1_bias_map(peaks["area"][s1_mask].reshape(-1, 1))
+            cs1_wo_xyzcorr = peaks["area"][s1_mask] / (1 + s1_bias.flatten())
+            result["cs1_wo_xyzcorr"][s1_mask] = cs1_wo_xyzcorr
+
+        # S2 correction factors
+        s2_mask = peaks["type"] == 2
+        if np.any(s2_mask):
+            s2_bias = self.s2_bias_map(peaks["area"][s2_mask].reshape(-1, 1))
+            cs2_wo_xycorr = peaks["area"][s2_mask] / (1 + s2_bias.flatten())
+            result["cs2_wo_xycorr"][s2_mask] = cs2_wo_xycorr
+
         peak_positions = np.vstack([peaks["x"], peaks["y"], z_obs]).T
         result["s1_xyz_correction_factor"] = 1 / self.s1_xyz_map(peak_positions)
         result["s1_rel_light_yield_correction_factor"] = 1 / self.rel_light_yield

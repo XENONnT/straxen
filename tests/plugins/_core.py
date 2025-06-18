@@ -59,6 +59,8 @@ class SetupContextNt(PluginTestCase):
         "gps_sync",
         "veto_intervals_gps_sync",
         "ref_mon_nv",
+        "peak_s1_positions_cnn",
+        "event_s1_positions_cnn",
     )
 
     @classmethod
@@ -69,7 +71,8 @@ class SetupContextNt(PluginTestCase):
         class. Only after running all the tests, we run the cleanup.
 
         """
-        cls.st = straxen.test_utils.nt_test_context()
+        # TODO: xenonnt_online should be used here
+        cls.st = straxen.test_utils.nt_test_context("xenonnt")
         cls.run_id = nt_test_run_id
 
         # Make sure that we only write to the temp-dir we cleanup after each test
@@ -87,7 +90,7 @@ def run_pytest_from_main():
     """Build new unit test for provided functions.
 
     For example, you might want to run it for a single module, in that case you don't want to run
-    ALL the tests. So you can do e.g. `python bayes_plugin.py` where we only collect the tests
+    ALL the tests. So you can do e.g. `python peak_building.py` where we only collect the tests
     defined in that module.
 
     """

@@ -11,7 +11,7 @@ class PeakTopBottomParams(strax.Plugin):
 
     depends_on = ("peaks", "peak_basics")
     provides = "peak_top_bottom_params"
-    __version__ = "0.0.0"
+    __version__ = "0.0.1"
 
     def infer_dtype(self):
         dtype = []
@@ -90,7 +90,7 @@ class PeakTopBottomParams(strax.Plugin):
             result[f"center_time_{arr_}"] = peaks["time"]
             result[f"center_time_{arr_}"][mask] += recalc_ctime[mask].astype(int)
             # computing widths times
-            strax.compute_widths(fpeaks_)
+            strax.compute_properties(fpeaks_)
             result[f"rise_time_{arr_}"][:] = np.nan
             result[f"rise_time_{arr_}"][mask] = -fpeaks_["area_decile_from_midpoint"][mask][:, 1]
             result[f"range_50p_area_{arr_}"][:] = np.nan

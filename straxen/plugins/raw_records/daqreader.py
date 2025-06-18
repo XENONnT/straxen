@@ -75,7 +75,7 @@ class ArtificialDeadtimeInserted(UserWarning):
     # DAQReader settings
     strax.Option(
         "safe_break_in_pulses",
-        default=1000,
+        default=strax.DEFAULT_CHUNK_SPLIT_NS,
         track=False,
         infer_type=False,
         help=(
@@ -123,7 +123,8 @@ class DAQReader(strax.Plugin):
     data_kind = immutabledict(zip(provides, provides))
     depends_on: Tuple = tuple()
     parallel = "process"
-    chunk_target_size_mb = 50
+    rechunk_on_load = True
+    chunk_source_size_mb = strax.DEFAULT_CHUNK_SIZE_MB  # 200 MB
     rechunk_on_save = immutabledict(
         raw_records=False,
         raw_records_he=False,
@@ -133,6 +134,7 @@ class DAQReader(strax.Plugin):
         raw_records_aux_mv=True,
         raw_records_mv=False,
     )
+    chunk_target_size_mb = 500
     compressor = "lz4"
     __version__ = "0.0.0"
     input_timeout = 300
@@ -368,7 +370,7 @@ class DAQReader(strax.Plugin):
                 dt = result_arrays[i]["dt"][0]
                 # Convert time to time in ns since unix epoch.
                 # Ensure the offset is a whole digitizer sample
-                result_arrays[i]["time"] += dt * (self.t0 // dt)
+                result_arrays[i]["time"] += dt * (np.int64(self.t0) // dt)
 
             # Ignore data from the 'blank' channels, corresponding to
             # channels that have nothing connected

@@ -3,7 +3,7 @@ straxen' free of holoviews."""
 
 import numpy as np
 import pandas as pd
-
+import strax
 import straxen
 
 straxen._BOKEH_X_RANGE = None
@@ -42,7 +42,7 @@ def hvdisp_plot_pmt_pattern(*, config, records, to_pe, array="bottom"):
     """
     import holoviews as hv
 
-    pmts = straxen.pmt_positions(xenon1t=config["n_tpc_pmts"] < 300)
+    pmts = straxen.pmt_positions()
     areas = np.bincount(
         records["channel"], weights=records["area"] * to_pe[records["channel"]], minlength=len(pmts)
     )
@@ -338,14 +338,14 @@ def hvdisp_plot_peak_waveforms(
     import holoviews as hv
 
     if show_largest is not None and len(peaks) > show_largest:
-        show_i = np.argsort(peaks["area"])[-show_largest::]
+        show_i = strax.stable_argsort(peaks["area"])[-show_largest::]
         peaks = peaks[show_i]
 
     curves = []
     for p in peaks:
         # label = {1: 's1', 2: 's2'}.get(
         #     p['type'], 'unknown')
-        color = {1: "b", 2: "g"}.get(p["type"], "k")
+        color = {1: "blue", 2: "green"}.get(p["type"], "k")
 
         # It's better to plot amplitude /time than per bin, since
         # sampling times are now variable

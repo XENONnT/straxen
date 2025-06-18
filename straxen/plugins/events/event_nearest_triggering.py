@@ -1,6 +1,5 @@
 import numpy as np
 import strax
-import straxen
 
 export, __all__ = strax.exporter()
 
@@ -57,6 +56,20 @@ class EventNearestTriggering(strax.Plugin):
                     ),
                     (
                         (
+                            f"proximity_score {common_descr} {direction} of {main_peak_desc}",
+                            f"{main_peak}{direction}_proximity_score",
+                        ),
+                        np.float32,
+                    ),
+                    (
+                        (
+                            f"n_competing_left {common_descr} {direction} of {main_peak_desc}",
+                            f"{main_peak}{direction}_n_competing_left",
+                        ),
+                        np.int32,
+                    ),
+                    (
+                        (
                             f"n_competing {common_descr} {direction} of {main_peak_desc}",
                             f"{main_peak}{direction}_n_competing",
                         ),
@@ -77,7 +90,7 @@ class EventNearestTriggering(strax.Plugin):
         split_peaks = strax.split_by_containment(peaks, events)
         result = np.zeros(len(events), self.dtype)
 
-        straxen.EventBasics.set_nan_defaults(result)
+        strax.set_nan_defaults(result)
 
         # 1. Assign peaks features to main S1 and main S2 in the event
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
@@ -92,6 +105,8 @@ class EventNearestTriggering(strax.Plugin):
                             "endtime",
                             "center_time",
                             "type",
+                            "proximity_score",
+                            "n_competing_left",
                             "n_competing",
                             "area",
                         ]:

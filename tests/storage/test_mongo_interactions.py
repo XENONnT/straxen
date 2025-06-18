@@ -8,6 +8,7 @@ therefore the tests failing locally will not show up in Pull Requests.
 import straxen
 import os
 import unittest
+import utilix
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
@@ -20,7 +21,7 @@ class TestSelectRuns(unittest.TestCase):
 
         """
         self.assertTrue(check_n_runs >= 1)
-        st = straxen.contexts.xenonnt_online(use_rucio=False)
+        st = straxen.contexts.xenonnt(use_rucio=False)
         run_col = st.storage[0].collection
 
         # Find the latest run in the runs collection
@@ -38,6 +39,6 @@ class TestSelectRuns(unittest.TestCase):
 class TestDownloader(unittest.TestCase):
     def test_downloader(self):
         """Test if we can download a small file from the downloader."""
-        downloader = straxen.MongoDownloader()
+        downloader = utilix.mongo_storage.MongoDownloader()
         path = downloader.download_single("to_pe_nt.npy")
         self.assertTrue(os.path.exists(path))

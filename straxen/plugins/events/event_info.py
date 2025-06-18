@@ -14,7 +14,6 @@ class EventInfo(strax.MergeOnlyPlugin):
         "event_positions",
         "corrected_areas",
         "energy_estimates",
-        # 'event_pattern_fit', <- this will be added soon
     )
     save_when = strax.SaveWhen.ALWAYS
     provides = "event_info"
@@ -27,13 +26,12 @@ class EventInfo(strax.MergeOnlyPlugin):
     )
 
     def compute(self, **kwargs):
-        event_info_function = self.config["event_info_function"]
         event_info = super().compute(**kwargs)
-        if event_info_function != "disabled":
+        if self.event_info_function != "disabled":
             event_info = pre_apply_function(
                 event_info,
                 self.run_id,
                 self.provides,
-                event_info_function,
+                self.event_info_function,
             )
         return event_info

@@ -34,11 +34,7 @@ class muVETOHitlets(nVETOHitlets):
         track=True,
         help=(
             "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_mveto_pmts, or a number, "
-            'or a string like "pmt_commissioning_initial" which means calling '
-            "hitfinder_thresholds.py, "
-            "or a tuple like (correction=str, version=str, nT=boolean),"
-            "which means we are using cmt."
+            "Specify as a tuple of length n_mveto_pmts, or a number."
         ),
     )
 
@@ -65,32 +61,17 @@ class muVETOHitlets(nVETOHitlets):
         ),
     )
 
-    entropy_template_mv = straxen.URLConfig(
-        default="flat",
-        track=True,
-        infer_type=False,
-        child_option=True,
-        parent_option_name="entropy_template_nv",
-        help=(
-            'Template data is compared with in conditional entropy. Can be either "flat" or a '
-            "template array."
-        ),
-    )
-
-    entropy_square_data_mv = straxen.URLConfig(
-        default=False,
-        track=True,
-        infer_type=False,
-        child_option=True,
-        parent_option_name="entropy_square_data_nv",
-        help=(
-            "Parameter which decides if data is first squared before normalized and compared to "
-            "the template."
-        ),
-    )
-
     gain_model_mv = straxen.URLConfig(
-        default="cmt://to_pe_model_mv?version=ONLINE&run_id=plugin.run_id",
+        default=(
+            "list-to-array://"
+            "xedocs://pmt_area_to_pes"
+            "?as_list=True"
+            "&sort=pmt"
+            "&detector=muon_veto"
+            "&run_id=plugin.run_id"
+            "&version=ONLINE"
+            "&attr=value"
+        ),
         infer_type=False,
         child_option=True,
         parent_option_name="gain_model_nv",

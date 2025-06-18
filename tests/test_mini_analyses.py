@@ -5,8 +5,8 @@ import platform
 import numpy as np
 import pandas
 import strax
+from matplotlib.pyplot import clf
 import straxen
-from matplotlib.pyplot import clf as plt_clf
 from straxen.test_utils import nt_test_context, nt_test_run_id
 
 
@@ -15,14 +15,9 @@ def is_py310():
     return platform.python_version_tuple()[:2] == ("3", "10")
 
 
-def test_pmt_pos_1t():
-    """Test if we can get the 1T PMT positions."""
-    pandas.DataFrame(straxen.pmt_positions(True))
-
-
 def test_pmt_pos_nt():
     """Test if we can get the nT PMT positions."""
-    pandas.DataFrame(straxen.pmt_positions(False))
+    pandas.DataFrame(straxen.pmt_positions())
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
@@ -54,7 +49,8 @@ class TestMiniAnalyses(unittest.TestCase):
         class
 
         """
-        cls.st = nt_test_context()
+        # TODO: xenonnt_online should be used here
+        cls.st = nt_test_context("xenonnt")
         # For al the WF plotting, we might need records, let's make those
         cls.st.make(nt_test_run_id, "records")
         cls.first_peak = cls.st.get_array(nt_test_run_id, "peak_basics")[0]
@@ -69,7 +65,7 @@ class TestMiniAnalyses(unittest.TestCase):
 
     def tearDown(self):
         """After each test, clear a figure (if one was open)"""
-        plt_clf()
+        clf()
 
     def test_target_peaks(self, target="peak_basics", tol=2):
         """Not a real mini analysis but let's see if the number of peaks matches some pre-defined
@@ -101,7 +97,7 @@ class TestMiniAnalyses(unittest.TestCase):
         self.test_plot_waveform(deep=True)
 
     def test_plot_hit_pattern(self):
-        self.st.plot_hit_pattern(nt_test_run_id, time_within=self.first_peak, xenon1t=False)
+        self.st.plot_hit_pattern(nt_test_run_id, time_within=self.first_peak)
 
     def test_plot_records_matrix(self):
         self._st_attr_for_one_peak("plot_records_matrix")
@@ -121,7 +117,6 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.event_display(
             nt_test_run_id,
             time_within=self.first_event,
-            xenon1t=False,
             plot_all_positions=plot_all_positions,
             simple_layout=True,
         )
@@ -133,7 +128,6 @@ class TestMiniAnalyses(unittest.TestCase):
             nt_test_run_id,
             events=self.st.get_array(nt_test_run_id, "events"),
             event_number=self.first_event["event_number"],
-            xenon1t=False,
             plot_all_positions=plot_all_positions,
         )
 
@@ -141,7 +135,20 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.event_display_interactive(
             nt_test_run_id,
             time_within=self.first_event,
-            xenon1t=False,
+        )
+
+    def test_peaks_display_interactive(self):
+        center_times = []
+        for c in [
+            self.first_event["s1_center_time"],
+            self.first_event["s2_center_time"],
+        ]:
+            if c != -1:
+                center_times.append(c)
+        self.st.peaks_display_interactive(
+            nt_test_run_id,
+            time_within=self.first_event,
+            center_times=center_times,
         )
 
     def test_plot_peaks_aft_histogram(self):
@@ -228,7 +235,7 @@ class TestMiniAnalyses(unittest.TestCase):
         )
 
     def test_event_display(self):
-        """Event display plot, needs CMT."""
+        """Event display plot, needs xedocs."""
         self.st.event_display(nt_test_run_id, time_within=self.first_event)
 
     def test_event_display_no_rr(self):
@@ -300,7 +307,6 @@ class TestMiniAnalyses(unittest.TestCase):
         fig = self.st.event_display_interactive(
             nt_test_run_id,
             time_within=self.first_event,
-            xenon1t=False,
             plot_record_matrix=True,
         )
         save_as = "test_display.html"
@@ -312,7 +318,6 @@ class TestMiniAnalyses(unittest.TestCase):
         st.event_display_interactive(
             nt_test_run_id,
             time_within=self.first_event,
-            xenon1t=False,
             plot_record_matrix=False,
             only_main_peaks=True,
         )
@@ -371,10 +376,6 @@ class TestMiniAnalyses(unittest.TestCase):
     def test_records_matrix_downsample(self):
         """Test that downsampling works in the record matrix."""
         self.st.records_matrix(nt_test_run_id, time_within=self.first_event, max_samples=20)
-
-    def test_load_corrected_positions(self):
-        """Test that we can do st.load_corrected_positions."""
-        self.st.load_corrected_positions(nt_test_run_id, time_within=self.first_peak)
 
     def test_nv_event_display(self):
         """Test NV event display for a single event."""

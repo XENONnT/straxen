@@ -9,10 +9,10 @@ Subpackages
 
    straxen.plugins.afterpulses
    straxen.plugins.aqmon_hits
-   straxen.plugins.detector_time_offsets
    straxen.plugins.events
    straxen.plugins.events_mv
    straxen.plugins.events_nv
+   straxen.plugins.gps_syncing
    straxen.plugins.hitlets_mv
    straxen.plugins.hitlets_nv
    straxen.plugins.individual_peak_monitor
@@ -32,6 +32,7 @@ Subpackages
    straxen.plugins.records_he
    straxen.plugins.records_mv
    straxen.plugins.records_nv
+   straxen.plugins.ref_mon_nv
    straxen.plugins.veto_intervals
 
 Submodules

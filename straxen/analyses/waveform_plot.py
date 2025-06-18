@@ -80,11 +80,12 @@ def plot_peaks(
         plt.figure(figsize=figsize)
     plt.axhline(0, c="k", alpha=0.2)
 
-    peaks = peaks[np.argsort(-peaks["area"])[:show_largest]]
+    peaks = peaks[strax.stable_argsort(-peaks["area"])[:show_largest]]
     peaks = strax.sort_by_time(peaks)
 
+    color_map = {1: "blue", 2: "green"}
     for p in peaks:
-        plot_peak(p, t0=t_reference, color={0: "gray", 1: "b", 2: "g"}[p["type"]])
+        plot_peak(p, t0=t_reference, color=color_map.get(p["type"], "gray"))
 
     if xaxis == "since_start":
         seconds_range_xaxis(seconds_range, t0=seconds_range[0])
@@ -111,7 +112,6 @@ def plot_hit_pattern(
     log_scale=False,
     label=None,
     single_figure=False,
-    xenon1t=False,
     figsize=(10, 4),
 ):
     if single_figure:
@@ -124,7 +124,6 @@ def plot_hit_pattern(
         vmin=vmin,
         log_scale=log_scale,
         label=label,
-        xenon1t=xenon1t,
     )
 
 
@@ -193,7 +192,7 @@ def plot_records_matrix(
         # labels in the case of strings.
         # Make a dict that converts the label to an int
         int_labels = {h: i for i, h in enumerate(set(ylabs))}
-        mask = np.ones(len(ylabs), dtype=np.bool_)
+        mask = np.ones(len(ylabs), dtype=bool)
         # If the label (int) is different wrt. its neighbour, show it
         mask[1:] = np.abs(np.diff([int_labels[y] for y in ylabs])) > 0
         # Only label the selection

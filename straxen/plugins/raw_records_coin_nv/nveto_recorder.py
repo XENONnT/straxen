@@ -6,8 +6,6 @@ from immutabledict import immutabledict
 import strax
 import straxen
 
-from straxen.plugins.defaults import NV_HIT_DEFAULTS
-
 export, __all__ = strax.exporter()
 
 
@@ -22,14 +20,13 @@ class nVETORecorder(strax.Plugin):
 
     """
 
-    __version__ = "0.0.7"
+    __version__ = "0.1.0"
 
     parallel = "process"
 
     rechunk_on_save = True
     save_when = immutabledict(
-        raw_records_coin_nv=strax.SaveWhen.TARGET,
-        lone_raw_records_nv=strax.SaveWhen.TARGET,
+        raw_records_coin_nv=strax.SaveWhen.ALWAYS,
         lone_raw_record_statistics_nv=strax.SaveWhen.ALWAYS,
     )
     compressor = "zstd"
@@ -38,50 +35,35 @@ class nVETORecorder(strax.Plugin):
 
     provides = (
         "raw_records_coin_nv",  # nv-raw-records with coincidence requirement (stored long term)
-        "lone_raw_records_nv",
         "lone_raw_record_statistics_nv",
     )
 
     data_kind = {key: key for key in provides}
 
     coincidence_level_recorder_nv = straxen.URLConfig(
-        type=int, default=3, help="Required coincidence level."
+        track=False, type=int, default=4, help="Required coincidence level."
     )
 
     pre_trigger_time_nv = straxen.URLConfig(
-        type=int, default=150, help="Pretrigger time before coincidence window in ns."
+        track=False, type=int, default=150, help="Pretrigger time before coincidence window in ns."
     )
 
     resolving_time_recorder_nv = straxen.URLConfig(
-        type=int, default=600, help="Resolving time of the coincidence in ns."
+        track=False, type=int, default=300, help="Resolving time of the coincidence in ns."
     )
 
-    baseline_samples_nv = straxen.URLConfig(
+    baseline_software_trigger_samples_nv = straxen.URLConfig(
         infer_type=False,
-        default="cmt://baseline_samples_nv?version=ONLINE&run_id=plugin.run_id",
+        default=26,
         track=True,
         help="Number of samples used in baseline rms calculation",
     )
 
-    hit_min_amplitude_nv = straxen.URLConfig(
+    software_trigger_hit_threshold = straxen.URLConfig(
         infer_type=False,
-        default=NV_HIT_DEFAULTS["hit_min_amplitude_nv"],
-        track=True,
-        help=(
-            "Minimum hit amplitude in ADC counts above baseline. "
-            "Specify as a tuple of length n_nveto_pmts, or a number, "
-            'or a string like "pmt_commissioning_initial" which means calling '
-            "hitfinder_thresholds.py, "
-            "or a tuple like (correction=str, version=str, nT=boolean), "
-            "which means we are using cmt."
-        ),
-    )
-
-    n_lone_records_nv = straxen.URLConfig(
-        type=int,
-        default=2,
+        default=15,
         track=False,
-        help="Number of lone hits to be stored per channel for diagnostic reasons.",
+        help=("Minimum hit amplitude in ADC counts above baseline for the software trigger."),
     )
 
     channel_map = straxen.URLConfig(
@@ -97,9 +79,26 @@ class nVETORecorder(strax.Plugin):
         help="Crash if any of the pulses in raw_records overlap with others in the same channel",
     )
 
+    keep_n_seconds_for_monitoring = straxen.URLConfig(
+        default=10,
+        track=False,
+        infer_type=False,
+        help=(
+            "Number of seconds which should be stored without applying the software trigger."
+            "Use -1 if all records should be kept without applying the software trigger."
+        ),
+    )
+
+    run_start = straxen.URLConfig(
+        default="runstart://plugin.run_id?",
+        track=False,
+        infer_type=False,
+        help="Returns run start in utc unix time in ns.",
+    )
+
     def setup(self):
-        self.baseline_samples = self.baseline_samples_nv
-        self.hit_thresholds = self.hit_min_amplitude_nv
+        self.baseline_samples = self.baseline_software_trigger_samples_nv
+        self.hit_thresholds = self.software_trigger_hit_threshold
 
     def infer_dtype(self):
         self.record_length = strax.record_length_from_dtype(
@@ -109,30 +108,61 @@ class nVETORecorder(strax.Plugin):
         channel_range = self.channel_map["nveto"]
         n_channel = (channel_range[1] - channel_range[0]) + 1
         nveto_records_dtype = strax.raw_record_dtype(self.record_length)
-        nveto_diagnostic_lone_records_dtype = strax.record_dtype(self.record_length)
         nveto_lone_records_statistics_dtype = lone_record_statistics_dtype(n_channel)
 
         dtypes = [
             nveto_records_dtype,
-            nveto_diagnostic_lone_records_dtype,
             nveto_lone_records_statistics_dtype,
         ]
 
         return {k: v for k, v in zip(self.provides, dtypes)}
 
     def compute(self, raw_records_nv, start, end):
-        if self.check_raw_record_overlaps_nv:
-            straxen.check_overlaps(raw_records_nv, n_channels=3000)
-        # Cover the case if we do not want to have any coincidence:
-        if self.coincidence_level_recorder_nv <= 1:
+
+        if not len(raw_records_nv):
             rr = raw_records_nv
-            lr = np.zeros(0, dtype=self.dtype["lone_raw_records_nv"])
             lrs = np.zeros(0, dtype=self.dtype["lone_raw_record_statistics_nv"])
             return {
                 "raw_records_coin_nv": rr,
-                "lone_raw_records_nv": lr,
                 "lone_raw_record_statistics_nv": lrs,
             }
+
+        if self.check_raw_record_overlaps_nv:
+            straxen.check_overlaps(raw_records_nv, n_channels=3000)
+
+        # Cover the case if we do not want to have any coincidence:
+        _keep_all_raw_records = self.keep_n_seconds_for_monitoring == -1
+        if _keep_all_raw_records:
+            rr = raw_records_nv
+            lrs = np.zeros(0, dtype=self.dtype["lone_raw_record_statistics_nv"])
+            return {
+                "raw_records_coin_nv": rr,
+                "lone_raw_record_statistics_nv": lrs,
+            }
+
+        # Keep all raw data for the very first n seconds of a run.
+        # This case is tricky since it can also be just a
+        # subset of a chunk and in this case we need to make sure to also keep
+        # all fragments of a pulse beyond the first n seconds boundary.
+        # For performance check very first fragment if in applicable time range:
+        _need_save_for_monitoring = raw_records_nv[0]["time"] < (
+            self.run_start + self.keep_n_seconds_for_monitoring * straxen.units.s
+        )
+        raw_records_to_keep_without_trigger = np.zeros(0, dtype=raw_records_nv.dtype)
+
+        if _need_save_for_monitoring:
+            len_data = len(raw_records_nv[0]["data"])
+            # Now compute all pulse starts to make sure that all fragments of a pulse are saved:
+            pulse_starts = raw_records_nv["time"] - (
+                raw_records_nv["record_i"] * len_data * raw_records_nv["dt"]
+            )
+            _pulse_is_in_first_n_seconds = pulse_starts < (
+                self.run_start + self.keep_n_seconds_for_monitoring * straxen.units.s
+            )
+
+            # Now divide the data:
+            raw_records_to_keep_without_trigger = raw_records_nv[_pulse_is_in_first_n_seconds]
+            raw_records_nv = raw_records_nv[~_pulse_is_in_first_n_seconds]
 
         # Search for hits to define coincidence intervals:
         temp_records = strax.raw_to_records(raw_records_nv)
@@ -193,13 +223,16 @@ class nVETORecorder(strax.Plugin):
         strax.zero_out_of_bounds(lr)
         strax.baseline(lr, baseline_samples=self.baseline_samples, flip=True)
         strax.integrate(lr)
-        lrs, lr = compute_lone_records(lr, self.channel_map["nveto"], self.n_lone_records_nv)
+        lrs, lr = compute_lone_records(lr, self.channel_map["nveto"], 0)
         lrs["time"] = start
         lrs["endtime"] = end
 
+        # Now combine results of with and without software trigger:
+        if _need_save_for_monitoring:
+            rr = np.concatenate([raw_records_to_keep_without_trigger, rr])
+
         return {
             "raw_records_coin_nv": rr,
-            "lone_raw_records_nv": lr,
             "lone_raw_record_statistics_nv": lrs,
         }
 
@@ -437,7 +470,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     """
     # 1. estimate time difference between fragments:
     start_times = rr["time"]
-    mask = np.zeros(len(start_times), dtype=np.bool_)
+    mask = np.zeros(len(start_times), dtype=bool)
     t_diff = np.diff(start_times, prepend=start_times[0])
 
     # 2. Now we have to check if n-events are within resolving time:
@@ -448,7 +481,7 @@ def _coincidence(rr, nfold=4, resolving_time=300):
     kernel = np.zeros(nfold)
     kernel[: (nfold - 1)] = 1  # weight last seen by t_diff must be zero since
     # starting time point e.g. n=4:
-    # [0,1,1,1] --> [dt1, dt2, dt3, dt4, ..., dtn]  --> 0*dt1 + dt2 + dt3 + dt4
+    # [0,1,1,1] --> [dt1, dt2, dt3, dt4, ..., dtn] --> 0*dt1 + dt2 + dt3 + dt4
 
     t_cum = convolve1d(t_diff, kernel, mode="constant", origin=(nfold - 1) // 2)
     # Do not have to check the last n-1 events since by definition

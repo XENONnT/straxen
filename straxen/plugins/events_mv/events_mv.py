@@ -10,7 +10,7 @@ export, __all__ = strax.exporter()
 class muVETOEvents(nVETOEvents):
     """Plugin which computes the boundaries of veto events."""
 
-    depends_on = "hitlets_mv"
+    depends_on = "hitlets_mv"  # type: ignore
     provides = "events_mv"
     data_kind = "events_mv"
 
@@ -54,5 +54,5 @@ class muVETOEvents(nVETOEvents):
     def get_window_size(self):
         return self.event_left_extension_mv + self.event_resolving_time_mv + 1
 
-    def compute(self, hitlets_mv, start, end):
-        return super().compute(hitlets_mv, start, end)
+    def compute(self, hitlets_mv):
+        return super().compute(hitlets_mv)

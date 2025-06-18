@@ -53,10 +53,10 @@ A concrete plugin example
                 print(f"Path is local. Loading {self.algorithm} TF model locally "
                     f"from disk.")
             else:
-                downloader = straxen.MongoDownloader()
+                downloader = utilix.mongo_storage.MongoDownloader()
                 try:
                     self.model_file = downloader.download_single(self.model_file)
-                except straxen.mongo_storage.CouldNotLoadError as e:
+                except utilix.mongo_storage.CouldNotLoadError as e:
                     raise RuntimeError(f'Model files {self.model_file} is not found') from e
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tar = tarfile.open(self.model_file, mode="r:gz")

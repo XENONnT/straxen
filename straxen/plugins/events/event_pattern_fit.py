@@ -2,8 +2,9 @@ import strax
 import straxen
 import numpy as np
 import numba
-from straxen.numbafied_scipy import numba_gammaln, numba_betainc
 from scipy.special import loggamma
+from straxen.numbafied_scipy import numba_gammaln, numba_betainc
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 export, __all__ = strax.exporter()
 
@@ -16,22 +17,25 @@ class EventPatternFit(strax.Plugin):
     provides = "event_pattern_fit"
     __version__ = "0.1.3"
 
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
+
     # Getting S1 AFT maps
     s1_aft_map = straxen.URLConfig(
-        default=(
-            "itp_map://resource://cmt://s1_aft_xyz_map?version=ONLINE&run_id=plugin.run_id&fmt=json"
-        ),
+        default="itp_map://resource://xedocs://s1_aft_xyz_maps"
+        "?attr=value&fmt=json&run_id=plugin.run_id&version=ONLINE",
         cache=True,
     )
 
     electron_drift_velocity = straxen.URLConfig(
-        default="cmt://electron_drift_velocity?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
 
     electron_drift_time_gate = straxen.URLConfig(
-        default="cmt://electron_drift_time_gate?version=ONLINE&run_id=plugin.run_id",
+        default="xedocs://electron_drift_time_gates?attr=value&run_id=plugin.run_id&version=ONLINE",
         help="Electron drift time from the gate in ns",
         cache=True,
     )
@@ -40,8 +44,7 @@ class EventPatternFit(strax.Plugin):
         help="S1 (x, y, z) optical/pattern map.",
         infer_type=False,
         default=(
-            "itp_map://"
-            "resource://"
+            "itp_map://resource://"
             "XENONnT_s1_xyz_patterns_corrected_qes_MCva43fa9b_wires.pkl"
             "?fmt=pkl"
         ),
@@ -51,8 +54,7 @@ class EventPatternFit(strax.Plugin):
         help="S2 (x, y) optical/pattern map.",
         infer_type=False,
         default=(
-            "itp_map://"
-            "resource://"
+            "itp_map://resource://"
             "XENONnT_s2_xy_patterns_LCE_corrected_qes_MCva43fa9b_wires.pkl"
             "?fmt=pkl"
         ),
@@ -62,11 +64,10 @@ class EventPatternFit(strax.Plugin):
         help="S2 (x, y) optical data-driven model",
         infer_type=False,
         default=(
-            "tf://"
-            "resource://"
-            "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz"
+            "tf://resource://"
+            "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.keras.tar.gz"
             "?custom_objects=plugin.s2_map_custom_objects"
-            "&fmt=abs_path"
+            "&fmt=abs_path&register=True"
         ),
     )
 
@@ -449,7 +450,7 @@ class EventPatternFit(strax.Plugin):
 
             # Making expectation patterns [ in PE ]
             if np.sum(s2_mask):
-                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[s2_mask, 0 : self.n_top_pmts]
+                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[s2_mask, : self.n_top_pmts]
                 s2_map_effs = s2_map_effs[:, self.pmtbool_top]
                 s2_top_area = (events[t_ + "_area_fraction_top"] * events[t_ + "_area"])[s2_mask]
                 s2_pattern = (
@@ -458,7 +459,7 @@ class EventPatternFit(strax.Plugin):
 
                 # Getting pattern from data
                 s2_top_area_per_channel = events[t_ + "_area_per_channel"][
-                    s2_mask, 0 : self.n_top_pmts
+                    s2_mask, : self.n_top_pmts
                 ]
                 s2_top_area_per_channel = s2_top_area_per_channel[:, self.pmtbool_top]
 
@@ -497,7 +498,7 @@ class EventPatternFit(strax.Plugin):
             # Produce position and top pattern to feed tensorflow model, return chi2/N
             if np.sum(s2_mask):
                 s2_pos = np.stack((x, y)).T[s2_mask]
-                s2_pat = events[t_ + "_area_per_channel"][s2_mask, 0 : self.n_top_pmts]
+                s2_pat = events[t_ + "_area_per_channel"][s2_mask, : self.n_top_pmts]
                 # Output[0]: loss function, -2*log-likelihood, Output[1]: chi2
                 result[t_ + "_neural_2llh"][s2_mask] = self.model_chi2.predict(
                     {"xx": s2_pos, "yy": s2_pat}, verbose=0
@@ -508,7 +509,7 @@ def neg2llh_modpoisson(mu=None, areas=None, mean_pe_photon=1.0):
     """Modified poisson distribution with proper normalization for shifted poisson.
 
     mu - expected number of photons per channel
-    areas  - observed areas per channel
+    areas - observed areas per channel
     mean_pe_photon - mean of area responce for one photon
 
     """
@@ -569,7 +570,11 @@ def _numeric_derivative(y0, y1, err, target, x_min, x_max, x0, x1):
     """Get close to <target> by doing a numeric derivative."""
     if abs(y1 - y0) < err:
         # break by passing dx == 0
-        return 0.0, x1, x1
+        if abs(y0 - target) < abs(y1 - target):
+            x = x0
+        else:
+            x = x1
+        return 0.0, x, x
 
     x = (target - y0) / (y1 - y0) * (x1 - x0) + x0
     x = min(x, x_max)
@@ -684,7 +689,8 @@ def s1_area_fraction_top_probability(aft_prob, area_tot, area_fraction_top, mode
             binomial_test = binom_pmf(area_top, area_tot, aft_prob)
             # TODO:
             # binomial_test = binomtest(
-            #     k=round(area_top), n=round(area_tot), p=aft_prob, alternative='two-sided').pvalue
+            #     k=round(area_top), n=round(area_tot), p=aft_prob, alternative="two-sided"
+            # ).pvalue
         else:
             binomial_test = binom_test(area_top, area_tot, aft_prob)
 

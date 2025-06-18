@@ -4,10 +4,14 @@ import strax
 import numba
 
 export, __all__ = strax.exporter()
+__all__.extend(["DTYPE_VETO_INTERVALS"])
+
+
+DTYPE_VETO_INTERVALS = np.int64
 
 
 @export
-class VetoProximity(strax.OverlapWindowPlugin):
+class VetoProximity(strax.ExhaustPlugin):
     """Find the closest next/previous veto start w.r.t.
 
     the event time or when a busy happens during an event.
@@ -30,20 +34,6 @@ class VetoProximity(strax.OverlapWindowPlugin):
         ),
     )
 
-    veto_proximity_window = straxen.URLConfig(
-        default=int(300e9), help="Maximum separation between veto stop and start pulses [ns]"
-    )
-    time_no_aqmon_veto_found = straxen.URLConfig(
-        default=int(3.6e12),
-        track=True,
-        type=int,
-        help=(
-            "If no next/previous veto is found, we will fill the fields "
-            "time_to_previous_XX with this time. Set to a large number "
-            "such that one will never cut events that are < YY ns."
-        ),
-    )
-
     veto_names = ["busy", "busy_he", "hev", "straxen_deadtime"]
 
     def infer_dtype(self):
@@ -57,7 +47,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
                         f'Duration of event overlapping with "{name}"-veto [ns]',
                         f"veto_{name}_overlap",
                     ),
-                    np.int64,
+                    DTYPE_VETO_INTERVALS,
                 ),
                 (
                     (
@@ -67,7 +57,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
                         ),
                         f"time_to_previous_{name}",
                     ),
-                    np.int64,
+                    DTYPE_VETO_INTERVALS,
                 ),
                 (
                     (
@@ -77,14 +67,11 @@ class VetoProximity(strax.OverlapWindowPlugin):
                         ),
                         f"time_to_next_{name}",
                     ),
-                    np.int64,
+                    DTYPE_VETO_INTERVALS,
                 ),
             ]
 
         return dtype
-
-    def get_window_size(self):
-        return self.veto_proximity_window
 
     def set_result_for_veto(
         self,
@@ -105,8 +92,8 @@ class VetoProximity(strax.OverlapWindowPlugin):
 
         """
         # Set defaults to be some very long time
-        result_buffer[f"time_to_previous_{veto_name}"] = self.time_no_aqmon_veto_found
-        result_buffer[f"time_to_next_{veto_name}"] = self.time_no_aqmon_veto_found
+        result_buffer[f"time_to_previous_{veto_name}"] = np.iinfo(DTYPE_VETO_INTERVALS).max
+        result_buffer[f"time_to_next_{veto_name}"] = np.iinfo(DTYPE_VETO_INTERVALS).max
 
         selected_intervals = veto_intervals[veto_intervals["veto_type"] == f"{veto_name}_veto"]
         if not len(selected_intervals):
@@ -136,7 +123,7 @@ class VetoProximity(strax.OverlapWindowPlugin):
         vetos_during_event, selected_intervals, event_window, result_buffer
     ):
         """Computes total time each event overlaps with the corresponding veto."""
-        res = np.zeros(len(vetos_during_event), np.int64)
+        res = np.zeros(len(vetos_during_event), DTYPE_VETO_INTERVALS)
 
         for event_i, veto_window in enumerate(vetos_during_event):
             if veto_window[1] - veto_window[0]:

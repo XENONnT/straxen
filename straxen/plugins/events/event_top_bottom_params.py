@@ -10,9 +10,9 @@ class EventTopBottomParams(strax.Plugin):
     """Pluging that computes timing characteristics of top and bottom waveforms based on waveforms
     stored at event level for main/alt S1/S2."""
 
-    depends_on = ("event_info", "event_waveform")
+    depends_on = ("event_basics", "event_waveform")
     provides = "event_top_bottom_params"
-    __version__ = "0.0.0"
+    __version__ = "0.0.1"
 
     def infer_dtype(self):
         # Populating data type information
@@ -22,7 +22,7 @@ class EventTopBottomParams(strax.Plugin):
             "alt_s1": "alternative S1",
             "alt_s2": "alternative S2",
         }
-        ev_info_fields = self.deps["event_info"].dtype.fields
+        ev_info_fields = self.deps["event_basics"].dtype.fields
         dtype = []
         # populating APC and waveform samples
         self.ptypes = ["s1", "s2", "alt_s1", "alt_s2"]
@@ -32,7 +32,7 @@ class EventTopBottomParams(strax.Plugin):
                 dtype += [
                     (
                         (
-                            f"Central time for {infoline[type_]} for {arr_} PMTs [ ns ]",
+                            f"Central time for {infoline[type_]} for {arr_} PMTs [ns]",
                             f"{type_}_center_time_{arr_}",
                         ),
                         ev_info_fields[f"{type_}_center_time"][0],
@@ -79,7 +79,7 @@ class EventTopBottomParams(strax.Plugin):
                     (
                         (
                             "Difference between center times of top and bottom arrays for"
-                            f" {infoline[type_]} [ ns ]"
+                            f" {infoline[type_]} [ns]"
                         ),
                         f"{type_}_center_time_diff_top_bot",
                     ),
@@ -91,8 +91,11 @@ class EventTopBottomParams(strax.Plugin):
 
     def compute(self, events):
         result = np.zeros(events.shape, dtype=self.dtype)
+        if not len(events):
+            return result
+
         result["time"], result["endtime"] = events["time"], strax.endtime(events)
-        peak_dtype = strax.peak_dtype(n_channels=straxen.n_tpc_pmts, digitize_top=False)
+        peak_dtype = strax.peak_dtype(n_channels=straxen.n_tpc_pmts, store_data_top=False)
         for type_ in self.ptypes:
             for arr_ in self.arrs:
                 # in order to reuse the same definitions as in other parts, we create "fake peaks"
@@ -129,15 +132,13 @@ class EventTopBottomParams(strax.Plugin):
                 result[f"{type_}_center_time_{arr_}"][mask] += recalc_ctime[mask].astype(int)
                 # computing widths ##
                 # zero or undefined area peaks should have nans
-                strax.compute_widths(fpeaks_)
+                _, width, area_decile_from_midpoint = strax.compute_widths(fpeaks_)
                 result[f"{type_}_rise_time_{arr_}"][:] = np.nan
-                result[f"{type_}_rise_time_{arr_}"][mask] = -fpeaks_["area_decile_from_midpoint"][
-                    mask
-                ][:, 1]
+                result[f"{type_}_rise_time_{arr_}"][mask] = -area_decile_from_midpoint[mask][:, 1]
                 result[f"{type_}_range_50p_area_{arr_}"][:] = np.nan
-                result[f"{type_}_range_50p_area_{arr_}"][mask] = fpeaks_["width"][mask][:, 5]
+                result[f"{type_}_range_50p_area_{arr_}"][mask] = width[mask][:, 5]
                 result[f"{type_}_range_90p_area_{arr_}"][:] = np.nan
-                result[f"{type_}_range_90p_area_{arr_}"][mask] = fpeaks_["width"][mask][:, 9]
+                result[f"{type_}_range_90p_area_{arr_}"][mask] = width[mask][:, 9]
             # Difference between center times of top and bottom arrays
             result[f"{type_}_center_time_diff_top_bot"] = (
                 result[f"{type_}_center_time_top"] - result[f"{type_}_center_time_bot"]

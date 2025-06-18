@@ -1,11 +1,12 @@
+import os
+import re
+import json
+from bson import json_util
+import shutil
 import socket
 import unittest
 import strax
-import os
 import straxen
-import shutil
-import json
-from bson import json_util
 
 
 class TestRucioLocal(unittest.TestCase):
@@ -88,7 +89,7 @@ class TestRucioLocal(unittest.TestCase):
 
     @staticmethod
     def write_md(rucio_path, did, content: dict):
-        md_did = f"{did}-metadata.json"
+        md_did = strax.RUN_METADATA_PATTERN % did
         md_path = straxen.storage.rucio_local.rucio_path(rucio_path, md_did)
         os.makedirs(os.path.split(md_path)[0], exist_ok=True)
         with open(md_path, mode="w") as f:
@@ -108,8 +109,8 @@ class TestRucioLocal(unittest.TestCase):
 class TestBasics(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        """For testing purposes, slightly alter the RucioFrontend such that we can run tests outside
-        of dali too."""
+        """For testing purposes, slightly alter the RucioRemoteFrontend such that we can run tests
+        outside of dali too."""
         # Some non-existing keys that we will try finding in the test cases.
         cls.test_keys = [
             strax.DataKey(
@@ -124,7 +125,7 @@ class TestBasics(unittest.TestCase):
 
     def test_load_context_defaults(self):
         """Don't fail immediately if we start a context due to Rucio."""
-        st = straxen.contexts.xenonnt_online(
+        st = straxen.contexts.xenonnt(
             minimum_run_number=10_000,
             maximum_run_number=10_010,
         )
@@ -175,7 +176,10 @@ class TestBasics(unittest.TestCase):
 
     @unittest.skipIf(not straxen.utilix_is_configured(), "No DB access")
     @unittest.skipIf(
-        socket.getfqdn() in straxen.RucioLocalFrontend.local_rses,
+        any(
+            re.search(socket.getfqdn(), v) is not None
+            for v in straxen.RucioLocalFrontend.local_rses.values()
+        ),
         "Testing useless frontends only works on hosts where it's not supposed to work",
     )
     def test_useless_frontend(self):
@@ -187,6 +191,7 @@ class TestBasics(unittest.TestCase):
             rucio_local.find(self.test_keys[0])
         # Do a small test that we did not break everything by having a useless fontend
         st = straxen.test_utils.nt_test_context(
+            "xenonnt_online",
             minimum_run_number=10_000,
             maximum_run_number=10_005,
             include_rucio_local=True,

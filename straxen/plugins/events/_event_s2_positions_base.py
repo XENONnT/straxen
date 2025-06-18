@@ -17,11 +17,10 @@ class EventS2PositionBase(strax.Plugin):
 
     algorithm: Optional[str] = None
     compressor = "zstd"
-    parallel = True  # can set to "process" after #82
 
     min_reconstruction_area = straxen.URLConfig(
         help="Skip reconstruction if area (PE) is less than this",
-        default=10,
+        default=0,
         infer_type=False,
     )
     n_top_pmts = straxen.URLConfig(
@@ -60,12 +59,12 @@ class EventS2PositionBase(strax.Plugin):
         return dtype
 
     def get_tf_model(self):
-        """Simple wrapper to have several tf_event_model_mlp, tf_event_model_cnn, ..
+        """Simple wrapper to have several tf_model_mlp, tf_model_cnf, ..
 
         point to this same function in the compute method
 
         """
-        model = getattr(self, f"tf_event_model_{self.algorithm}", None)
+        model = getattr(self, f"tf_model_{self.algorithm}", None)
         if model is None:
             warn(
                 f"Setting model to None for {self.__class__.__name__} will "
@@ -81,10 +80,10 @@ class EventS2PositionBase(strax.Plugin):
     def compute(self, events):
         result = np.ones(len(events), dtype=self.dtype)
         result["time"], result["endtime"] = events["time"], strax.endtime(events)
-        result["event_s2_x_" + self.algorithm] *= float("nan")
-        result["event_s2_y_" + self.algorithm] *= float("nan")
-        result["event_alt_s2_x_" + self.algorithm] *= float("nan")
-        result["event_alt_s2_y_" + self.algorithm] *= float("nan")
+        result["event_s2_x_" + self.algorithm] *= np.nan
+        result["event_s2_y_" + self.algorithm] *= np.nan
+        result["event_alt_s2_x_" + self.algorithm] *= np.nan
+        result["event_alt_s2_y_" + self.algorithm] *= np.nan
 
         model = self.get_tf_model()
 
@@ -93,7 +92,7 @@ class EventS2PositionBase(strax.Plugin):
             if not np.sum(peak_mask):
                 continue
 
-            _top_pattern = events[p_type + "_area_per_channel"][peak_mask, 0 : self.n_top_pmts]
+            _top_pattern = events[p_type + "_area_per_channel"][peak_mask, : self.n_top_pmts]
             with np.errstate(divide="ignore", invalid="ignore"):
                 _top_pattern = _top_pattern / np.max(_top_pattern, axis=1).reshape(-1, 1)
 

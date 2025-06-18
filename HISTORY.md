@@ -1,3 +1,287 @@
+3.2.1 / 2025-05-18
+-------------------
+* Set Sum(S2 / dt) as S2 Time Shadow, not Max(S2 / dt) anymore by @dachengx in https://github.com/XENONnT/straxen/pull/1609
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.0...v3.2.1
+
+
+3.2.0 / 2025-05-16
+-------------------
+* Also retries multiple time when downloading chunks by @dachengx in https://github.com/XENONnT/straxen/pull/1601
+* Do not depend anything on `event_info` by @dachengx in https://github.com/XENONnT/straxen/pull/1602
+* Add more docstring of MergedS2s by @dachengx in https://github.com/XENONnT/straxen/pull/1599
+* Use numbered version of `docformatter` by @dachengx in https://github.com/XENONnT/straxen/pull/1603
+* Update docstring by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1606
+* Add a field `merged` to `peak_basics` indicating whether it is merged from peaklets by @dachengx in https://github.com/XENONnT/straxen/pull/1604
+* Force `steps_per_execution` to be not None by @dachengx in https://github.com/XENONnT/straxen/pull/1607
+* Anti-AC new events building by @dachengx in https://github.com/XENONnT/straxen/pull/1563
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.5...v3.2.0
+
+
+3.1.5 / 2025-04-28
+-------------------
+* Convert `sr` from attribute of plugin by @dachengx in https://github.com/XENONnT/straxen/pull/1582
+* Fix a parentheses in error message by @dachengx in https://github.com/XENONnT/straxen/pull/1583
+* Added more colors+types to waveform_plot by @MerzJohannes in https://github.com/XENONnT/straxen/pull/1581
+* Add interactive peaks display by @dachengx in https://github.com/XENONnT/straxen/pull/1586
+* Warn `xedocs_version` usage in `xenonnt` by @dachengx in https://github.com/XENONnT/straxen/pull/1587
+* Render hover tool only for targeted plots by @dachengx in https://github.com/XENONnT/straxen/pull/1589
+* Plot CNF contour in event and peaks interactive display by @dachengx in https://github.com/XENONnT/straxen/pull/1590
+* Print time and endtime of event or peaks in the title of interactive display by @dachengx in https://github.com/XENONnT/straxen/pull/1591
+* Make sure `version=ONLINE` is not used when global version is not `global_ONLINE` by @dachengx in https://github.com/XENONnT/straxen/pull/1594
+* Add offline reprocessing storage path in `/dali` by @dachengx in https://github.com/XENONnT/straxen/pull/1595
+
+New Contributors
+* @MerzJohannes made their first contribution in https://github.com/XENONnT/straxen/pull/1581
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.4...v3.1.5
+
+
+3.1.4 / 2025-03-09
+-------------------
+* Set targeted chunk size of hitlets_nv as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1574
+* Still use smaller chunk size in bootstrax by @dachengx in https://github.com/XENONnT/straxen/pull/1575
+* Add offline reprocessing storage path in `/project` by @dachengx in https://github.com/XENONnT/straxen/pull/1579
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.3...v3.1.4
+
+
+3.1.3 / 2025-03-02
+-------------------
+* Add option to delete heavy chunk automatically after reading by @dachengx in https://github.com/XENONnT/straxen/pull/1570
+* Remove `event_n_channel`, add `top_n_channels` to `peak_basics` by @dachengx in https://github.com/XENONnT/straxen/pull/1571
+* Set targeted chunk size of peaklet as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1572
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.2...v3.1.3
+
+
+3.1.2 / 2025-02-24
+-------------------
+* Set the number of tries and threads of remote rucio by @dachengx in https://github.com/XENONnT/straxen/pull/1564
+* Pass `tries` and `num_threads` to `RucioRemoteBackend` by @dachengx in https://github.com/XENONnT/straxen/pull/1565
+* Be compatible with https://github.com/AxFoundation/strax/pull/975 by @dachengx in https://github.com/XENONnT/straxen/pull/1566
+* Load 100 MB peaklets per `compute` by @dachengx in https://github.com/XENONnT/straxen/pull/1567
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.1...v3.1.2
+
+
+3.1.1 / 2025-02-13
+-------------------
+* `n_hits` should be int32, otherwise overflow by @dachengx in https://github.com/XENONnT/straxen/pull/1558
+* Iterative Bayesian 3D (t, x, y) S2 merging by @dachengx in https://github.com/XENONnT/straxen/pull/1513
+* Swap `xenonnt_online` and `xenonnt` by @dachengx in https://github.com/XENONnT/straxen/pull/1560
+* Optimize S2 time-density merging thresholds by @dachengx in https://github.com/XENONnT/straxen/pull/1559
+* Raise error when the global version can not be find by @dachengx in https://github.com/XENONnT/straxen/pull/1557
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.0...v3.1.1
+
+
+3.1.0 / 2025-02-03
+-------------------
+* Check that `cmt://` protocol is not used by @dachengx in https://github.com/XENONnT/straxen/pull/1545
+* Assign xedocs ONLINE to `som_files` by @dachengx in https://github.com/XENONnT/straxen/pull/1547
+* Make sure all subruns have the same configs by @dachengx in https://github.com/XENONnT/straxen/pull/1546
+* Add new protocol and give SOM capabilities to use less deciles by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1514
+* Decorate superrun safeguard as method of `strax.Context` by @dachengx in https://github.com/XENONnT/straxen/pull/1548
+* Remove redundant dependencies by @dachengx in https://github.com/XENONnT/straxen/pull/1549
+* Return components in `get_components` by @dachengx in https://github.com/XENONnT/straxen/pull/1550
+* Be more flexible when changing tight_coincidence window by @dachengx in https://github.com/XENONnT/straxen/pull/1553
+* Allow two-sided overlapping window by @dachengx in https://github.com/XENONnT/straxen/pull/1554
+* Gap of hits in time should be int32 by @dachengx in https://github.com/XENONnT/straxen/pull/1555
+* Update URL config protocol for loading TF models by @reallsx in https://github.com/XENONnT/straxen/pull/1505
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.3...v3.1.0
+
+
+3.0.3 / 2025-01-25
+-------------------
+* Rename "algo" to "alg" because they were mixed by @dachengx in https://github.com/XENONnT/straxen/pull/1523
+* Bump version by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1500
+* [DAQ] Bootstrax dynamic adapt targets for AmBe high rate by @cfuselli in https://github.com/XENONnT/straxen/pull/1492
+* Track position reconstruction algorithm in `EventPatternFit` plugin by @dachengx in https://github.com/XENONnT/straxen/pull/1524
+* Still use `np.bool_` in numba decorated function by @dachengx in https://github.com/XENONnT/straxen/pull/1527
+* First and last channel inside peak(let)s by @dachengx in https://github.com/XENONnT/straxen/pull/1525
+* Handle the case where no hitlets are fully contained in peaklets by @dachengx in https://github.com/XENONnT/straxen/pull/1529
+* Minor replacement `np.argsort` to `strax.stable_argsort` by @dachengx in https://github.com/XENONnT/straxen/pull/1530
+* Automatically copy SOM dtype to peaks by @dachengx in https://github.com/XENONnT/straxen/pull/1531
+* More flexible input of `find_n_competing` function by @dachengx in https://github.com/XENONnT/straxen/pull/1532
+* Fix a numerical error bug in `events_nv` by @dachengx in https://github.com/XENONnT/straxen/pull/1534
+* Skip `test_useless_frontend` if local RSE is not found by @dachengx in https://github.com/XENONnT/straxen/pull/1537
+* Area in CNF position contour by @dachengx in https://github.com/XENONnT/straxen/pull/1538
+* Remove CMT URLs by @jmosbacher in https://github.com/XENONnT/straxen/pull/1235
+* Change dark rate monitoring of the software trigger to seconds by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1535
+* Remove CMT by @dachengx in https://github.com/XENONnT/straxen/pull/1539
+* Replace `10**9` by `straxen.units.s` by @dachengx in https://github.com/XENONnT/straxen/pull/1540
+* Drop python 3.9 by @dachengx in https://github.com/XENONnT/straxen/pull/1541
+* CNF posrec urlconfig fix by @juehang in https://github.com/XENONnT/straxen/pull/1519
+* Bump xedocs version to v0.2.36 by @dachengx in https://github.com/XENONnT/straxen/pull/1543
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.2...v3.0.3
+
+
+3.0.2 / 2025-01-13
+-------------------
+* Collect SOM dtype at one place by @dachengx in https://github.com/XENONnT/straxen/pull/1511
+* Stop support for list of "take" protocol by @dachengx in https://github.com/XENONnT/straxen/pull/1517
+* Add `stage` flag for `RucioRemoteBackend` by @dachengx in https://github.com/XENONnT/straxen/pull/1520
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.1...v3.0.2
+
+
+3.0.1 / 2024-12-27
+-------------------
+* Fix run_doc for led plugin by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1462
+* Check RSE in `_find` method of `RucioRemoteFrontend` by @dachengx in https://github.com/XENONnT/straxen/pull/1464
+* Garbage collection after calculated each chunk in `peak_positions_mlp` by @dachengx in https://github.com/XENONnT/straxen/pull/1467
+* Enforce stable sorting in `np.sort` and `np.argsort` by @dachengx in https://github.com/XENONnT/straxen/pull/1468
+* Clean `deprecate_kwarg` by @dachengx in https://github.com/XENONnT/straxen/pull/1470
+* Update strax version to v2.0.1 by @dachengx in https://github.com/XENONnT/straxen/pull/1473
+* Remove expedients plugins because SOM will be default by @dachengx in https://github.com/XENONnT/straxen/pull/1472
+* Remove 1T related codes by @dachengx in https://github.com/XENONnT/straxen/pull/1476
+* Use SOM peaklets classification by default by @dachengx in https://github.com/XENONnT/straxen/pull/1471
+* Fix theta uncertainty bug by @napoliion in https://github.com/XENONnT/straxen/pull/1466
+* Remove URLConfig warning about sorting by @dachengx in https://github.com/XENONnT/straxen/pull/1477
+* Merge branch 'sr1_leftovers' into master by @dachengx in https://github.com/XENONnT/straxen/pull/1478
+* Fix small bug in CNF by @dachengx in https://github.com/XENONnT/straxen/pull/1479
+* Remove GCN & CNN S2 pos-rec by @dachengx in https://github.com/XENONnT/straxen/pull/1484
+* Set CNF as the default S2 (x, y) position-reconstruction by @dachengx in https://github.com/XENONnT/straxen/pull/1486
+* Prototype of peaklets-level (x, y) S2 position reconstruction by @dachengx in https://github.com/XENONnT/straxen/pull/1482
+* Rename old `PeakletClassification` as `PeakletClassificationVanilla` by @dachengx in https://github.com/XENONnT/straxen/pull/1487
+* Remove Bayes models by @dachengx in https://github.com/XENONnT/straxen/pull/1488
+* Rename `defualt_run_comments` -> `default_run_comments` by @dachengx in https://github.com/XENONnT/straxen/pull/1489
+* Accelerate Euclidean distance by numba by @dachengx in https://github.com/XENONnT/straxen/pull/1493
+* Move `set_nan_defaults` to be a stand-alone function by @dachengx in https://github.com/XENONnT/straxen/pull/1497
+* Set CNF as the default S2 (x, y) position-reconstruction by @dachengx in https://github.com/XENONnT/straxen/pull/1494
+* Back to fixed window in LED calibration by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1499
+* Move `compute_center_times` from straxen to strax by @dachengx in https://github.com/XENONnT/straxen/pull/1501
+* Use numpy and strax native dtypes, not `"<i8"` or `"<f4"` by @dachengx in https://github.com/XENONnT/straxen/pull/1502
+* Inherit `area_fraction_top`, `center_time` and `median_time` from peaklets by @dachengx in https://github.com/XENONnT/straxen/pull/1503
+* Bump version of changed plugins in #1503 by @dachengx in https://github.com/XENONnT/straxen/pull/1504
+* Clean unnecessary codes by @dachengx in https://github.com/XENONnT/straxen/pull/1507
+* Clean chunk after computing `records` by @dachengx in https://github.com/XENONnT/straxen/pull/1508
+* Add a line of comment about memory optimization by @dachengx in https://github.com/XENONnT/straxen/pull/1509
+
+New Contributors
+* @napoliion made their first contribution in https://github.com/XENONnT/straxen/pull/1466
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.0.0...v3.0.1
+
+
+3.0.0 / 2024-10-24
+-------------------
+* Inherit `DEFAULT_CHUNK_SPLIT_NS` from strax by @dachengx in https://github.com/XENONnT/straxen/pull/1405
+* Use `pyproject.toml` to install straxen by @dachengx in https://github.com/XENONnT/straxen/pull/1408
+* Be compatible with new `Plugin.run_id` by @dachengx in https://github.com/XENONnT/straxen/pull/1410
+* Small restrax fix - DAQ by @cfuselli in https://github.com/XENONnT/straxen/pull/1402
+* Make targeted `raw_records` chunk 500MB by @dachengx in https://github.com/XENONnT/straxen/pull/1412
+* Bump actions/setup-python from 5.1.0 to 5.1.1 by @dependabot in https://github.com/XENONnT/straxen/pull/1403
+* fix peak per event plugin by @RoiFrankel in https://github.com/XENONnT/straxen/pull/1400
+* Dynamic led window by @tflehmke in https://github.com/XENONnT/straxen/pull/1401
+* Plugins for position reconstruction with conditional normalizing flow by @juehang in https://github.com/XENONnT/straxen/pull/1404
+* Remove redundant spaces by @dachengx in https://github.com/XENONnT/straxen/pull/1411
+* Stop using `self.config` because we do not use `strax.Option` by @dachengx in https://github.com/XENONnT/straxen/pull/1413
+* Remove `DetectorSynchronization` by @dachengx in https://github.com/XENONnT/straxen/pull/1414
+* Remove configuration `sum_waveform_top_array` from `MergedS2s` by @dachengx in https://github.com/XENONnT/straxen/pull/1415
+* Debug for `EventwBayesClass` because peaks overlapping by @dachengx in https://github.com/XENONnT/straxen/pull/1417
+* Refactor nv plugins by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1228
+* Changed NV software trigger by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1388
+* Assign `__version__` of `RecordsFromPax` by @dachengx in https://github.com/XENONnT/straxen/pull/1418
+* Minor debug for the `pyproject.toml` by @dachengx in https://github.com/XENONnT/straxen/pull/1420
+* Fix the usage of scripts by @dachengx in https://github.com/XENONnT/straxen/pull/1423
+* Deprecate selection_str by @dachengx in https://github.com/XENONnT/straxen/pull/1424
+* Fix singleton pattern for `MongoDownloader` by @dachengx in https://github.com/XENONnT/straxen/pull/1426
+* Use more `strax.RUN_METADATA_PATTERN` by @dachengx in https://github.com/XENONnT/straxen/pull/1432
+* Be compatible with utilix>0.9 by @dachengx in https://github.com/XENONnT/straxen/pull/1433
+* Specify available RSE in `RucioRemoteBackend` by @dachengx in https://github.com/XENONnT/straxen/pull/1435
+* Add docstring rucio by @yuema137 in https://github.com/XENONnT/straxen/pull/1436
+* `pymongo_collection` is a bit confusing by @dachengx in https://github.com/XENONnT/straxen/pull/1437
+* Put the RunDB API interface and MongoDB interface together by @yuema137 in https://github.com/XENONnT/straxen/pull/1442
+* change N_chunk to URLConfig in peak_positions_cnf by @juehang in https://github.com/XENONnT/straxen/pull/1443
+* Bump actions/setup-python from 5.1.1 to 5.2.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1419
+* Fixed default window position by @tflehmke in https://github.com/XENONnT/straxen/pull/1429
+* Add `data_start` to temporary dtype for `events_nv` by @dachengx in https://github.com/XENONnT/straxen/pull/1447
+* Add level in the tree when drawing dependency tree by @dachengx in https://github.com/XENONnT/straxen/pull/1446
+* Move the whole mongo_storage module to utilix by @yuema137 in https://github.com/XENONnT/straxen/pull/1445
+* Following the breaking change of https://github.com/AxFoundation/strax/pull/910 by @dachengx in https://github.com/XENONnT/straxen/pull/1452
+* Switch to master for docformatter by @yuema137 in https://github.com/XENONnT/straxen/pull/1453
+* Adjust saving preference by @yuema137 in https://github.com/XENONnT/straxen/pull/1451
+* Save first samples of peak(lets) waveform by @HenningSE in https://github.com/XENONnT/straxen/pull/1406
+* Only use `ThreadedMailboxProcessor` when `allow_multiprocess=True` by @dachengx in https://github.com/XENONnT/straxen/pull/1455
+* Remove redundant pos recon by @yuema137 in https://github.com/XENONnT/straxen/pull/1449
+* Clean `DeprecationWarning` and simplify plugins by @dachengx in https://github.com/XENONnT/straxen/pull/1456
+* Update  dependencies of strax, remove git repo from dependency list by @dachengx in https://github.com/XENONnT/straxen/pull/1458
+* Add fix integration window for the noise runs by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1457
+* Use `max_time` when calculating peaklets properties by @dachengx in https://github.com/XENONnT/straxen/pull/1459
+
+New Contributors
+* @RoiFrankel made their first contribution in https://github.com/XENONnT/straxen/pull/1400
+* @tflehmke made their first contribution in https://github.com/XENONnT/straxen/pull/1401
+* @juehang made their first contribution in https://github.com/XENONnT/straxen/pull/1404
+* @HenningSE made their first contribution in https://github.com/XENONnT/straxen/pull/1406
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.5...v3.0.0
+
+
+2.2.5 / 2024-08-17
+-------------------
+* Generate only one instance for `MongoDownloader` by @dachengx in https://github.com/XENONnT/straxen/pull/1398
+* Load whole run for `VetoIntervals` regardless the run length by @dachengx in https://github.com/XENONnT/straxen/pull/1399
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.4...v2.2.5
+
+
+2.2.4 / 2024-07-01
+-------------------
+* Parse USERDISK base on hostname in RunDB by @dachengx in https://github.com/XENONnT/straxen/pull/1384
+* Fix packages temporarily for documentation generation by @dachengx in https://github.com/XENONnT/straxen/pull/1385
+* Bad url warnings by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1216
+* Allow local blinding files by @WenzDaniel in https://github.com/XENONnT/straxen/pull/1387
+* Lock strax version in test by @dachengx in https://github.com/XENONnT/straxen/pull/1389
+* Add xedocs version to context config, only if xedocs is called by @Ananthu-Ravindran in https://github.com/XENONnT/straxen/pull/1393
+* Revert "Lock strax version in test" by @dachengx in https://github.com/XENONnT/straxen/pull/1394
+
+New Contributors
+* @Ananthu-Ravindran made their first contribution in https://github.com/XENONnT/straxen/pull/1393
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.3...v2.2.4
+
+
+2.2.3 / 2024-05-16
+-------------------
+* No need to set `loop_over` for `EventBasics` by @dachengx in https://github.com/XENONnT/straxen/pull/1377
+* Initialize plugins whose `depends_on` is property by @dachengx in https://github.com/XENONnT/straxen/pull/1379
+* Collect functions used for documentation building in `docs_utils.py` by @dachengx in https://github.com/XENONnT/straxen/pull/1380
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.2...v2.2.3
+
+
+2.2.2 / 2024-04-30
+-------------------
+* Minor change of indents by @dachengx in https://github.com/XENONnT/straxen/pull/1341
+* Remove unused `__all__` by @dachengx in https://github.com/XENONnT/straxen/pull/1342
+* Bump graphviz from 0.20.1 to 0.20.2 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1345
+* Specifically install `lxml_html_clean` by @dachengx in https://github.com/XENONnT/straxen/pull/1352
+* Improve InterpolateAndExtrapolate performance for array valued maps by @l-althueser in https://github.com/XENONnT/straxen/pull/1347
+* Bump graphviz from 0.20.2 to 0.20.3 in /extra_requirements by @dependabot in https://github.com/XENONnT/straxen/pull/1350
+* Bump actions/setup-python from 5.0.0 to 5.1.0 by @dependabot in https://github.com/XENONnT/straxen/pull/1351
+* Add `storage_graph` to show the plugins stored or needed to be calculated in the dependency tree by @dachengx in https://github.com/XENONnT/straxen/pull/1353
+* Small bug fix of `storage_graph`, save plot into desired folder by @dachengx in https://github.com/XENONnT/straxen/pull/1356
+* Check non-positive lone_hits by @dachengx in https://github.com/XENONnT/straxen/pull/1358
+* Return the edge closer to the target in `_numeric_derivative` by @dachengx in https://github.com/XENONnT/straxen/pull/1355
+* Add a simply function to plot the dependency tree by @dachengx in https://github.com/XENONnT/straxen/pull/1363
+* Remove `PeakSubtyping` from straxen by @dachengx in https://github.com/XENONnT/straxen/pull/1365
+* Remove `xnt_simulation_config` by @dachengx in https://github.com/XENONnT/straxen/pull/1366
+* Tolerate more exceptions when can not import admix by @dachengx in https://github.com/XENONnT/straxen/pull/1367
+* Add `PeakSEDensity` and `EventSEDensity` by @dachengx in https://github.com/XENONnT/straxen/pull/1368
+* Update `se_time_search_window_left` by @dachengx in https://github.com/XENONnT/straxen/pull/1370
+* remove resource_cache from dali by @yuema137 in https://github.com/XENONnT/straxen/pull/1372
+* Add `exclude_pattern` argument to `dependency_tree` by @dachengx in https://github.com/XENONnT/straxen/pull/1373
+* Let xedocs to handle avg seg and seg partitioning by @GiovanniVolta in https://github.com/XENONnT/straxen/pull/1371
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v2.2.1...v2.2.2
+
+
 2.2.1 / 2024-02-21
 -------------------
 * Loosen `save_when` of `Events` by @dachengx in https://github.com/XENONnT/straxen/pull/1327
@@ -394,7 +678,7 @@ Patch:
 -  Add MV trigger channel to acqmon hits https://github.com/XENONnT/straxen/pull/1035
 
 Notes:
- - only lineage changes for dtypes > `aqmon_hits`  (https://github.com/XENONnT/straxen/pull/1035)
+ - only lineage changes for dtypes > `aqmon_hits` (https://github.com/XENONnT/straxen/pull/1035)
 
 
 Full Changelog:
@@ -1031,7 +1315,7 @@ patches and fixes:
 - Matplotlib event display (#326)
 - Bokeh interactive event display (#330)
 - New tutorials and updated documentation (#322)
-- Scada-interface updates (#321,  #324)
+- Scada-interface updates (#321, #324)
 
 
 0.14.1 / 2021-01-04

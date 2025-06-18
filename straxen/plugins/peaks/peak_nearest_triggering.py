@@ -2,6 +2,7 @@ import numpy as np
 import numba
 import strax
 import straxen
+
 from .peak_ambience import _quick_assign
 from ..events import Events
 
@@ -49,6 +50,17 @@ class PeakNearestTriggering(Events):
                     np.int64,
                 ),
                 ((f"type {common_descr} {direction}", f"{direction}_type"), np.int8),
+                (
+                    (f"proximity_score {common_descr} {direction}", f"{direction}_proximity_score"),
+                    np.float32,
+                ),
+                (
+                    (
+                        f"n_competing_left {common_descr} {direction}",
+                        f"{direction}_n_competing_left",
+                    ),
+                    np.int32,
+                ),
                 ((f"n_competing {common_descr} {direction}", f"{direction}_n_competing"), np.int32),
                 ((f"area {common_descr} {direction} [PE]", f"{direction}_area"), np.float32),
             ]
@@ -60,8 +72,8 @@ class PeakNearestTriggering(Events):
         return 10 * self.shadow_time_window_backward
 
     def compute(self, peaks):
-        argsort = np.argsort(peaks["center_time"], kind="mergesort")
-        _peaks = np.sort(peaks, order="center_time")
+        argsort = strax.stable_argsort(peaks["center_time"])
+        _peaks = peaks[argsort].copy()
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_triggering(peaks, _peaks))
         return result
@@ -69,7 +81,7 @@ class PeakNearestTriggering(Events):
     def compute_triggering(self, peaks, current_peak):
         # sort peaks by center_time,
         # because later we will use center_time to find the nearest peak
-        _peaks = np.sort(peaks, order="center_time")
+        _peaks = strax.stable_sort(peaks, order="center_time")
         # only looking at triggering peaks
         if self.only_trigger_min_area:
             _is_triggering = _peaks["area"] > self.trigger_min_area
@@ -78,7 +90,7 @@ class PeakNearestTriggering(Events):
         _peaks = _peaks[_is_triggering]
         # init result
         result = np.zeros(len(current_peak), self.dtype)
-        straxen.EventBasics.set_nan_defaults(result)
+        strax.set_nan_defaults(result)
 
         # use center_time as the anchor of things
         things = np.zeros(len(_peaks), dtype=strax.time_fields)
@@ -107,7 +119,16 @@ class PeakNearestTriggering(Events):
             _peaks["center_time"][right_indices] - current_peak["center_time"],
             self.shadow_time_window_backward,
         )
-        for field in ["time", "endtime", "center_time", "type", "n_competing", "area"]:
+        for field in [
+            "time",
+            "endtime",
+            "center_time",
+            "type",
+            "proximity_score",
+            "n_competing_left",
+            "n_competing",
+            "area",
+        ]:
             result["left_" + field] = np.where(
                 left_indices != -1, _peaks[field][left_indices], result["left_" + field]
             )
