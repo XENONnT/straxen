@@ -96,6 +96,18 @@ class CorrectedAreas(strax.Plugin):
         help="Relative light yield (allows for time dependence)",
     )
 
+    # b parameter for z-dependent relative light yield correction
+    b_rel_light_yield = straxen.URLConfig(
+        default=0.0,
+        help="b parameter for z-dependent relative light yield correction",
+    )
+
+    # slope parameter for z-dependent relative light yield correction
+    slope_rel_light_yield = straxen.URLConfig(
+        default=0.0,
+        help="Slope parameter for z-dependent relative light yield correction",
+    )
+
     # Single electron gain partition
     # AB and CD partitons distiguished based on
     # linear and circular regions
@@ -121,7 +133,8 @@ class CorrectedAreas(strax.Plugin):
         default="itp_map://resource://xedocs://peak_reconstruction_bias"
         "?attr=value&run_id=plugin.run_id&signal=s1&fmt=json&version=ONLINE",
         help="Interpolation map for S1 peak bias correction. "
-        "Bias is defined as (reconstructed/raw) - 1",
+        "Bias is defined as (reconstructed / raw) - 1."
+        "So, the bias correction is reconstructed / (1 + bias).",
     )
 
     # S2 Peak Reconstruction Bias Map
@@ -129,7 +142,8 @@ class CorrectedAreas(strax.Plugin):
         default="itp_map://resource://xedocs://peak_reconstruction_bias"
         "?attr=value&run_id=plugin.run_id&signal=s2&fmt=json&version=ONLINE",
         help="Interpolation map for S2 peak bias correction. "
-        "Bias is defined as (reconstructed/raw) - 1",
+        "Bias is defined as (reconstructed / raw) - 1."
+        "So, the bias correction is reconstructed / (1 + bias).",
     )
 
     def infer_dtype(self):
@@ -271,6 +285,17 @@ class CorrectedAreas(strax.Plugin):
 
         return seg, avg_seg, ee
 
+    def rel_light_yield_correction(self, events):
+        """Compute relative light yield correction (z- and t-dependent)."""
+
+        a = self.slope_rel_light_yield * (self.rel_light_yield - 1)
+        b = self.b_rel_light_yield
+
+        # Compute full z- and t-dependent correction
+        rel_ly_zt_corr = self.rel_light_yield * (a * (events["z"] ** 2 + b * events["z"]) + 1)
+
+        return rel_ly_zt_corr
+
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result["time"] = events["time"]
@@ -282,22 +307,11 @@ class CorrectedAreas(strax.Plugin):
         event_positions = np.vstack([events["x"], events["y"], events["z"]]).T
 
         for peak_type in ["", "alt_"]:
-            # Bias correction for S1
-            s1_bias_correction = 1 + self.s1_bias_map(events[f"{peak_type}s1_area"].reshape(-1, 1))
-            s1_bias_corrected = events[f"{peak_type}s1_area"] / s1_bias_correction
-
-            # Standard S1 corrections
-            s1_xyz_correction = self.s1_xyz_map(event_positions)
-            result[f"{peak_type}cs1_wo_timecorr"] = s1_bias_corrected / s1_xyz_correction
-            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
-
-            # N-1 correction for S1: all corrections except position (xyz map)
-            result[f"{peak_type}cs1_wo_xyzcorr"] = s1_bias_corrected / self.rel_light_yield
-
-            # N-1 correction for S1: all corrections except bias correction
-            result[f"{peak_type}cs1_wo_peakbiascorr"] = (
-                events[f"{peak_type}s1_area"] / s1_xyz_correction / self.rel_light_yield
+            result[f"{peak_type}cs1_wo_timecorr"] = events[f"{peak_type}s1_area"] / self.s1_xyz_map(
+                event_positions
             )
+            rel_ly_corr = self.rel_light_yield_correction(events)
+            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / rel_ly_corr
 
         # S2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
@@ -314,7 +328,6 @@ class CorrectedAreas(strax.Plugin):
 
             # S2(x,y) corrections use the observed S2 positions
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
-
             # corrected S2 with S2(x,y) map only, i.e. no elife correction
             # this is for S2-only events which don't have drift time info
             s2_xy_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
@@ -325,7 +338,6 @@ class CorrectedAreas(strax.Plugin):
             cs2_bottom_xycorr = (
                 s2_bias_corrected * (1 - events[f"{peak_type}s2_area_fraction_top"]) / s2_xy_bottom
             )
-
             # collect electron lifetime correction
             # for electron lifetime corrections to the S2s,
             # use drift time computed using the main S1.
@@ -339,7 +351,6 @@ class CorrectedAreas(strax.Plugin):
                 partition_mask = func(events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"])
                 # correct for SEG and EE
                 seg_ee_corr[partition_mask] = seg[partition] / avg_seg[partition] * ee[partition]
-
             # apply S2 xy correction
             cs2_xycorr = cs2_top_xycorr + cs2_bottom_xycorr
             result[f"{peak_type}cs2_wo_timecorr"] = cs2_xycorr * elife_correction
@@ -353,12 +364,12 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs2_area_fraction_top_wo_picorr"] = (
                 cs2_top_wo_picorr / result[f"{peak_type}cs2_wo_picorr"]
             )
-
             # apply photon ionization intensity and cS2 AFT correction (see #1247)
             # cS2 bottom should be corrected by photon ionization, but not cS2 top
             cs2_top_wo_elifecorr = cs2_top_wo_picorr
             cs2_bottom_wo_elifecorr = cs2_bottom_wo_picorr * self.cs2_bottom_top_ratio_correction
             cs2_wo_elifecorr = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+
             # scale top and bottom to ensure total cS2 is conserved, since the time
             # dependence of it has been already corrected by SEG correction
             cs2_top_wo_elifecorr *= cs2_wo_picorr / cs2_wo_elifecorr
@@ -368,7 +379,6 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs2_area_fraction_top_wo_elifecorr"] = (
                 cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
             )
-
             # apply electron lifetime correction
             result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_wo_elifecorr"] * elife_correction
             result[f"{peak_type}cs2_area_fraction_top"] = result[
