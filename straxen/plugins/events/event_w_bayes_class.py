@@ -20,17 +20,20 @@ class EventwBayesClass(strax.Plugin):
         return dtype
 
     def compute(self, peaks, events):
-        result = np.empty(len(events), dtype=self.dtype)
+        split_peaks = strax.split_by_containment(peaks, events)
 
+        # 1. Initialization
+        result = np.empty(len(events), dtype=self.dtype)
+        # 2. Set time and endtime for events
         for name in ["s1", "s2", "alt_s1", "alt_s2"]:
             result[f"{name}_ln_prob_s1"] = np.nan
             result[f"{name}_ln_prob_s2"] = np.nan
-            # Select peaks based on their start time
-            mask = np.in1d(peaks["time"], events[f"{name}_time"])
-            mask_ev = np.in1d(events[f"{name}_time"], peaks["time"])
-            result[f"{name}_ln_prob_s1"][mask_ev] = peaks["ln_prob_s1"][mask]
-            result[f"{name}_ln_prob_s2"][mask_ev] = peaks["ln_prob_s2"][mask]
-            result["time"] = events["time"]
-            result["endtime"] = events["endtime"]
-
+        result["time"] = events["time"]
+        result["endtime"] = events["endtime"]
+        # 3. Assign peaks features to main S1, main S2 in the event
+        for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
+            for name in ["s1", "s2", "alt_s1", "alt_s2"]:
+                if event[f"{name}_index"] >= 0:
+                    result[f"{name}_ln_prob_s1"][event_i] = sp["ln_prob_s1"][event[f"{name}_index"]]
+                    result[f"{name}_ln_prob_s2"][event_i] = sp["ln_prob_s2"][event[f"{name}_index"]]
         return result
