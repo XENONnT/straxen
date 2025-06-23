@@ -607,6 +607,11 @@ def infer_target(rd: dict) -> dict:
     nv_ref_mon = [
         "nVeto_LASER_calibration",
     ]
+    nv_calibration_modes = [
+        "nVeto_LASER_calibration_LONG_window",
+        "nVeto_LED_calibration",
+        "nVeto_LED_calibration_2",
+    ]
     mode = str(rd.get("mode"))
     detectors = list(rd.get("detectors"))  # type: ignore
 
