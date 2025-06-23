@@ -360,7 +360,8 @@ def check_loading_allowed(
     :param target: list of targets requested by the user
     :param max_in_disallowed: the max number of targets that are in the disallowed list
     :param disallowed: list of targets that are not allowed to be loaded simultaneously by the user
-    :return: data :raise: RuntimeError if more than max_in_disallowed targets are requested
+    :return: data
+    :raise: RuntimeError if more than max_in_disallowed targets are requested
 
     """
     n_targets_in_disallowed = sum([t in disallowed for t in strax.to_str_tuple(target)])
