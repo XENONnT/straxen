@@ -2,7 +2,6 @@ import strax
 import straxen
 from straxen.plugins.peaks._peak_s1_positions_base import PeakS1PositionBase
 
-
 export, __all__ = strax.exporter()
 
 
