@@ -28,8 +28,8 @@ class CorrectedAreas(strax.Plugin):
 
     The following corrections are applied:
     - Peak reconstruction bias correction (corrects for bias in peak finding algorithm)
-    - S1 xyz position correction (light collection efficiency)
-    - S2 xy position correction (light collection efficiency)
+    - S1 xyz correction (light collection efficiency)
+    - S2 xy correction (light collection efficiency)
     - Time-dependent light yield correction
     - Single electron gain (SEG) and extraction efficiency (EE) correction (partition,time)
     - Photon ionization correction for S2 bottom
