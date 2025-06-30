@@ -151,91 +151,70 @@ class CorrectedAreas(strax.Plugin):
         dtype += strax.time_fields
 
         for peak_type, peak_name in zip(["", "alt_"], ["main", "alternate"]):
-            # Only apply
+            # S1 corrections
             dtype += [
                 (f"{peak_type}cs1", np.float32, f"Corrected area of {peak_name} S1 [PE]"),
                 (
                     f"{peak_type}cs1_wo_timecorr",
                     np.float32,
-                    f"Corrected area of {peak_name} S1 (before LY correction) [PE]",
+                    f"Corrected area of {peak_name} S1 (without rel LY evolution correction) [PE]",
                 ),
-                # N-1 correction for S1: all corrections except position (xyz map)
                 (
                     f"{peak_type}cs1_wo_xyzcorr",
                     np.float32,
                     f"Corrected area of {peak_name} S1 (without xyz position correction) [PE]",
                 ),
-                # N-1 correction for S1: all corrections except bias correction
                 (
                     f"{peak_type}cs1_wo_peakbiascorr",
                     np.float32,
                     f"Corrected area of {peak_name} S1 (without peak bias correction) [PE]",
                 ),
             ]
-            names = ["_wo_timecorr", "_wo_picorr", "_wo_elifecorr", "_wo_peakbiascorr", ""]
-            descriptions = ["S2 xy", "SEG/EE", "photon ionization", "peak bias", "elife"]
-            for i, name in enumerate(names):
-                if i == len(names) - 1:
-                    description = ""
-                elif i == 0:
-                    # special treatment for wo_timecorr, apply elife correction
-                    description = " (before " + " + ".join(descriptions[i + 1 : -1])
-                    description += (
-                        ", after " + " + ".join(descriptions[: i + 1] + descriptions[-1:]) + ")"
-                    )
+
+            # Intermediate S2 corrections for studying correction order
+            names = ["_wo_segee_picorr", "_before_pi", "_before_elife", ""]
+
+            # Define what's "before" and "after" for each stage
+            stage_definitions = {
+                "_wo_segee_picorr": ("SEG/EE + photon ionization", "peak bias + S2 xy + elife"),
+                "_before_pi": ("photon ionization + elife", "peak bias + S2 xy + SEG/EE"),
+                "_before_elife": ("elife", "peak bias + S2 xy + SEG/EE + photon ionization"),
+                "": (None, None),
+            }
+
+            for name in names:
+                before, after = stage_definitions[name]
+                if before:
+                    description = f" (before {before}, after {after})"
                 else:
-                    description = " (before " + " + ".join(descriptions[i + 1 :])
-                    description += ", after " + " + ".join(descriptions[: i + 1]) + ")"
+                    description = ""
+
+                main_comment = f"Corrected area of {peak_name} S2{description} [PE]"
+                aft_comment = f"Fraction of area seen by the top PMT array for corrected {peak_name} S2{description}"
+
                 dtype += [
-                    (
-                        f"{peak_type}cs2{name}",
-                        np.float32,
-                        f"Corrected area of {peak_name} S2{description} [PE]",
-                    ),
-                    (
-                        f"{peak_type}cs2_area_fraction_top{name}",
-                        np.float32,
-                        (
-                            "Fraction of area seen by the top PMT array for corrected "
-                            f"{peak_name} S2{description}"
-                        ),
-                    ),
+                    (f"{peak_type}cs2{name}", np.float32, main_comment),
+                    (f"{peak_type}cs2_area_fraction_top{name}", np.float32, aft_comment),
                 ]
 
-            # Add N-1 corrections for S2
-            # 1. All corrections except S2 xy position correction
-            dtype += [
-                (
-                    f"{peak_type}cs2_wo_xycorr",
-                    np.float32,
-                    f"Corrected area of {peak_name} S2 (without xy position correction) [PE]",
-                ),
-                (
-                    f"{peak_type}cs2_area_fraction_top_wo_xycorr",
-                    np.float32,
-                    (
-                        f"Fraction of area seen by the top PMT array for corrected "
-                        f"{peak_name} S2 (without xy position correction)"
-                    ),
-                ),
-            ]
-            # 2. All corrections except SEG/EE correction
-            dtype += [
-                (
-                    f"{peak_type}cs2_wo_segee",
-                    np.float32,
-                    f"Corrected area of {peak_name} S2 (without SEG/EE correction) [PE]",
-                ),
-                (
-                    f"{peak_type}cs2_area_fraction_top_wo_segee",
-                    np.float32,
-                    (
-                        f"Fraction of area seen by the top PMT array for corrected "
-                        f"{peak_name} S2 (without SEG/EE correction)"
-                    ),
-                ),
-            ]
-            # Note: cs2_wo_peakbiascorr is already included in the names array above
+            # N-1 corrections for S2
+            n1_versions = {
+                "xycorr": "xy position",
+                "segee": "SEG/EE",
+                "picorr": "photon ionization",
+                "elifecorr": "electron lifetime",
+                "peakbiascorr": "peak bias",
+                "timecorr": "all time dependent",
+            }
+            for corr_name, corr_desc in n1_versions.items():
+                main_comment = (
+                    f"Corrected area of {peak_name} S2 (without {corr_desc} correction) [PE]"
+                )
+                aft_comment = f"AFT of {peak_name} S2 (without {corr_desc} correction)"
+                dtype += [
+                    (f"{peak_type}cs2_wo_{corr_name}", np.float32, main_comment),
+                    (f"{peak_type}cs2_area_fraction_top_wo_{corr_name}", np.float32, aft_comment),
+                ]
         return dtype
 
     def ab_region(self, x, y):
@@ -306,146 +285,168 @@ class CorrectedAreas(strax.Plugin):
         # fine as the S1 correction varies slowly.
         event_positions = np.vstack([events["x"], events["y"], events["z"]]).T
 
+        # S1 corrections
         for peak_type in ["", "alt_"]:
-            result[f"{peak_type}cs1_wo_timecorr"] = events[f"{peak_type}s1_area"] / self.s1_xyz_map(
-                event_positions
+            # Correction factors
+            s1_area = events[f"{peak_type}s1_area"]
+            s1_bias_correction = 1 + self.s1_bias_map(s1_area.reshape(-1, 1)).flatten()
+            s1_xyz_correction = self.s1_xyz_map(event_positions)
+            s1_time_correction = self.rel_light_yield_correction(events)
+
+            # Apply all corrections
+            result[f"{peak_type}cs1"] = (
+                s1_area / s1_bias_correction / s1_xyz_correction / s1_time_correction
             )
-            rel_ly_corr = self.rel_light_yield_correction(events)
-            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / rel_ly_corr
+
+            # N-1 corrections for S1
+            result[f"{peak_type}cs1_wo_peakbiascorr"] = (
+                s1_area / s1_xyz_correction / s1_time_correction
+            )
+            result[f"{peak_type}cs1_wo_xyzcorr"] = (
+                s1_area / s1_bias_correction / s1_time_correction
+            )
+            result[f"{peak_type}cs1_wo_timecorr"] = (
+                s1_area / s1_bias_correction / s1_xyz_correction
+            )
 
         # S2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
         seg, avg_seg, ee = self.seg_ee_correction_preparation()
 
-        # now can start doing corrections
         for peak_type in ["", "alt_"]:
-            # Bias correction for S2
-            # The bias is defined as (reconstructed/raw) - 1,
-            # so we divide by (1 + bias) to get the corrected value
-            s2_bias_area = events[f"{peak_type}s2_area"].reshape(-1, 1)
-            s2_bias_correction = 1 + self.s2_bias_map(s2_bias_area)
-            s2_bias_corrected = events[f"{peak_type}s2_area"] / s2_bias_correction
-
-            # S2(x,y) corrections use the observed S2 positions
+            # Correction factors
+            s2_area = events[f"{peak_type}s2_area"]
+            s2_aft = events[f"{peak_type}s2_area_fraction_top"]
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
-            # corrected S2 with S2(x,y) map only, i.e. no elife correction
-            # this is for S2-only events which don't have drift time info
-            s2_xy_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
-            cs2_top_xycorr = (
-                s2_bias_corrected * events[f"{peak_type}s2_area_fraction_top"] / s2_xy_top
-            )
-            s2_xy_bottom = self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
-            cs2_bottom_xycorr = (
-                s2_bias_corrected * (1 - events[f"{peak_type}s2_area_fraction_top"]) / s2_xy_bottom
-            )
-            # collect electron lifetime correction
-            # for electron lifetime corrections to the S2s,
-            # use drift time computed using the main S1.
+
+            s2_bias_correction = 1 + self.s2_bias_map(s2_area.reshape(-1, 1)).flatten()
+            s2_xy_correction_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
+            s2_xy_correction_bottom = self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
+
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f"{el_string}drift_time"] / self.elife)
 
-            # collect SEG and EE corrections
             seg_ee_corr = np.zeros(len(events))
             for partition, func in self.regions.items():
-                # partitioned SEG and EE
-                partition_mask = func(events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"])
-                # correct for SEG and EE
-                seg_ee_corr[partition_mask] = seg[partition] / avg_seg[partition] * ee[partition]
-            # apply S2 xy correction
-            cs2_xycorr = cs2_top_xycorr + cs2_bottom_xycorr
-            result[f"{peak_type}cs2_wo_timecorr"] = cs2_xycorr * elife_correction
-            result[f"{peak_type}cs2_area_fraction_top_wo_timecorr"] = cs2_top_xycorr / cs2_xycorr
+                mask = func(events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"])
+                seg_ee_corr[mask] = seg[partition] / avg_seg[partition] * ee[partition]
 
-            # apply SEG and EE correction
-            cs2_top_wo_picorr = cs2_top_xycorr / seg_ee_corr
-            cs2_bottom_wo_picorr = cs2_bottom_xycorr / seg_ee_corr
-            cs2_wo_picorr = cs2_top_wo_picorr + cs2_bottom_wo_picorr
-            result[f"{peak_type}cs2_wo_picorr"] = cs2_wo_picorr
-            result[f"{peak_type}cs2_area_fraction_top_wo_picorr"] = (
-                cs2_top_wo_picorr / result[f"{peak_type}cs2_wo_picorr"]
+            pi_corr_bottom = self.cs2_bottom_top_ratio_correction
+
+            # Base areas
+            s2_area_top = s2_area * s2_aft
+            s2_area_bottom = s2_area * (1 - s2_aft)
+
+            # Fully corrected S2 (in stages for intermediate variables)
+            cs2_top_before_pi = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            cs2_bottom_before_pi = (
+                s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
             )
-            # apply photon ionization intensity and cS2 AFT correction (see #1247)
-            # cS2 bottom should be corrected by photon ionization, but not cS2 top
-            cs2_top_wo_elifecorr = cs2_top_wo_picorr
-            cs2_bottom_wo_elifecorr = cs2_bottom_wo_picorr * self.cs2_bottom_top_ratio_correction
-            cs2_wo_elifecorr = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+            cs2_before_pi = cs2_top_before_pi + cs2_bottom_before_pi
 
-            # scale top and bottom to ensure total cS2 is conserved, since the time
-            # dependence of it has been already corrected by SEG correction
-            cs2_top_wo_elifecorr *= cs2_wo_picorr / cs2_wo_elifecorr
-            cs2_bottom_wo_elifecorr *= cs2_wo_picorr / cs2_wo_elifecorr
-            cs2_wo_elifecorr = cs2_wo_picorr
-            result[f"{peak_type}cs2_wo_elifecorr"] = cs2_wo_elifecorr
-            result[f"{peak_type}cs2_area_fraction_top_wo_elifecorr"] = (
-                cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
-            )
-            # apply electron lifetime correction
-            result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_wo_elifecorr"] * elife_correction
-            result[f"{peak_type}cs2_area_fraction_top"] = result[
-                f"{peak_type}cs2_area_fraction_top_wo_elifecorr"
-            ]
+            cs2_top_before_elife = cs2_top_before_pi
+            cs2_bottom_before_elife = cs2_bottom_before_pi * pi_corr_bottom
+            cs2_before_elife = cs2_top_before_elife + cs2_bottom_before_elife
 
-            # Calculate N-1 corrections for S2
-            # For each N-1 correction, we apply all corrections except the specific one
-            # being studied. This allows analyzing the impact of each individual correction
-            # on the final result.
+            cs2 = cs2_before_elife * elife_correction
+            cs2_top_final = cs2_top_before_elife * elife_correction
 
-            # 1. All corrections except S2 xy position correction
-            # Start with bias-corrected S2 area directly
+            result[f"{peak_type}cs2"] = cs2
+            result[f"{peak_type}cs2_area_fraction_top"] = cs2_top_final / cs2
 
-            # Apply all corrections except xy position correction
-            cs2_top_wo_xycorr = (
-                s2_bias_corrected
-                * events[f"{peak_type}s2_area_fraction_top"]
-                / seg_ee_corr
-                * self.cs2_bottom_top_ratio_correction
-                * elife_correction
-            )
-            cs2_bottom_wo_xycorr = (
-                s2_bias_corrected
-                * (1 - events[f"{peak_type}s2_area_fraction_top"])
-                / seg_ee_corr
-                * self.cs2_bottom_top_ratio_correction
-                * elife_correction
-            )
-            cs2_wo_xycorr = cs2_top_wo_xycorr + cs2_bottom_wo_xycorr
-
-            result[f"{peak_type}cs2_wo_xycorr"] = cs2_wo_xycorr
-            result[f"{peak_type}cs2_area_fraction_top_wo_xycorr"] = (
-                cs2_top_wo_xycorr / cs2_wo_xycorr
+            # Intermediate corrections
+            result[f"{peak_type}cs2_before_pi"] = cs2_before_pi
+            result[f"{peak_type}cs2_area_fraction_top_before_pi"] = (
+                cs2_top_before_pi / cs2_before_pi
             )
 
-            # 2. All corrections except SEG/EE correction
-            # Apply xy correction, photon ionization, and electron lifetime, but not SEG/EE
-            cs2_top_wo_segee = (
-                cs2_top_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
+            result[f"{peak_type}cs2_before_elife"] = cs2_before_elife
+            result[f"{peak_type}cs2_area_fraction_top_before_elife"] = (
+                cs2_top_before_elife / cs2_before_elife
             )
-            cs2_bottom_wo_segee = (
-                cs2_bottom_xycorr * self.cs2_bottom_top_ratio_correction * elife_correction
-            )
-            cs2_wo_segee = cs2_top_wo_segee + cs2_bottom_wo_segee
 
-            result[f"{peak_type}cs2_wo_segee"] = cs2_wo_segee
-            result[f"{peak_type}cs2_area_fraction_top_wo_segee"] = cs2_top_wo_segee / cs2_wo_segee
-
-            # 3. All corrections except bias correction
-            cs2_top_wo_peakbiascorr = (
-                cs2_top_xycorr
-                / s2_bias_correction
-                * self.cs2_bottom_top_ratio_correction
-                * elife_correction
+            # cs2_wo_segee_picorr
+            cs2_top_wo_segee_picorr = s2_area_top / s2_bias_correction / s2_xy_correction_top
+            cs2_bottom_wo_segee_picorr = (
+                s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom
             )
+            cs2_wo_segee_picorr = (
+                cs2_top_wo_segee_picorr + cs2_bottom_wo_segee_picorr
+            ) * elife_correction
+            result[f"{peak_type}cs2_wo_segee_picorr"] = cs2_wo_segee_picorr
+            result[f"{peak_type}cs2_area_fraction_top_wo_segee_picorr"] = (
+                cs2_top_wo_segee_picorr * elife_correction / cs2_wo_segee_picorr
+            )
+
+            # N-1 corrections for S2
+            # N-1: without peak bias
+            cs2_top_wo_peakbiascorr = s2_area_top / s2_xy_correction_top / seg_ee_corr
             cs2_bottom_wo_peakbiascorr = (
-                cs2_bottom_xycorr
-                / s2_bias_correction
-                * self.cs2_bottom_top_ratio_correction
-                * elife_correction
+                s2_area_bottom / s2_xy_correction_bottom / seg_ee_corr * pi_corr_bottom
             )
-            cs2_wo_peakbiascorr = cs2_top_wo_peakbiascorr + cs2_bottom_wo_peakbiascorr
-
+            cs2_wo_peakbiascorr = (
+                cs2_top_wo_peakbiascorr + cs2_bottom_wo_peakbiascorr
+            ) * elife_correction
             result[f"{peak_type}cs2_wo_peakbiascorr"] = cs2_wo_peakbiascorr
             result[f"{peak_type}cs2_area_fraction_top_wo_peakbiascorr"] = (
-                cs2_top_wo_peakbiascorr / cs2_wo_peakbiascorr
+                cs2_top_wo_peakbiascorr * elife_correction / cs2_wo_peakbiascorr
+            )
+
+            # N-1: without any time dependent correction
+            cs2_top_wo_timecorr = s2_area_top / s2_bias_correction / s2_xy_correction_top
+            cs2_bottom_wo_timecorr = (
+                s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom * pi_corr_bottom
+            )
+            cs2_wo_timecorr = cs2_top_wo_timecorr + cs2_bottom_wo_timecorr
+            result[f"{peak_type}cs2_wo_timecorr"] = cs2_wo_timecorr
+            result[f"{peak_type}cs2_area_fraction_top_wo_timecorr"] = (
+                cs2_top_wo_timecorr / cs2_wo_timecorr
+            )
+
+            # N-1: without xy position
+            cs2_top_wo_xycorr = s2_area_top / s2_bias_correction / seg_ee_corr
+            cs2_bottom_wo_xycorr = s2_area_bottom / s2_bias_correction / seg_ee_corr * pi_corr_bottom
+            cs2_wo_xycorr = (cs2_top_wo_xycorr + cs2_bottom_wo_xycorr) * elife_correction
+            result[f"{peak_type}cs2_wo_xycorr"] = cs2_wo_xycorr
+            result[f"{peak_type}cs2_area_fraction_top_wo_xycorr"] = (
+                cs2_top_wo_xycorr * elife_correction / cs2_wo_xycorr
+            )
+
+            # N-1: without SEG/EE
+            cs2_top_wo_segee = s2_area_top / s2_bias_correction / s2_xy_correction_top
+            cs2_bottom_wo_segee = (
+                s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom * pi_corr_bottom
+            )
+            cs2_wo_segee = (cs2_top_wo_segee + cs2_bottom_wo_segee) * elife_correction
+            result[f"{peak_type}cs2_wo_segee"] = cs2_wo_segee
+            result[f"{peak_type}cs2_area_fraction_top_wo_segee"] = (
+                cs2_top_wo_segee * elife_correction / cs2_wo_segee
+            )
+
+            # N-1: without photon ionization
+            cs2_top_wo_picorr = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            cs2_bottom_wo_picorr = (
+                s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
+            )
+            cs2_wo_picorr = (cs2_top_wo_picorr + cs2_bottom_wo_picorr) * elife_correction
+            result[f"{peak_type}cs2_wo_picorr"] = cs2_wo_picorr
+            result[f"{peak_type}cs2_area_fraction_top_wo_picorr"] = (
+                cs2_top_wo_picorr * elife_correction / cs2_wo_picorr
+            )
+
+            # N-1: without electron lifetime
+            cs2_top_wo_elifecorr = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            cs2_bottom_wo_elifecorr = (
+                s2_area_bottom
+                / s2_bias_correction
+                / s2_xy_correction_bottom
+                / seg_ee_corr
+                * pi_corr_bottom
+            )
+            cs2_wo_elifecorr = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+            result[f"{peak_type}cs2_wo_elifecorr"] = cs2_wo_elifecorr
+            result[f"{peak_type}cs2_area_fraction_top_wo_elifecorr"] = (
+                cs2_top_wo_elifecorr / cs2_wo_elifecorr
             )
 
         return result
