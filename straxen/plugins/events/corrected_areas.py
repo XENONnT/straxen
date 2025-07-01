@@ -210,7 +210,7 @@ class CorrectedAreas(strax.Plugin):
                 main_comment = (
                     f"Corrected area of {peak_name} S2 (without {corr_desc} correction) [PE]"
                 )
-                aft_comment = f"AFT of {peak_name} S2 (without {corr_desc} correction)"
+                aft_comment = f"Fraction of area seen by the top PMT array for corrected {peak_name} S2 (without {corr_desc} correction)"
                 dtype += [
                     (f"{peak_type}cs2_wo_{corr_name}", np.float32, main_comment),
                     (f"{peak_type}cs2_area_fraction_top_wo_{corr_name}", np.float32, aft_comment),
