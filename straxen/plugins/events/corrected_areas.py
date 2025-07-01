@@ -32,7 +32,7 @@ class CorrectedAreas(strax.Plugin):
     - S2 xy correction (light collection efficiency)
     - Time-dependent light yield correction
     - Single electron gain (SEG) and extraction efficiency (EE) correction (partition,time)
-    - Photon ionization correction for S2 bottom
+    - Photoionization correction for S2 bottom
     - Electron lifetime correction
 
     """
@@ -122,10 +122,10 @@ class CorrectedAreas(strax.Plugin):
         ),
     )
 
-    # cS2 AFT correction due to photon ionization
+    # cS2 AFT correction due to photoionization
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:zihao:sr1_s2aft_photonionization_correction
     cs2_bottom_top_ratio_correction = straxen.URLConfig(
-        default=1, help="Scaling factor for cS2 AFT correction due to photon ionization"
+        default=1, help="Scaling factor for cS2 AFT correction due to photoionization"
     )
 
     # S1 Peak Reconstruction Bias Map
@@ -176,9 +176,9 @@ class CorrectedAreas(strax.Plugin):
 
             # Define what's "before" and "after" for each stage
             stage_definitions = {
-                "_wo_segee_picorr": ("SEG/EE + photon ionization", "peak bias + S2 xy + elife"),
-                "_before_pi": ("photon ionization + elife", "peak bias + S2 xy + SEG/EE"),
-                "_before_elife": ("elife", "peak bias + S2 xy + SEG/EE + photon ionization"),
+                "_wo_segee_picorr": ("SEG/EE + photoionization", "peak bias + S2 xy + elife"),
+                "_before_pi": ("photoionization + elife", "peak bias + S2 xy + SEG/EE"),
+                "_before_elife": ("elife", "peak bias + S2 xy + SEG/EE + photoionization"),
                 "": (None, None),
             }
 
@@ -201,7 +201,7 @@ class CorrectedAreas(strax.Plugin):
             n1_versions = {
                 "xycorr": "xy position",
                 "segee": "SEG/EE",
-                "picorr": "photon ionization",
+                "picorr": "photoionization",
                 "elifecorr": "electron lifetime",
                 "peakbiascorr": "peak bias",
                 "timecorr": "all time dependent",
@@ -423,7 +423,7 @@ class CorrectedAreas(strax.Plugin):
                 cs2_top_wo_segee * elife_correction / cs2_wo_segee
             )
 
-            # N-1: without photon ionization
+            # N-1: without photoionization
             cs2_top_wo_picorr = (
                 s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
             )
