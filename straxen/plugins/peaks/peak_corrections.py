@@ -31,64 +31,36 @@ class PeakCorrectedAreas(CorrectedAreas):
 
     def infer_dtype(self):
         dtype = strax.time_fields + [
+            ("cs1_wo_xyzcorr", np.float32, "Bias-corrected S1 area before xyz correction [PE]"),
+            ("cs2_wo_xycorr", np.float32, "Bias-corrected S2 area before xy correction [PE]"),
             (
-                (
-                    ("Bias-corrected S1 area before xyz correction [PE]"),
-                    "cs1_wo_xyzcorr",
-                ),
+                "cs2_wo_elifecorr",
                 np.float32,
+                "Corrected S2 area before elife correction (s2 xy, SEG/EE applied) [PE]",
             ),
             (
-                (
-                    ("Bias-corrected S2 area before xy correction [PE]"),
-                    "cs2_wo_xycorr",
-                ),
+                "cs2_wo_timecorr",
                 np.float32,
+                "Corrected S2 area before SEG/EE and elife (s2 xy applied) [PE]",
             ),
             (
-                (
-                    (
-                        "Corrected area of S2 before elife correction "
-                        "(s2 xy correction + SEG/EE correction applied) [PE]"
-                    ),
-                    "cs2_wo_elifecorr",
-                ),
+                "cs2_area_fraction_top",
                 np.float32,
+                "Fraction of area seen by the top PMT array for corrected S2",
+            ),
+            ("cs2_bottom", np.float32, "Corrected area of S2 in the bottom PMT array [PE]"),
+            ("cs2", np.float32, "Corrected area of S2 [PE]"),
+            (
+                "s1_xyz_correction_factor",
+                np.float32,
+                "Correction factor for the S1 area based on S2 position",
             ),
             (
-                (
-                    (
-                        "Corrected area of S2 before SEG/EE and elife corrections "
-                        "(s2 xy correction applied) [PE]"
-                    ),
-                    "cs2_wo_timecorr",
-                ),
+                "s1_rel_light_yield_correction_factor",
                 np.float32,
+                "Relative light yield correction factor for the S1 area",
             ),
-            (
-                (
-                    "Fraction of area seen by the top PMT array for corrected S2",
-                    "cs2_area_fraction_top",
-                ),
-                np.float32,
-            ),
-            (("Corrected area of S2 in the bottom PMT array [PE]", "cs2_bottom"), np.float32),
-            (("Corrected area of S2 [PE]", "cs2"), np.float32),
-            (
-                (
-                    "Correction factor for the S1 area based on S2 position",
-                    "s1_xyz_correction_factor",
-                ),
-                np.float32,
-            ),
-            (
-                (
-                    "Relative light yield correction factor for the S1 area",
-                    "s1_rel_light_yield_correction_factor",
-                ),
-                np.float32,
-            ),
-            (("z position of the multiscatter peak", "z_obs_ms"), np.float32),
+            ("z_obs_ms", np.float32, "z position of the multiscatter peak"),
         ]
         return dtype
 
@@ -104,86 +76,79 @@ class PeakCorrectedAreas(CorrectedAreas):
 
         # S1 correction factors
         s1_mask = peaks["type"] == 1
-        if np.any(s1_mask):
-            s1_bias = self.s1_bias_map(peaks["area"][s1_mask].reshape(-1, 1))
-            cs1_wo_xyzcorr = peaks["area"][s1_mask] / (1 + s1_bias.flatten())
-            result["cs1_wo_xyzcorr"][s1_mask] = cs1_wo_xyzcorr
-
-        # S2 correction factors
         s2_mask = peaks["type"] == 2
+
+        # S1 corrections
+        if np.any(s1_mask):
+            # Bias correction
+            s1_bias_corr = 1 + self.s1_bias_map(peaks[s1_mask]["area"].reshape(-1, 1)).flatten()
+            result["cs1_wo_xyzcorr"][s1_mask] = peaks[s1_mask]["area"] / s1_bias_corr
+
+            # LCE and time corrections (as factors)
+            z_obs = -self.electron_drift_velocity * peaks["drift_time"]
+            z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
+            s1_positions = np.vstack([peaks[s1_mask]["x"], peaks[s1_mask]["y"], z_obs[s1_mask]]).T
+
+            result["s1_xyz_correction_factor"][s1_mask] = 1 / self.s1_xyz_map(s1_positions)
+            result["s1_rel_light_yield_correction_factor"][s1_mask] = 1 / self.rel_light_yield
+
+        # S2 corrections
         if np.any(s2_mask):
-            s2_bias = self.s2_bias_map(peaks["area"][s2_mask].reshape(-1, 1))
-            cs2_wo_xycorr = peaks["area"][s2_mask] / (1 + s2_bias.flatten())
-            result["cs2_wo_xycorr"][s2_mask] = cs2_wo_xycorr
+            # --- Start sequential corrections ---
+            # 1. Bias correction
+            s2_bias_corr = 1 + self.s2_bias_map(peaks[s2_mask]["area"].reshape(-1, 1)).flatten()
+            cs2_after_bias = peaks[s2_mask]["area"] / s2_bias_corr
+            result["cs2_wo_xycorr"][s2_mask] = cs2_after_bias
 
-        peak_positions = np.vstack([peaks["x"], peaks["y"], z_obs]).T
-        result["s1_xyz_correction_factor"] = 1 / self.s1_xyz_map(peak_positions)
-        result["s1_rel_light_yield_correction_factor"] = 1 / self.rel_light_yield
+            # 2. S2 XY LCE correction
+            s2_positions = np.vstack([peaks[s2_mask]["x"], peaks[s2_mask]["y"]]).T
+            s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
+            s2_aft = peaks[s2_mask]["area_fraction_top"]
 
-        # s2 corrections
-        s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
-
-        seg, avg_seg, ee = self.seg_ee_correction_preparation()
-
-        # now can start doing corrections
-
-        # S2(x,y) corrections use the observed S2 positions
-        s2_positions = np.vstack([peaks["x"], peaks["y"]]).T
-
-        # corrected s2 with s2 xy map only, i.e. no elife correction
-        # this is for s2-only events which don't have drift time info
-
-        cs2_top_xycorr = (
-            peaks["area"]
-            * peaks["area_fraction_top"]
-            / self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
-        )
-        cs2_bottom_xycorr = (
-            peaks["area"]
-            * (1 - peaks["area_fraction_top"])
-            / self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
-        )
-
-        # For electron lifetime corrections to the S2s,
-        # use drift time computed using the main S1.
-
-        elife_correction = np.exp(peaks["drift_time"] / self.elife)
-        result["cs2_wo_timecorr"] = (cs2_top_xycorr + cs2_bottom_xycorr) * elife_correction
-
-        for partition, func in self.regions.items():
-            # partitioned SE and EE
-            partition_mask = func(peaks["x"], peaks["y"])
-
-            # Correct for SEgain and extraction efficiency
-            seg_ee_corr = seg[partition] / avg_seg[partition] * ee[partition]
-
-            # note that these are already masked!
-            cs2_top_wo_elifecorr = cs2_top_xycorr[partition_mask] / seg_ee_corr
-            cs2_bottom_wo_elifecorr = cs2_bottom_xycorr[partition_mask] / seg_ee_corr
-
-            result["cs2_wo_elifecorr"][partition_mask] = (
-                cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+            cs2_top_after_xy = (
+                cs2_after_bias
+                * s2_aft
+                / self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
             )
-
-            # cs2aft doesn't need elife/time corrections as they cancel
-            result["cs2_area_fraction_top"][partition_mask] = cs2_top_wo_elifecorr / (
-                cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
+            cs2_bottom_after_xy = (
+                cs2_after_bias
+                * (1 - s2_aft)
+                / self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
             )
+            cs2_after_xy = cs2_top_after_xy + cs2_bottom_after_xy
+            result["cs2_wo_timecorr"][s2_mask] = cs2_after_xy
 
-            result["cs2"][partition_mask] = (
-                result["cs2_wo_elifecorr"][partition_mask] * elife_correction[partition_mask]
-            )
-            result["cs2_bottom"][partition_mask] = (
-                cs2_bottom_wo_elifecorr * elife_correction[partition_mask]
-            )
+            # 3. SEG/EE correction
+            seg, avg_seg, ee = self.seg_ee_correction_preparation()
+            seg_ee_corr = np.ones_like(cs2_after_xy)
+            for partition, func in self.regions.items():
+                partition_mask = func(peaks[s2_mask]["x"], peaks[s2_mask]["y"])
+                seg_ee_corr[partition_mask] = seg[partition] / avg_seg[partition] * ee[partition]
 
-        not_s2_mask = peaks["type"] != 2
-        result["cs2_wo_timecorr"][not_s2_mask] = np.nan
-        result["cs2_wo_elifecorr"][not_s2_mask] = np.nan
-        result["cs2_area_fraction_top"][not_s2_mask] = np.nan
-        result["cs2"][not_s2_mask] = np.nan
-        result["z_obs_ms"][not_s2_mask] = np.nan
-        result["cs2_bottom"][not_s2_mask] = np.nan
-        result["s1_xyz_correction_factor"][not_s2_mask] = np.nan
-        result["s1_rel_light_yield_correction_factor"][not_s2_mask] = np.nan
+            cs2_top_after_segee = cs2_top_after_xy / seg_ee_corr
+            cs2_bottom_after_segee = cs2_bottom_after_xy / seg_ee_corr
+
+            # 3b. Photoionization correction for S2 bottom
+            cs2_bottom_after_segee *= self.cs2_bottom_top_ratio_correction
+
+            cs2_after_segee = cs2_top_after_segee + cs2_bottom_after_segee
+            result["cs2_wo_elifecorr"][s2_mask] = cs2_after_segee
+
+            # 4. Electron lifetime correction
+            elife_correction = np.exp(peaks[s2_mask]["drift_time"] / self.elife)
+            cs2_final = cs2_after_segee * elife_correction
+            result["cs2"][s2_mask] = cs2_final
+
+            # --- Final derived quantities ---
+            cs2_top_final = cs2_top_after_segee * elife_correction
+            cs2_bottom_final = cs2_bottom_after_segee * elife_correction
+            result["cs2_bottom"][s2_mask] = cs2_bottom_final
+            with np.errstate(invalid="ignore", divide="ignore"):
+                result["cs2_area_fraction_top"][s2_mask] = cs2_top_final / cs2_final
+
+            # Z position for S2s
+            z_obs = -self.electron_drift_velocity * peaks[s2_mask]["drift_time"]
+            z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
+            result["z_obs_ms"][s2_mask] = z_obs
+
         return result
