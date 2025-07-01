@@ -302,12 +302,8 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs1_wo_peakbiascorr"] = (
                 s1_area / s1_xyz_correction / s1_time_correction
             )
-            result[f"{peak_type}cs1_wo_xyzcorr"] = (
-                s1_area / s1_bias_correction / s1_time_correction
-            )
-            result[f"{peak_type}cs1_wo_timecorr"] = (
-                s1_area / s1_bias_correction / s1_xyz_correction
-            )
+            result[f"{peak_type}cs1_wo_xyzcorr"] = s1_area / s1_bias_correction / s1_time_correction
+            result[f"{peak_type}cs1_wo_timecorr"] = s1_area / s1_bias_correction / s1_xyz_correction
 
         # S2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
@@ -338,7 +334,9 @@ class CorrectedAreas(strax.Plugin):
             s2_area_bottom = s2_area * (1 - s2_aft)
 
             # Fully corrected S2 (in stages for intermediate variables)
-            cs2_top_before_pi = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            cs2_top_before_pi = (
+                s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            )
             cs2_bottom_before_pi = (
                 s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
             )
@@ -405,7 +403,9 @@ class CorrectedAreas(strax.Plugin):
 
             # N-1: without xy position
             cs2_top_wo_xycorr = s2_area_top / s2_bias_correction / seg_ee_corr
-            cs2_bottom_wo_xycorr = s2_area_bottom / s2_bias_correction / seg_ee_corr * pi_corr_bottom
+            cs2_bottom_wo_xycorr = (
+                s2_area_bottom / s2_bias_correction / seg_ee_corr * pi_corr_bottom
+            )
             cs2_wo_xycorr = (cs2_top_wo_xycorr + cs2_bottom_wo_xycorr) * elife_correction
             result[f"{peak_type}cs2_wo_xycorr"] = cs2_wo_xycorr
             result[f"{peak_type}cs2_area_fraction_top_wo_xycorr"] = (
@@ -424,7 +424,9 @@ class CorrectedAreas(strax.Plugin):
             )
 
             # N-1: without photon ionization
-            cs2_top_wo_picorr = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            cs2_top_wo_picorr = (
+                s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            )
             cs2_bottom_wo_picorr = (
                 s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
             )
@@ -435,7 +437,9 @@ class CorrectedAreas(strax.Plugin):
             )
 
             # N-1: without electron lifetime
-            cs2_top_wo_elifecorr = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            cs2_top_wo_elifecorr = (
+                s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+            )
             cs2_bottom_wo_elifecorr = (
                 s2_area_bottom
                 / s2_bias_correction
