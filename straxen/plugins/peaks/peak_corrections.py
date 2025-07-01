@@ -106,9 +106,7 @@ class PeakCorrectedAreas(CorrectedAreas):
             s2_aft = peaks[s2_mask]["area_fraction_top"]
 
             cs2_top_after_xy = (
-                cs2_after_bias
-                * s2_aft
-                / self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
+                cs2_after_bias * s2_aft / self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
             )
             cs2_bottom_after_xy = (
                 cs2_after_bias
