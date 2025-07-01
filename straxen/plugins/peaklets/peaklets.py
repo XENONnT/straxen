@@ -386,7 +386,7 @@ class Peaklets(strax.Plugin):
 
         # Check channel of peaklets
         peaklets_unique_channel = np.unique(peaklets["channel"])
-        if (peaklets_unique_channel == DIGITAL_SUM_WAVEFORM_CHANNEL).sum() > 1:
+        if (peaklets_unique_channel == DIGITAL_SUM_WAVEFORM_CHANNEL).sum() != 1:
             raise ValueError(
                 f"Found channel number of peaklets other than {DIGITAL_SUM_WAVEFORM_CHANNEL}"
             )
