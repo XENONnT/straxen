@@ -1,3 +1,18 @@
+3.2.2 / 2025-07-02
+-------------------
+* Set `unique` when `times` and `center_times` are not assigned by @dachengx in https://github.com/XENONnT/straxen/pull/1611
+* Add relative z- t- dependent LY correction by @GianMarco98 in https://github.com/XENONnT/straxen/pull/1600
+* Add peak bias correction by @cfuselli in https://github.com/XENONnT/straxen/pull/1592
+* Define "before" as the order of `center_time` by @dachengx in https://github.com/XENONnT/straxen/pull/1612
+* Check `peaklets`'s channel number `DIGITAL_SUM_WAVEFORM_CHANNEL` by @dachengx in https://github.com/XENONnT/straxen/pull/1616
+* Implement N-1 correction variables by @DonNabla in https://github.com/XENONnT/straxen/pull/1598
+
+New Contributors
+* @GianMarco98 made their first contribution in https://github.com/XENONnT/straxen/pull/1600
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.1...v3.2.2
+
+
 3.2.1 / 2025-05-18
 -------------------
 * Set Sum(S2 / dt) as S2 Time Shadow, not Max(S2 / dt) anymore by @dachengx in https://github.com/XENONnT/straxen/pull/1609
