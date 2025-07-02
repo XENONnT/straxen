@@ -86,73 +86,47 @@ class PeakCorrectedAreas(CorrectedAreas):
                 np.float32,
                 "Fraction of area seen by the top PMT array for corrected S2",
             ),
-            # S2 intermediate corrections
-            ("cs2_before_pi", np.float32, "Corrected S2 before photoionization correction [PE]"),
-            (
-                "cs2_area_fraction_top_before_pi",
-                np.float32,
-                "AFT for S2 before photoionization correction",
-            ),
-            (
-                "cs2_before_elife",
-                np.float32,
-                "Corrected S2 before electron lifetime correction [PE]",
-            ),
-            (
-                "cs2_area_fraction_top_before_elife",
-                np.float32,
-                "AFT for S2 before electron lifetime correction",
-            ),
+            # S2 intermediate corrections - for studying correction order
             (
                 "cs2_wo_segee_picorr",
                 np.float32,
-                "Corrected S2 without SEG/EE and photoionization corrections [PE]",
+                "Corrected S2 (before SEG/EE + photoionization, after peak bias + S2 xy + elife) [PE]",
             ),
             (
                 "cs2_area_fraction_top_wo_segee_picorr",
                 np.float32,
-                "AFT for S2 without SEG/EE and photoionization",
+                "AFT for S2 (before SEG/EE + photoionization, after peak bias + S2 xy + elife)",
+            ),
+            (
+                "cs2_before_pi",
+                np.float32,
+                "Corrected S2 (before photoionization + elife, after peak bias + S2 xy + SEG/EE) [PE]",
+            ),
+            (
+                "cs2_area_fraction_top_before_pi",
+                np.float32,
+                "AFT for S2 (before photoionization + elife, after peak bias + S2 xy + SEG/EE)",
+            ),
+            (
+                "cs2_before_elife",
+                np.float32,
+                "Corrected S2 (before elife, after peak bias + S2 xy + SEG/EE + photoionization) [PE]",
+            ),
+            (
+                "cs2_area_fraction_top_before_elife",
+                np.float32,
+                "AFT for S2 (before elife, after peak bias + S2 xy + SEG/EE + photoionization)",
             ),
             # S2 N-1 corrections
-            ("cs2_wo_peakbiascorr", np.float32, "Corrected S2 without peak bias correction [PE]"),
-            (
-                "cs2_area_fraction_top_wo_peakbiascorr",
-                np.float32,
-                "AFT for S2 without peak bias correction",
-            ),
-            ("cs2_wo_xycorr", np.float32, "Corrected S2 without xy position correction [PE]"),
-            (
-                "cs2_area_fraction_top_wo_xycorr",
-                np.float32,
-                "AFT for S2 without xy position correction",
-            ),
-            ("cs2_wo_segee", np.float32, "Corrected S2 without SEG/EE correction [PE]"),
-            ("cs2_area_fraction_top_wo_segee", np.float32, "AFT for S2 without SEG/EE correction"),
-            ("cs2_wo_picorr", np.float32, "Corrected S2 without photoionization correction [PE]"),
-            (
-                "cs2_area_fraction_top_wo_picorr",
-                np.float32,
-                "AFT for S2 without photoionization correction",
-            ),
-            (
-                "cs2_wo_elifecorr",
-                np.float32,
-                "Corrected S2 without electron lifetime correction [PE]",
-            ),
-            (
-                "cs2_area_fraction_top_wo_elifecorr",
-                np.float32,
-                "AFT for S2 without electron lifetime correction",
-            ),
             (
                 "cs2_wo_timecorr",
                 np.float32,
-                "Corrected S2 without any time-dependent corrections [PE]",
+                "Corrected S2 (without time-dependent corrections) [PE]",
             ),
             (
                 "cs2_area_fraction_top_wo_timecorr",
                 np.float32,
-                "AFT for S2 without any time-dependent corrections",
+                "AFT for S2 (without time-dependent corrections)",
             ),
             # Additional fields
             (
@@ -303,90 +277,7 @@ class PeakCorrectedAreas(CorrectedAreas):
                 1 - result["cs2_area_fraction_top"][s2_mask]
             )
 
-            # N-1 corrections - without peak bias
-            (
-                result["cs2_wo_peakbiascorr"][s2_mask],
-                result["cs2_area_fraction_top_wo_peakbiascorr"][s2_mask],
-            ) = self.apply_s2_corrections(
-                s2_area=s2_area,
-                s2_aft=s2_aft,
-                s2_bias_correction=1,  # Without peak bias
-                s2_xy_correction_top=s2_xy_corr_top,
-                s2_xy_correction_bottom=s2_xy_corr_bottom,
-                seg_ee_corr=seg_ee_corr,
-                pi_corr_bottom=pi_corr_bottom,
-                elife_correction=elife_correction,
-            )[
-                :2
-            ]
-
-            # N-1 corrections - without xy correction
-            (
-                result["cs2_wo_xycorr"][s2_mask],
-                result["cs2_area_fraction_top_wo_xycorr"][s2_mask],
-            ) = self.apply_s2_corrections(
-                s2_area=s2_area,
-                s2_aft=s2_aft,
-                s2_bias_correction=s2_bias_corr,
-                s2_xy_correction_top=1,  # Without xy correction
-                s2_xy_correction_bottom=1,  # Without xy correction
-                seg_ee_corr=seg_ee_corr,
-                pi_corr_bottom=pi_corr_bottom,
-                elife_correction=elife_correction,
-            )[
-                :2
-            ]
-
-            # N-1 corrections - without SEG/EE
-            (
-                result["cs2_wo_segee"][s2_mask],
-                result["cs2_area_fraction_top_wo_segee"][s2_mask],
-            ) = self.apply_s2_corrections(
-                s2_area=s2_area,
-                s2_aft=s2_aft,
-                s2_bias_correction=s2_bias_corr,
-                s2_xy_correction_top=s2_xy_corr_top,
-                s2_xy_correction_bottom=s2_xy_corr_bottom,
-                seg_ee_corr=1,  # Without SEG/EE
-                pi_corr_bottom=pi_corr_bottom,
-                elife_correction=elife_correction,
-            )[
-                :2
-            ]
-
-            # N-1 corrections - without photoionization
-            (
-                result["cs2_wo_picorr"][s2_mask],
-                result["cs2_area_fraction_top_wo_picorr"][s2_mask],
-            ) = self.apply_s2_corrections(
-                s2_area=s2_area,
-                s2_aft=s2_aft,
-                s2_bias_correction=s2_bias_corr,
-                s2_xy_correction_top=s2_xy_corr_top,
-                s2_xy_correction_bottom=s2_xy_corr_bottom,
-                seg_ee_corr=seg_ee_corr,
-                pi_corr_bottom=1,  # Without photoionization
-                elife_correction=elife_correction,
-            )[
-                :2
-            ]
-
-            # N-1 corrections - without electron lifetime
-            (
-                result["cs2_wo_elifecorr"][s2_mask],
-                result["cs2_area_fraction_top_wo_elifecorr"][s2_mask],
-            ) = self.apply_s2_corrections(
-                s2_area=s2_area,
-                s2_aft=s2_aft,
-                s2_bias_correction=s2_bias_corr,
-                s2_xy_correction_top=s2_xy_corr_top,
-                s2_xy_correction_bottom=s2_xy_corr_bottom,
-                seg_ee_corr=seg_ee_corr,
-                pi_corr_bottom=pi_corr_bottom,
-                elife_correction=1,  # Without electron lifetime
-            )[
-                :2
-            ]
+            # We only keep the wo_timecorr variant for S2s
 
             # N-1 corrections - without time dependent corrections
             (
