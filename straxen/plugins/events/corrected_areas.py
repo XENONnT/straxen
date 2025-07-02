@@ -37,7 +37,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.4"
+    __version__ = "0.5.5"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -424,7 +424,7 @@ class CorrectedAreas(strax.Plugin):
             # N-1: without peak bias
             (
                 result[f"{peak_type}cs2_wo_peakbiascorr"],
-                result[f"{peak_type}cs2_area_fraction_top_wo_timecorr"],
+                result[f"{peak_type}cs2_area_fraction_top_wo_peakbiascorr"],
             ) = self.apply_s2_corrections(
                 s2_area,
                 s2_aft,
