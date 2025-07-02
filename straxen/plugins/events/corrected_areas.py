@@ -517,7 +517,7 @@ class CorrectedAreas(strax.Plugin):
                 s2_xy_correction_top,
                 s2_xy_correction_bottom,
                 1,
-                pi_corr_bottom,
+                1,
                 1,
             )[
                 :2
