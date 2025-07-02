@@ -9,9 +9,10 @@ export, __all__ = strax.exporter()
 @export
 class PeakCorrectedAreas(CorrectedAreas):
     """Pluging to apply corrections on peak level assuming that the main S1 is the only physical
-    S1."""
+    S1. We derived the average position of the S2s for the S1 LCE correction of S1s. We also
+    correct the S2s for their individual (x,y) and drift time positions."""
 
-    __version__ = "0.0.1"
+    __version__ = "0.1.0"
 
     depends_on = ("peak_basics", "peak_positions", "peak_per_event")
     data_kind = "peaks"
@@ -29,6 +30,26 @@ class PeakCorrectedAreas(CorrectedAreas):
         cache=True,
     )
 
+    z_bias_map = straxen.URLConfig(
+        default="itp_map://resource://XnT_z_bias_map_chargeup_20230329.json.gz"
+        "?fmt=json.gz&method=RegularGridInterpolator",
+        infer_type=False,
+        help="Map of Z bias due to non uniform drift velocity/field",
+    )
+    
+    fdc_map = straxen.URLConfig(
+        default="xedocs://fdc_maps"
+        "?algorithm=plugin.default_reconstruction_algorithm&run_id=plugin.run_id"
+        "&attr=map&scale_coordinates=plugin.coordinate_scale&version=ONLINE",
+        infer_type=False,
+        help="3D field distortion correction map path",
+    )
+
+    def setup(self):
+        """Setup the coordinate scales and FDC map."""
+        self.coordinate_scales = [1.0, 1.0, -self.electron_drift_velocity]
+        self.map = self.fdc_map
+
     def infer_dtype(self):
         dtype = strax.time_fields + [
             # S1 corrections
@@ -44,6 +65,12 @@ class PeakCorrectedAreas(CorrectedAreas):
                 "Corrected S1 area without xyz position correction [PE]",
             ),
             ("cs1_wo_timecorr", np.float32, "Corrected S1 area without time correction [PE]"),
+            # S2 position corrections
+            ("x_fdc", np.float32, "Field-distortion corrected x-position (cm)"),
+            ("y_fdc", np.float32, "Field-distortion corrected y-position (cm)"),
+            ("r_fdc", np.float32, "Field-distortion corrected r-position (cm)"),
+            ("r_naive", np.float32, "Uncorrected r-position (cm)"),
+            ("r_field_distortion_correction", np.float32, "Correction added to r_naive for field distortion (cm)"),
             # S2 main corrections
             ("cs2", np.float32, "Corrected area of S2 [PE]"),
             ("cs2_bottom", np.float32, "Corrected area of S2 in the bottom PMT array [PE]"),
@@ -140,10 +167,16 @@ class PeakCorrectedAreas(CorrectedAreas):
         result["time"] = peaks["time"]
         result["endtime"] = peaks["endtime"]
 
-        # Get z position of the peak
+        # Get z position of the peak with proper FDC
         z_obs = -self.electron_drift_velocity * peaks["drift_time"]
         z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
-        result["z_obs_ms"] = z_obs
+        
+        # Apply z bias correction from FDC
+        r_obs = np.hypot(peaks["x"], peaks["y"])
+        z_dv_delta = self.z_bias_map(np.array([r_obs, z_obs]).T, map_name="z_bias_map")
+        z_corr = z_obs - z_dv_delta
+        
+        result["z_obs_ms"] = z_corr
 
         # S1 correction factors
         s1_mask = peaks["type"] == 1
@@ -155,10 +188,17 @@ class PeakCorrectedAreas(CorrectedAreas):
             s1_area = peaks[s1_mask]["area"]
             s1_bias_corr = 1 + self.s1_bias_map(s1_area.reshape(-1, 1)).flatten()
 
-            # Calculate z positions for xyz correction
+            # Calculate z positions for xyz correction with proper FDC
             z_obs_s1 = -self.electron_drift_velocity * peaks[s1_mask]["drift_time"]
             z_obs_s1 = z_obs_s1 + self.electron_drift_velocity * self.electron_drift_time_gate
-            s1_positions = np.vstack([peaks[s1_mask]["x"], peaks[s1_mask]["y"], z_obs_s1]).T
+            
+            # Apply z bias correction from FDC
+            r_obs_s1 = np.hypot(peaks[s1_mask]["x"], peaks[s1_mask]["y"])
+            z_dv_delta_s1 = self.z_bias_map(np.array([r_obs_s1, z_obs_s1]).T, map_name="z_bias_map")
+            z_corr_s1 = z_obs_s1 - z_dv_delta_s1
+            
+            # Use corrected z for S1 position
+            s1_positions = np.vstack([peaks[s1_mask]["x"], peaks[s1_mask]["y"], z_corr_s1]).T
 
             s1_xyz_corr = self.s1_xyz_map(s1_positions)
             s1_time_corr = self.rel_light_yield
@@ -180,6 +220,37 @@ class PeakCorrectedAreas(CorrectedAreas):
             # 0. Get all correction factors
             s2_area = peaks[s2_mask]["area"]
             s2_aft = peaks[s2_mask]["area_fraction_top"]
+            
+            # Apply field distortion correction to S2 positions
+            x_s2 = peaks[s2_mask]["x"]
+            y_s2 = peaks[s2_mask]["y"]
+            z_s2 = -self.electron_drift_velocity * peaks[s2_mask]["drift_time"]
+            z_s2 = z_s2 + self.electron_drift_velocity * self.electron_drift_time_gate
+            
+            # Calculate r_obs and apply z bias correction
+            r_obs_s2 = np.hypot(x_s2, y_s2)
+            z_dv_delta_s2 = self.z_bias_map(np.array([r_obs_s2, z_s2]).T, map_name="z_bias_map")
+            z_corr_s2 = z_s2 - z_dv_delta_s2
+            
+            # Create corrected positions for FDC map
+            corr_pos_s2 = np.vstack([x_s2, y_s2, z_corr_s2]).T
+            
+            # Apply r bias correction using FDC map
+            delta_r_s2 = self.map(corr_pos_s2)
+            r_cor_s2 = r_obs_s2 + delta_r_s2
+            
+            # Scale x,y using ratio of corrected r / original r
+            with np.errstate(invalid="ignore", divide="ignore"):
+                scale_s2 = np.divide(r_cor_s2, r_obs_s2, out=np.zeros_like(r_cor_s2), where=r_obs_s2 != 0)
+            
+            # Store FDC corrected positions in result array
+            result["x_fdc"][s2_mask] = x_s2 * scale_s2
+            result["y_fdc"][s2_mask] = y_s2 * scale_s2
+            result["r_fdc"][s2_mask] = r_cor_s2
+            result["r_naive"][s2_mask] = r_obs_s2
+            result["r_field_distortion_correction"][s2_mask] = delta_r_s2
+            
+            # Use original observed positions for S2 xy maps in gas gap
             s2_positions = np.vstack([peaks[s2_mask]["x"], peaks[s2_mask]["y"]]).T
             s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
 
