@@ -92,6 +92,7 @@ def print_versions(
     include_python=True,
     return_string=False,
     include_git=True,
+    include_all_local=True,
 ):
     """Print versions of modules installed.
 
@@ -99,6 +100,7 @@ def print_versions(
         print_versions(modules=('numpy', 'dddm',))
     :param return_string: optional. Instead of printing the message, return a string
     :param include_git: Include the current branch and latest commit hash
+    :param include_all_local: Include all local modules (not in /opt/XENONnT/).
     :return: optional, the message that would have been printed
 
     """
@@ -108,6 +110,24 @@ def print_versions(
         versions["version"] = [python_version()]
         versions["path"] = [sys.executable]
         versions["git"] = [None]
+
+    local_modules = []
+    if include_all_local:
+        # Only activate local-module detection if centrally provided paths are present
+        module_values = sys.modules.values()
+        in_central_env = any(
+            mod and (getattr(mod, "__file__", "") or "").startswith(("/opt/", "/cvmfs/"))
+            for mod in module_values
+        )
+
+        if in_central_env:
+            for mod_name, mod in list(sys.modules.items()):
+                mod_version = getattr(mod, "__version__", None)
+                mod_file = getattr(mod, "__file__", "")
+                if mod_version and mod_file and not mod_file.startswith(("/opt/", "/cvmfs/")):
+                    local_modules.append(mod_name.split(".")[0])
+
+    modules = list(set(modules) | set(local_modules))
     for m in strax.to_str_tuple(modules):
         result = _version_info_for_module(m, include_git=include_git)
         if result is None:
@@ -134,7 +154,8 @@ def _version_info_for_module(module_name, include_git):
         return
     git = None
     version = mod.__dict__.get("__version__", None)
-    module_path = mod.__dict__.get("__path__", [None])[0]
+    module_path_list = mod.__dict__.get("__path__") or [None]
+    module_path = module_path_list[0]
     if include_git:
         try:
             repo = Repo(module_path, search_parent_directories=True)
