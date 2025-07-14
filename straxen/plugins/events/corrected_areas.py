@@ -223,6 +223,10 @@ class CorrectedAreas(strax.Plugin):
                 ]
         return dtype
 
+    def setup(self):
+        # we define it here, to allowe overwrite in simulations
+        self.pi_corr_bottom = self.cs2_bottom_top_ratio_correction
+    
     def ab_region(self, x, y):
         new_x, new_y = rotate_perp_wires(x, y)
         cond = new_x < self.single_electron_gain_partition["linear"]
@@ -395,8 +399,6 @@ class CorrectedAreas(strax.Plugin):
                 mask = func(events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"])
                 seg_ee_corr[mask] = seg[partition] / avg_seg[partition] * ee[partition]
 
-            pi_corr_bottom = self.cs2_bottom_top_ratio_correction
-
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f"{el_string}drift_time"] / self.elife)
 
@@ -416,7 +418,7 @@ class CorrectedAreas(strax.Plugin):
                 s2_xy_correction_top,
                 s2_xy_correction_bottom,
                 seg_ee_corr,
-                pi_corr_bottom,
+                self.pi_corr_bottom,
                 elife_correction,
             )
 
