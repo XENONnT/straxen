@@ -6,7 +6,6 @@ import strax
 from strax.context import select_docs
 import straxen
 
-
 export, __all__ = strax.exporter()
 
 ma_doc = (

@@ -2,7 +2,6 @@ import strax
 import straxen
 from straxen.plugins.events._event_s1_positions_base import EventS1PositionBase
 
-
 export, __all__ = strax.exporter()
 
 

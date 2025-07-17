@@ -5,7 +5,6 @@ import straxen
 
 from .peak_ambience import distance_in_xy, _quick_assign
 
-
 export, __all__ = strax.exporter()
 
 
