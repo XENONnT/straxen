@@ -146,6 +146,10 @@ class CorrectedAreas(strax.Plugin):
         "So, the bias correction is reconstructed / (1 + bias).",
     )
 
+    check_s2_only_aft = straxen.URLConfig(
+        default=True, type=bool, track=False, help="Whether to check NaN AFT of S2-Only events"
+    )
+
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
@@ -528,5 +532,13 @@ class CorrectedAreas(strax.Plugin):
             result[f"{peak_type}cs2_area_fraction_top"] = result[
                 f"{peak_type}cs2_area_fraction_top_wo_elifecorr"
             ]
+
+        if self.check_s2_only_aft:
+            s2_only = np.isnan(events["s1_area"])
+            if np.any(np.isnan(result["cs2_area_fraction_top"][s2_only])):
+                raise ValueError(
+                    "NaN AFT for S2-Only events! "
+                    "Even for S2-Only events (w/o cS2), the AFT should be defined."
+                )
 
         return result
