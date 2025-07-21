@@ -1,3 +1,12 @@
+3.2.3 / 2025-07-21
+-------------------
+* Be compatible with https://github.com/AxFoundation/strax/pull/996 by @dachengx in https://github.com/XENONnT/straxen/pull/1620
+* Rotated map interpolation by @l-althueser in https://github.com/XENONnT/straxen/pull/1349
+* Avoid NaN `cs2_area_fraction_top` by @dachengx in https://github.com/XENONnT/straxen/pull/1621
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.2...v3.2.3
+
+
 3.2.2 / 2025-07-02
 -------------------
 * Set `unique` when `times` and `center_times` are not assigned by @dachengx in https://github.com/XENONnT/straxen/pull/1611
