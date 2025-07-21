@@ -2,7 +2,6 @@ import strax
 from straxen.plugins.defaults import HE_PREAMBLE
 from straxen.plugins.peaks.peak_basics_vanilla import PeakBasicsVanilla
 
-
 export, __all__ = strax.exporter()
 
 
