@@ -37,7 +37,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.5"
+    __version__ = "0.5.6"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -144,6 +144,10 @@ class CorrectedAreas(strax.Plugin):
         help="Interpolation map for S2 peak bias correction. "
         "Bias is defined as (reconstructed / raw) - 1."
         "So, the bias correction is reconstructed / (1 + bias).",
+    )
+
+    check_s2_only_aft = straxen.URLConfig(
+        default=True, type=bool, track=False, help="Whether to check NaN AFT of S2-Only events"
     )
 
     def infer_dtype(self):
@@ -522,5 +526,19 @@ class CorrectedAreas(strax.Plugin):
             )[
                 :2
             ]
+
+            # elife correct top and bottom in the same way
+            # and S2-only events' elife_correction is nan
+            result[f"{peak_type}cs2_area_fraction_top"] = result[
+                f"{peak_type}cs2_area_fraction_top_wo_elifecorr"
+            ]
+
+        if self.check_s2_only_aft:
+            s2_only = np.isnan(events["s1_area"])
+            if np.any(np.isnan(result["cs2_area_fraction_top"][s2_only])):
+                raise ValueError(
+                    "NaN AFT for S2-Only events! "
+                    "Even for S2-Only events (w/o cS2), the AFT should be defined."
+                )
 
         return result
