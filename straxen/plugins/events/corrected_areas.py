@@ -37,7 +37,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.5"
+    __version__ = "0.5.6"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -521,6 +521,12 @@ class CorrectedAreas(strax.Plugin):
                 1,
             )[
                 :2
+            ]
+
+            # elife correct top and bottom in the same way
+            # and S2-only events' elife_correction is nan
+            result[f"{peak_type}cs2_area_fraction_top"] = result[
+                f"{peak_type}cs2_area_fraction_top_wo_elifecorr"
             ]
 
         return result

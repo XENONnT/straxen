@@ -48,7 +48,7 @@ class InterpolateAndExtrapolate:
         if self.rotated:
             assert (
                 points.shape[1] == 2
-            ), "InterpolateAndExtrapolate roated expects points of dimension 2"
+            ), "InterpolateAndExtrapolate rotated expects points of dimension 2"
             points = np.array(straxen.rotate_perp_wires(points[:, 0], points[:, 1])).T
 
         # Prepare result array in order to fill with valid values and masked nan
