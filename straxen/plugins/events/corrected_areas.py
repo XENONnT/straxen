@@ -535,6 +535,7 @@ class CorrectedAreas(strax.Plugin):
 
         if self.check_s2_only_aft:
             s2_only = np.isnan(events["s1_area"])
+            s2_only &= ~np.isnan(result["cs2"])
             if np.any(np.isnan(result["cs2_area_fraction_top"][s2_only])):
                 raise ValueError(
                     "NaN AFT for S2-Only events! "
