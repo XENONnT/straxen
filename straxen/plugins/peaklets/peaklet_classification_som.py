@@ -36,16 +36,6 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
     This correction/plugin is currently on the testing phase, feel free to use it if you are
     curious or just want to test it or try it out but note this is note ready to be used in
     analysis.
-
-    Here data will be classified into one of four types:
-      Type 0: Unknown, these are all data that associated with being non-physical like
-              dark counts or unknown signals that do not seem to come from interactions
-              of interest in our detector.
-      Type 1: S1 interactions produced by excited xenon molecules in the liquid xenon
-      Type 2: S2 interactions produced when freed electrons in the LXe breach the liquid
-              gas interface.
-      Type 3: Gas events. S1 interactions that occur on the GXe instead of the liquid.
-              Have S1 waveform shape, with higher AFT.
     """
 
     __version__ = "0.2.1"
@@ -60,8 +50,7 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
     )
 
     som_files = straxen.URLConfig(
-        default="resource://xedocs://som_classifiers?attr=value"
-        "&version=ONLINE&run_id=plugin.run_id&fmt=npy"
+        default="resource://xedocs://som_classifiers?attr=value&version=v1&run_id=045000&fmt=npy"
     )
 
     use_som_as_default = straxen.URLConfig(
@@ -74,7 +63,6 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
     )
 
     def setup(self):
-        self.som_data = self.som_files
         self.som_weight_cube = self.som_files["weight_cube"]
         self.som_img = self.som_files["som_img"]
         self.som_norm_factors = self.som_files["norm_factors"]
@@ -102,11 +90,7 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
         _peaklets["type"] = peaklets_classifcation["type"][_is_s1_or_s2]
 
         som_sub_type, x_som, y_som = recall_populations(
-            _peaklets,
-            self.som_weight_cube,
-            self.som_img,
-            self.som_norm_factors,
-            self.som_data,
+            _peaklets, self.som_weight_cube, self.som_img, self.som_norm_factors
         )
         peaklets_classifcation["som_type"][_is_s1_or_s2] = som_type_to_type(
             som_sub_type, self.som_s1_array, self.som_s2_array, self.som_s3_array, self.som_s0_array
@@ -122,7 +106,7 @@ class PeakletClassificationSOM(PeakletClassificationVanilla):
         return peaklets_classifcation
 
 
-def recall_populations(dataset, weight_cube, som_cls_img, norm_factors, som_data):
+def recall_populations(dataset, weight_cube, som_cls_img, norm_factors):
     """Master function that should let the user provide a weightcube, a reference img as a np.array,
     a dataset and a set of normalization factors.
 
@@ -149,9 +133,6 @@ def recall_populations(dataset, weight_cube, som_cls_img, norm_factors, som_data
     assert all(dataset["type"] != 0), "Dataset contains unclassified peaklets"
     # Get the deciles representation of data for recall
     decile_transform_check = data_to_log_decile_log_area_aft(dataset, norm_factors)
-    if "reduce_decile" in som_data.keys():
-        if som_data["reduce_decile"]:
-            decile_transform_check = decile_transform_check[:, 1:]
     # preform a recall of the dataset with the weight cube
     # assign each population color a number (can do from previous function)
     ref_map = generate_color_ref_map(som_cls_img, unique_colors, xdim, ydim)

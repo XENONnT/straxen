@@ -59,8 +59,6 @@ class SetupContextNt(PluginTestCase):
         "gps_sync",
         "veto_intervals_gps_sync",
         "ref_mon_nv",
-        "peak_s1_positions_cnn",
-        "event_s1_positions_cnn",
     )
 
     @classmethod
@@ -71,8 +69,7 @@ class SetupContextNt(PluginTestCase):
         class. Only after running all the tests, we run the cleanup.
 
         """
-        # TODO: xenonnt_online should be used here
-        cls.st = straxen.test_utils.nt_test_context("xenonnt")
+        cls.st = straxen.test_utils.nt_test_context()
         cls.run_id = nt_test_run_id
 
         # Make sure that we only write to the temp-dir we cleanup after each test

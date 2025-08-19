@@ -49,8 +49,7 @@ class TestMiniAnalyses(unittest.TestCase):
         class
 
         """
-        # TODO: xenonnt_online should be used here
-        cls.st = nt_test_context("xenonnt")
+        cls.st = nt_test_context()
         # For al the WF plotting, we might need records, let's make those
         cls.st.make(nt_test_run_id, "records")
         cls.first_peak = cls.st.get_array(nt_test_run_id, "peak_basics")[0]
@@ -135,20 +134,6 @@ class TestMiniAnalyses(unittest.TestCase):
         self.st.event_display_interactive(
             nt_test_run_id,
             time_within=self.first_event,
-        )
-
-    def test_peaks_display_interactive(self):
-        center_times = []
-        for c in [
-            self.first_event["s1_center_time"],
-            self.first_event["s2_center_time"],
-        ]:
-            if c != -1:
-                center_times.append(c)
-        self.st.peaks_display_interactive(
-            nt_test_run_id,
-            time_within=self.first_event,
-            center_times=center_times,
         )
 
     def test_plot_peaks_aft_histogram(self):

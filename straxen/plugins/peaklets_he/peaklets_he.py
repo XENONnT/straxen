@@ -87,8 +87,6 @@ class PeakletsHighEnergy(Peaklets):
         self.to_pe *= self.le_to_he_amplification
         self.hit_thresholds = self.hit_min_amplitude_he
         self.channel_range = self.channel_map["he"]
-        self._tight_coincidence_window_left = self.tight_coincidence_window_left
-        self._tight_coincidence_window_right = self.tight_coincidence_window_right
 
     def compute(self, records_he, start, end):
         result = super().compute(records_he, start, end)

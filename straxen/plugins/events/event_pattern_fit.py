@@ -65,9 +65,9 @@ class EventPatternFit(strax.Plugin):
         infer_type=False,
         default=(
             "tf://resource://"
-            "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.keras.tar.gz"
+            "XENONnT_s2_optical_map_data_driven_ML_v0_2021_11_25.tar.gz"
             "?custom_objects=plugin.s2_map_custom_objects"
-            "&fmt=abs_path&register=True"
+            "&fmt=abs_path"
         ),
     )
 
@@ -450,7 +450,7 @@ class EventPatternFit(strax.Plugin):
 
             # Making expectation patterns [ in PE ]
             if np.sum(s2_mask):
-                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[s2_mask, : self.n_top_pmts]
+                s2_map_effs = self.s2_pattern_map(np.array([x, y]).T)[s2_mask, 0 : self.n_top_pmts]
                 s2_map_effs = s2_map_effs[:, self.pmtbool_top]
                 s2_top_area = (events[t_ + "_area_fraction_top"] * events[t_ + "_area"])[s2_mask]
                 s2_pattern = (
@@ -459,7 +459,7 @@ class EventPatternFit(strax.Plugin):
 
                 # Getting pattern from data
                 s2_top_area_per_channel = events[t_ + "_area_per_channel"][
-                    s2_mask, : self.n_top_pmts
+                    s2_mask, 0 : self.n_top_pmts
                 ]
                 s2_top_area_per_channel = s2_top_area_per_channel[:, self.pmtbool_top]
 
@@ -498,7 +498,7 @@ class EventPatternFit(strax.Plugin):
             # Produce position and top pattern to feed tensorflow model, return chi2/N
             if np.sum(s2_mask):
                 s2_pos = np.stack((x, y)).T[s2_mask]
-                s2_pat = events[t_ + "_area_per_channel"][s2_mask, : self.n_top_pmts]
+                s2_pat = events[t_ + "_area_per_channel"][s2_mask, 0 : self.n_top_pmts]
                 # Output[0]: loss function, -2*log-likelihood, Output[1]: chi2
                 result[t_ + "_neural_2llh"][s2_mask] = self.model_chi2.predict(
                     {"xx": s2_pos, "yy": s2_pat}, verbose=0

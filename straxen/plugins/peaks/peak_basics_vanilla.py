@@ -14,7 +14,7 @@ class PeakBasicsVanilla(strax.Plugin):
 
     """
 
-    __version__ = "0.1.7"
+    __version__ = "0.1.6"
     depends_on = "peaks"
     provides = "peak_basics"
 
@@ -30,15 +30,12 @@ class PeakBasicsVanilla(strax.Plugin):
         ),
     )
 
-    n_top_pmts = straxen.URLConfig(default=straxen.n_top_pmts, type=int, help="Number of top PMTs")
-
     def infer_dtype(self):
         dtype = strax.time_fields + [
             (("Weighted average center time of the peak [ns]", "center_time"), np.int64),
             (("Peak integral in PE", "area"), np.float32),
             (("Number of hits contributing at least one sample to the peak", "n_hits"), np.int32),
             (("Number of PMTs contributing to the peak", "n_channels"), np.int16),
-            (("Number of top PMTs contributing to the peak", "top_n_channels"), np.int16),
             (("PMT number which contributes the most PE", "max_pmt"), np.int16),
             (("Area of signal in the largest-contributing PMT (PE)", "max_pmt_area"), np.float32),
             (("Total number of saturated channels", "n_saturated_channels"), np.int16),
@@ -54,7 +51,6 @@ class PeakBasicsVanilla(strax.Plugin):
                 np.int16,
             ),
             (("Classification of the peak(let)", "type"), np.int8),
-            (("Is merged from peaklets", "merged"), bool),
             (
                 ("Largest time difference between apexes of hits inside peak [ns]", "max_diff"),
                 np.int32,
@@ -81,12 +77,11 @@ class PeakBasicsVanilla(strax.Plugin):
         p = peaks
         r = np.zeros(len(p), self.dtype)
         needed_fields = "time center_time length dt median_time area area_fraction_top type "
-        needed_fields += "merged max_diff min_diff first_channel last_channel"
+        needed_fields += "max_diff min_diff first_channel last_channel"
         for q in needed_fields.split():
             r[q] = p[q]
         r["endtime"] = p["time"] + p["dt"] * p["length"]
         r["n_channels"] = (p["area_per_channel"] > 0).sum(axis=1)
-        r["top_n_channels"] = (p["area_per_channel"][:, : self.n_top_pmts] > 0).sum(axis=1)
         r["n_hits"] = p["n_hits"]
         r["range_50p_area"] = p["width"][:, 5]
         r["range_90p_area"] = p["width"][:, 9]

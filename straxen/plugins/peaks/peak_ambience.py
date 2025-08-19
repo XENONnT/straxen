@@ -14,22 +14,31 @@ class PeakAmbience(strax.OverlapWindowPlugin):
 
     References:
         * v0.0.7 reference: xenon:xenonnt:ac:prediction:shadow_ambience
-        * v0.1.0 reference: xenon:xenonnt:analysis:redefine_n_competing
 
     """
 
-    __version__ = "0.1.0"
-    depends_on = ("peak_basics", "peak_positions", "lone_hits")
+    __version__ = "0.0.8"
+    depends_on = ("lone_hits", "peak_basics", "peak_positions")
     provides = "peak_ambience"
     data_kind = "peaks"
     save_when = strax.SaveWhen.EXPLICIT
 
-    gain_model = straxen.URLConfig(
-        infer_type=False, help="PMT gain model. Specify as URL or explicit value"
-    )
-
     ambience_time_window_backward = straxen.URLConfig(
         default=int(2e6), type=int, track=True, help="Search for ambience in this time window [ns]"
+    )
+
+    ambience_divide_t = straxen.URLConfig(
+        default=False,
+        type=bool,
+        track=True,
+        help="Whether to divide area by time difference of ambience creating peak to current peak",
+    )
+
+    ambience_divide_r = straxen.URLConfig(
+        default=False,
+        type=bool,
+        track=True,
+        help="Whether to divide area by radial distance of ambience creating peak to current peak",
     )
 
     ambient_radius = straxen.URLConfig(
@@ -37,20 +46,14 @@ class PeakAmbience(strax.OverlapWindowPlugin):
     )
 
     ambience_area_parameters = straxen.URLConfig(
-        default=(30, 30, 60),
+        default=(5, 60, 60),
         type=(list, tuple),
         track=True,
         help="The upper limit of S0, S1, S2 area to be counted",
     )
 
-    ambience_exponents = straxen.URLConfig(
-        default=(-1.0, -1.0),
-        type=(list, tuple),
-        help="The exponent of (delta t, delta r) when calculating ambience score",
-    )
-
     def get_window_size(self):
-        return (10 * self.ambience_time_window_backward, 0)
+        return 10 * self.ambience_time_window_backward
 
     @property
     def origin_dtype(self):
@@ -65,25 +68,16 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                     np.int16,
                 ),
                 (
-                    (f"Sum of small {' '.join(ambience.split('_'))} a peak", f"s_{ambience}"),
+                    (f"Area sum of small {' '.join(ambience.split('_'))} a peak", f"s_{ambience}"),
                     np.float32,
                 ),
             ]
-        dtype += [
-            (
-                ("Sum of small hits and peaks before a peak", "s_before"),
-                np.float32,
-            ),
-        ]
         dtype += strax.time_fields
         return dtype
 
-    def setup(self):
-        self.to_pe = self.gain_model
-
     def compute(self, lone_hits, peaks):
         argsort = strax.stable_argsort(peaks["center_time"])
-        _peaks = peaks[argsort].copy()
+        _peaks = strax.stable_sort(peaks, order="center_time")
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_ambience(lone_hits, peaks, _peaks))
         return result
@@ -105,13 +99,13 @@ class PeakAmbience(strax.OverlapWindowPlugin):
             current_peak,
             lone_hits,
             touching_windows,
-            self.ambience_exponents,
             result["n_lh_before"],
             result["s_lh_before"],
-            self.to_pe,
+            self.ambience_divide_t,
         )
 
         # 4. Calculate number and area sum of small S0, S1, S2 before a peak
+        radius = -1
         for stype, area in zip([0, 1, 2], self.ambience_area_parameters):
             mask_pre = (peaks["type"] == stype) & (peaks["area"] < area)
             touching_windows = strax.touching_windows(peaks[mask_pre], roi)
@@ -120,10 +114,11 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                 current_peak,
                 peaks[mask_pre],
                 touching_windows,
-                self.ambience_exponents,
-                -1,
+                radius,
                 result[f"n_s{stype}_before"],
                 result[f"s_s{stype}_before"],
+                self.ambience_divide_t,
+                self.ambience_divide_r,
             )
 
         # 5. Calculate number and area sum of small S2 near(in (x,y) space) a S2 peak
@@ -134,29 +129,22 @@ class PeakAmbience(strax.OverlapWindowPlugin):
             current_peak,
             peaks[mask_pre],
             touching_windows,
-            self.ambience_exponents,
             self.ambient_radius,
             result["n_s2_near"],
             result["s_s2_near"],
+            self.ambience_divide_t,
+            self.ambience_divide_r,
         )
 
         # 6. Set time and endtime for peaks
         result["time"] = current_peak["time"]
         result["endtime"] = strax.endtime(current_peak)
-
-        # 7. Calculate sum of small hits and peaks before a peak
-        result["s_before"] = (
-            result["s_lh_before"]
-            + result["s_s0_before"]
-            + result["s_s1_before"]
-            + result["s_s2_before"]
-        )
         return result
 
     @staticmethod
     @numba.njit
     def lonehits_ambience(
-        peaks, pre_hits, touching_windows, exponents, num_array, sum_array, to_pe
+        peaks, pre_hits, touching_windows, num_array, sum_array, ambience_divide_t
     ):
         # Function to find lonehits before a peak
         # creating_hit is the lonehit creating ambience
@@ -170,9 +158,10 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                     continue
                 num_array[p_i] += 1
                 # Sometimes we may interested in sum of area / dt
-                s = creating_hit["area"] * to_pe[creating_hit["channel"]]
-                s *= dt ** exponents[0]
-                sum_array[p_i] += s
+                if ambience_divide_t:
+                    sum_array[p_i] += creating_hit["area"] / dt
+                else:
+                    sum_array[p_i] += creating_hit["area"]
 
     @staticmethod
     @numba.njit
@@ -180,10 +169,11 @@ class PeakAmbience(strax.OverlapWindowPlugin):
         peaks,
         pre_peaks,
         touching_windows,
-        exponents,
         ambient_radius,
         num_array,
         sum_array,
+        ambience_divide_t,
+        ambience_divide_r,
     ):
         # Function to find S0, S1, S2 before or near a peak
         # creating_peak is the peak creating ambience
@@ -199,11 +189,13 @@ class PeakAmbience(strax.OverlapWindowPlugin):
                 if (ambient_radius < 0) or (r <= ambient_radius):
                     num_array[p_i] += 1
                     # Sometimes we may interested in sum of area / dt
-                    s = creating_peak["area"] * dt ** exponents[0]
-                    # Sometimes we may interested in sum of area / r
-                    if ambient_radius > 0:
-                        s *= r ** exponents[1]
-                    sum_array[p_i] += s
+                    if ambience_divide_t:
+                        sum_array[p_i] += creating_peak["area"] / dt
+                    else:
+                        sum_array[p_i] += creating_peak["area"]
+                    # Sometimes we may interested in sum of area / r^2
+                    if ambience_divide_r and ambient_radius > 0:
+                        sum_array[p_i] /= r**2
 
 
 @numba.njit

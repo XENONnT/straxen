@@ -39,13 +39,6 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
-    rechunk_on_load = True
-    chunk_source_size_mb = 100
-
-    # To reduce the number of chunks, we increase the target size
-    # This would not harm memory usage, because we rechunk on load
-    chunk_target_size_mb = 2000
-
     __version__ = "1.2.2"
 
     peaklet_gap_threshold = straxen.URLConfig(
@@ -200,19 +193,6 @@ class Peaklets(strax.Plugin):
 
         self.channel_range = self.channel_map["tpc"]
 
-        self._tight_coincidence_window_left = self.tight_coincidence_window_left
-        self._tight_coincidence_window_right = self.tight_coincidence_window_right
-
-        if self.peaklet_gap_threshold > strax.DEFAULT_CHUNK_SPLIT_NS:  # 1000 ns
-            raise ValueError(
-                f"peaklet_gap_threshold {self.peaklet_gap_threshold} ns "
-                "in peaklets building is larger than "
-                f"safe_break_in_pulses {strax.DEFAULT_CHUNK_SPLIT_NS} ns "
-                "in raw_records building. "
-                "This is inconsistent because raw_records can not be split "
-                "if the nearby hits are too close."
-            )
-
     def compute(self, records, start, end):
         hits = strax.find_hits(records, min_amplitude=self.hit_thresholds)
 
@@ -241,8 +221,6 @@ class Peaklets(strax.Plugin):
         # Make sure peaklets don't extend out of the chunk boundary
         # This should be very rare in normal data due to the ADC pretrigger
         # window.
-        # The different chunking causes different results, but this is
-        # NOT tracked by lineage
         self.clip_peaklet_times(peaklets, start, end)
 
         # Get hits outside peaklets, and store them separately.
@@ -360,8 +338,8 @@ class Peaklets(strax.Plugin):
             sorted_hit_max_times,
             sorted_hit_channels,
             peaklet_max_times,
-            self._tight_coincidence_window_left,
-            self._tight_coincidence_window_right,
+            self.tight_coincidence_window_left,
+            self.tight_coincidence_window_right,
             self.channel_range,
         )
 
@@ -386,10 +364,9 @@ class Peaklets(strax.Plugin):
 
         # Check channel of peaklets
         peaklets_unique_channel = np.unique(peaklets["channel"])
-        if np.any(peaklets_unique_channel != DIGITAL_SUM_WAVEFORM_CHANNEL):
+        if (peaklets_unique_channel == DIGITAL_SUM_WAVEFORM_CHANNEL).sum() > 1:
             raise ValueError(
-                f"Found channel number of peaklets other than "
-                f"{DIGITAL_SUM_WAVEFORM_CHANNEL}: {peaklets_unique_channel.tolist()}"
+                f"Found channel number of peaklets other than {DIGITAL_SUM_WAVEFORM_CHANNEL}"
             )
         # Check tight_coincidence
         if not np.all(peaklets["n_hits"] >= peaklets["tight_coincidence"]):

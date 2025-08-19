@@ -83,9 +83,8 @@ def plot_peaks(
     peaks = peaks[strax.stable_argsort(-peaks["area"])[:show_largest]]
     peaks = strax.sort_by_time(peaks)
 
-    color_map = {1: "blue", 2: "green"}
     for p in peaks:
-        plot_peak(p, t0=t_reference, color=color_map.get(p["type"], "gray"))
+        plot_peak(p, t0=t_reference, color={0: "gray", 1: "b", 2: "g"}[p["type"]])
 
     if xaxis == "since_start":
         seconds_range_xaxis(seconds_range, t0=seconds_range[0])

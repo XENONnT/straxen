@@ -50,17 +50,6 @@ class PeakNearestTriggering(Events):
                     np.int64,
                 ),
                 ((f"type {common_descr} {direction}", f"{direction}_type"), np.int8),
-                (
-                    (f"proximity_score {common_descr} {direction}", f"{direction}_proximity_score"),
-                    np.float32,
-                ),
-                (
-                    (
-                        f"n_competing_left {common_descr} {direction}",
-                        f"{direction}_n_competing_left",
-                    ),
-                    np.int32,
-                ),
                 ((f"n_competing {common_descr} {direction}", f"{direction}_n_competing"), np.int32),
                 ((f"area {common_descr} {direction} [PE]", f"{direction}_area"), np.float32),
             ]
@@ -73,7 +62,7 @@ class PeakNearestTriggering(Events):
 
     def compute(self, peaks):
         argsort = strax.stable_argsort(peaks["center_time"])
-        _peaks = peaks[argsort].copy()
+        _peaks = strax.stable_sort(peaks, order="center_time")
         result = np.zeros(len(peaks), self.dtype)
         _quick_assign(argsort, result, self.compute_triggering(peaks, _peaks))
         return result
@@ -119,16 +108,7 @@ class PeakNearestTriggering(Events):
             _peaks["center_time"][right_indices] - current_peak["center_time"],
             self.shadow_time_window_backward,
         )
-        for field in [
-            "time",
-            "endtime",
-            "center_time",
-            "type",
-            "proximity_score",
-            "n_competing_left",
-            "n_competing",
-            "area",
-        ]:
+        for field in ["time", "endtime", "center_time", "type", "n_competing", "area"]:
             result["left_" + field] = np.where(
                 left_indices != -1, _peaks[field][left_indices], result["left_" + field]
             )

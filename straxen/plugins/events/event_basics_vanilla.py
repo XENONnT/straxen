@@ -17,7 +17,7 @@ class EventBasicsVanilla(strax.Plugin):
 
     """
 
-    __version__ = "1.3.6"
+    __version__ = "1.3.4"
 
     depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity")
     provides = "event_basics"
@@ -123,21 +123,7 @@ class EventBasicsVanilla(strax.Plugin):
             (f"alt_s2_x", np.float32, f"Alternate S2 reconstructed X position, uncorrected [cm]"),
             (f"alt_s2_y", np.float32, f"Alternate S2 reconstructed Y position, uncorrected [cm]"),
             (f"area_before_main_s2", np.float32, f"Sum of areas before Main S2 [PE]"),
-            (
-                f"large_s2_before_main_s2_area",
-                np.float32,
-                f"The largest S2 before the Main S2 [PE]",
-            ),
-            (
-                f"large_s2_before_main_s2_index",
-                np.int32,
-                f"Index of the largest S2 before the Main S2",
-            ),
-            (
-                f"large_s2_before_main_s2_center_time",
-                np.int64,
-                f"Center time of the largest S2 before the Main S2 [ns]",
-            ),
+            (f"large_s2_before_main_s2", np.float32, f"The largest S2 before the Main S2 [PE]"),
         ]
 
         dtype += self._get_posrec_dtypes()
@@ -153,10 +139,7 @@ class EventBasicsVanilla(strax.Plugin):
             ("endtime", np.int64, "end time since unix epoch [ns]"),
             ("area", np.float32, "area, uncorrected [PE]"),
             ("n_channels", np.int16, "count of contributing PMTs"),
-            ("top_n_channels", np.int16, "count of contributing top PMTs"),
-            ("n_hits", np.int32, "count of hits contributing at least one sample to the peak"),
-            ("proximity_score", np.float32, "proximity score in (time, space)"),
-            ("n_competing_left", np.int32, "number of competing peaks left of the main peak"),
+            ("n_hits", np.int16, "count of hits contributing at least one sample to the peak"),
             ("n_competing", np.int32, "number of competing peaks"),
             ("max_pmt", np.int16, "PMT number which contributes the most PE"),
             ("max_pmt_area", np.float32, "area in the largest-contributing PMT (PE)"),
@@ -166,7 +149,6 @@ class EventBasicsVanilla(strax.Plugin):
             ("area_fraction_top", np.float32, "fraction of area seen by the top PMT array"),
             ("tight_coincidence", np.int16, "channel within tight range of mean"),
             ("n_saturated_channels", np.int16, "total number of saturated channels"),
-            ("merged", bool, "is merged from peaklets"),
         )
 
     def setup(self):
@@ -367,18 +349,14 @@ class EventBasicsVanilla(strax.Plugin):
 
         # areas before main S2
         if len(largest_s2s):
-            peaks_before_ms2 = ~np.isnan(peaks["area"])
-            peaks_before_ms2 &= peaks["center_time"] < largest_s2s[0]["center_time"]
-            result["area_before_main_s2"] = np.sum(peaks["area"][peaks_before_ms2])
+            peaks_before_ms2 = peaks[peaks["time"] < largest_s2s[0]["time"]]
+            result["area_before_main_s2"] = np.sum(peaks_before_ms2["area"])
 
-            s2_before_ms2 = peaks_before_ms2 & (peaks["type"] == 2)
-            if np.any(s2_before_ms2):
-                i = np.arange(len(peaks))[s2_before_ms2][
-                    np.argmax(peaks["area"][s2_before_ms2]).item()
-                ]
-                result["large_s2_before_main_s2_area"] = peaks["area"][i]
-                result["large_s2_before_main_s2_index"] = i
-                result["large_s2_before_main_s2_center_time"] = peaks["center_time"][i]
+            s2peaks_before_ms2 = peaks_before_ms2[peaks_before_ms2["type"] == 2]
+            if len(s2peaks_before_ms2) == 0:
+                result["large_s2_before_main_s2"] = 0
+            else:
+                result["large_s2_before_main_s2"] = np.max(s2peaks_before_ms2["area"])
         return result
 
     @staticmethod

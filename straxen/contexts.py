@@ -70,6 +70,43 @@ common_config = dict(
 )
 
 
+@strax.Context.add_method
+def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> None:
+    import xedocs
+
+    if isinstance(db, str):
+        func = getattr(xedocs.databases, db)
+        db_kwargs = straxen.filter_kwargs(func, kwargs)
+        db = func(**db_kwargs)
+
+    filter_kwargs = {k: v for k, v in kwargs.items() if k in db.context_configs.schema.__fields__}
+
+    docs = db.context_configs.find_docs(**filter_kwargs)
+
+    global_config = {doc.config_name: doc.value for doc in docs}
+
+    if len(global_config):
+        context.set_config(global_config)
+        context.set_context_config({"xedocs_version": filter_kwargs["version"]})
+    else:
+        warnings.warn(
+            f"Could not find any context configs matchin {filter_kwargs}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+
+def xenonnt(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
+    """XENONnT context."""
+    if not _from_cutax and xedocs_version != "global_ONLINE":
+        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
+
+    st = straxen.contexts.xenonnt_online(**kwargs)
+    st.apply_xedocs_configs(version=xedocs_version, **kwargs)
+
+    return st
+
+
 def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     """Check the hostname to determine which rucio local path to use. Note that access to
     /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node.
@@ -98,7 +135,7 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     return _include_rucio_local, __rucio_local_path
 
 
-def xenonnt(
+def xenonnt_online(
     output_folder: str = "./strax_data",
     we_are_the_daq: bool = False,
     minimum_run_number: int = 7157,
@@ -109,21 +146,14 @@ def xenonnt(
     include_rucio_local: bool = False,
     # Frontend options
     download_heavy: bool = False,
-    remove_heavy: bool = False,
     _auto_append_rucio_local: bool = True,
     _rucio_path: str = "/dali/lgrandi/rucio/",
     _rucio_local_path: Optional[str] = None,
     _raw_paths: List[str] = ["/dali/lgrandi/xenonnt/raw"],
     _processed_paths: List[str] = [
-        "/project/lgrandi/xenonnt/processed",
-        "/project/lgrandi/xenonnt/processed_sr2_offline_round_1",
-        "/project/lgrandi/xenonnt/processed_sr2_offline_round_2",
-        "/project/lgrandi/xenonnt/processed_sr2_offline_round_3",
-        "/project2/lgrandi/xenonnt/processed",
         "/dali/lgrandi/xenonnt/processed",
-        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_1",
-        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_2",
-        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_3",
+        "/project2/lgrandi/xenonnt/processed",
+        "/project/lgrandi/xenonnt/processed",
     ],
     # Testing options
     _database_init: bool = True,
@@ -143,7 +173,6 @@ def xenonnt(
         wants to do a fuzzy search in the data the runs database is out of sync with rucio
     :param download_heavy: bool, whether or not to allow downloads of heavy data (raw_records*, less
         the aqmon)
-    :param remove_heavy: bool, whether or not to remove the heavy data after reading
     :param _auto_append_rucio_local: bool, whether or not to automatically append the rucio local
         path
     :param _rucio_path: str, path of rucio
@@ -157,11 +186,6 @@ def xenonnt(
     :return: strax.Context
 
     """
-    if "xedocs_version" in kwargs:
-        warnings.warn(
-            "Please use xenonnt_* instead of xenonnt if you want to specify xedocs_version"
-        )
-
     context_options = {**straxen.contexts.common_opts, **kwargs}
 
     st = strax.Context(config=straxen.contexts.common_config, **context_options)
@@ -217,7 +241,6 @@ def xenonnt(
         rucio_frontend = straxen.RucioRemoteFrontend(
             staging_dir=os.path.join(output_folder, "rucio"),
             download_heavy=download_heavy,
-            remove_heavy=remove_heavy,
         )
         st.storage += [rucio_frontend]
 
@@ -254,52 +277,6 @@ def xenonnt(
             )
         }
     )
-
-    return st
-
-
-if "xedocs_version" not in strax.Context.takes_config:
-    strax.Context = strax.takes_config(
-        strax.Option(
-            name="xedocs_version",
-            default=None,
-            type=str,
-            help="The version of the xedocs database to use",
-        ),
-    )(strax.Context)
-
-
-@strax.Context.add_method
-def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> None:
-    import xedocs
-
-    if isinstance(db, str):
-        func = getattr(xedocs.databases, db)
-        db_kwargs = straxen.filter_kwargs(func, kwargs)
-        db = func(**db_kwargs)
-
-    filter_kwargs = {k: v for k, v in kwargs.items() if k in db.context_configs.schema.__fields__}
-
-    docs = db.context_configs.find_docs(**filter_kwargs)
-
-    global_config = {doc.config_name: doc.value for doc in docs}
-
-    if len(global_config):
-        context.set_config(global_config)
-        context.set_context_config({"xedocs_version": filter_kwargs["version"]})
-    else:
-        raise KeyError(
-            f"Could not find any context configs matching {filter_kwargs} in the xedocs database"
-        )
-
-
-def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
-    """XENONnT context."""
-    if not _from_cutax and xedocs_version != "global_ONLINE":
-        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
-
-    st = straxen.contexts.xenonnt(**kwargs)
-    st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
     return st
 
