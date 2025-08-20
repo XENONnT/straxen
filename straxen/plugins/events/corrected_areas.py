@@ -336,7 +336,9 @@ class CorrectedAreas(strax.Plugin):
         # Do not correct total area for cAFT
         cs2 = (cs2_top_before_pi + cs2_bottom_before_pi) * elife_correction
         # Correct AFT for cAFT
-        cs2_area_fraction_top = cs2_top_before_pi / (cs2_top_before_pi + cs2_bottom_before_pi * pi_corr_bottom)
+        cs2_area_fraction_top = cs2_top_before_pi / (
+            cs2_top_before_pi + cs2_bottom_before_pi * pi_corr_bottom
+        )
 
         cs2_top_wo_segee_picorr = s2_area_top / s2_bias_correction / s2_xy_correction_top
         cs2_bottom_wo_segee_picorr = s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom
