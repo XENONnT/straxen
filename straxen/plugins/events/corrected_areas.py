@@ -37,7 +37,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.6"
+    __version__ = "0.5.7"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -297,6 +297,15 @@ class CorrectedAreas(strax.Plugin):
         elife_correction,
     ):
         """Apply S2 corrections and return various corrected areas.
+        The variables include the following corrections:
+            cs2: peak bias, S2xy, SEG/EE, elife
+            cs2_area_fraction_top: peak bias, S2xy, SEG/EE, cAFT, elife
+            cs2_before_pi: peak bias, S2xy, SEG/EE
+            cs2_area_fraction_top_before_pi: peak bias, S2xy, SEG/EE
+            cs2_before_elife: peak bias, S2xy, SEG/EE, cAFT
+            cs2_area_fraction_top_before_elife: peak bias, S2xy, SEG/EE, cAFT
+            cs2_wo_segee_picorr: peak bias, S2xy, elife
+            cs2_area_fraction_top_wo_segee_picorr: peak bias, S2xy, elife
 
         Returns:
             cs2,
@@ -324,8 +333,10 @@ class CorrectedAreas(strax.Plugin):
         cs2_bottom_before_elife = cs2_bottom_before_pi * pi_corr_bottom
         cs2_before_elife = cs2_top_before_elife + cs2_bottom_before_elife
 
-        cs2 = cs2_before_elife * elife_correction
-        cs2_top_final = cs2_top_before_elife * elife_correction
+        # Do not correct total area for cAFT
+        cs2 = (cs2_top_before_pi + cs2_bottom_before_pi) * elife_correction
+        # Correct AFT for cAFT
+        cs2_area_fraction_top = cs2_top_before_pi / (cs2_top_before_pi + cs2_bottom_before_pi * pi_corr_bottom)
 
         cs2_top_wo_segee_picorr = s2_area_top / s2_bias_correction / s2_xy_correction_top
         cs2_bottom_wo_segee_picorr = s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom
@@ -335,7 +346,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top_wo_segee_picorr = cs2_top_wo_segee_picorr * elife_correction
         return (
             cs2,
-            cs2_top_final / cs2,
+            cs2_area_fraction_top,
             cs2_before_pi,
             cs2_top_before_pi / cs2_before_pi,
             cs2_before_elife,
