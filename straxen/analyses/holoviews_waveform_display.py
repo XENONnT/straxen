@@ -345,7 +345,7 @@ def hvdisp_plot_peak_waveforms(
     for p in peaks:
         # label = {1: 's1', 2: 's2'}.get(
         #     p['type'], 'unknown')
-        color = {1: "b", 2: "g"}.get(p["type"], "k")
+        color = {1: "blue", 2: "green"}.get(p["type"], "k")
 
         # It's better to plot amplitude /time than per bin, since
         # sampling times are now variable
