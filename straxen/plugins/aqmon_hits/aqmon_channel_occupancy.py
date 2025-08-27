@@ -36,46 +36,18 @@ class AqMonChannelOccupancy:
 
     hev_channel_options = {1: "anti_veto", 2: "fractional_lifetime", 3: "hev", 4: "hev_tag"}
 
-    def __init__(self, run_id: int):
-        self.run_id = run_id
-        self.get_settings()
+    def __init__(self, v1495_config: dict):
+        self.config = v1495_config
+        self.prepare_settings()
         self.make_channel_map()
 
-    def get_settings(self):
-        self.get_v1495_config()
-        # self.get_fake_config()
+    def prepare_settings(self):
+        self.config = {
+            k: (bool(v) if k.startswith(("is_", "_use_")) else v) for k, v in self.config.items()
+            }
         self.extract_settings()
         self._settings_check_plausilble()
 
-    def get_v1495_config(self):
-        """Query the RunDB to extract V1495 options from metadata of specified run."""
-        query = {"number": int(self.run_id)}
-        rundb = straxen.utilix.xent_collection()
-        doc = rundb.find_one(query)
-        v1495_options = doc["daq_config"]["V1495"]["tpc"]
-        # turn settings with boolean meaning to actual bools for easier handling
-        self.config = {
-            k: (bool(v) if k.startswith(("is_", "_use_")) else v) for k, v in v1495_options.items()
-        }
-
-    def get_fake_config(self):
-        """For testing."""
-        print("Using fake config")
-        self.config = {
-            "is_hev_on": False,
-            "is_frac_lt_mode_on": False,
-            "is_led_start_stop_activ": False,
-            "is_anti_veto_active": False,
-            "anti_veto_delay_us": 0,
-            "anti_veto_duration_us": 0,
-            "fractional_lifetime_veto_on_us": 0,
-            "fractional_lifetime_veto_off_us": 0,
-            "_use_legacy_port_hev": True,
-            "_use_regular_port_trg": False,
-            "_use_legacy_port_trg": False,
-            "_use_NG_input": False,
-            "firmware_version": 9,
-        }
 
     def extract_settings(self):
         """Decode V1495 config."""
@@ -101,7 +73,6 @@ class AqMonChannelOccupancy:
         """Check if V1495 config makes sense.
 
         Throw error otherwise. Redax should not allow most of these, but better be safe than sorry.
-
         """
         if self.fracLT_on:
             if not ((self.fracLT_veto_on_period > 0) and (self.fracLT_veto_off_period > 0)):

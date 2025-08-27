@@ -45,6 +45,12 @@ class VetoIntervals(strax.ExhaustPlugin):
     provides = "veto_intervals"
     data_kind = "veto_intervals"
 
+    v1495_config = straxen.URLConfig(
+        default="run_doc://daq_config.V1495.tpc?run_id=plugin.run_id",
+        type=dict,
+        help="DAQ config for the V1495 board (firmware v10+).",
+        )
+
     def infer_dtype(self):
         dtype = [
             (("veto interval [ns]", "veto_interval"), np.int64),
@@ -54,7 +60,7 @@ class VetoIntervals(strax.ExhaustPlugin):
         return dtype
 
     def setup(self):
-        self.aqmon_channel_occupancy = straxen.AqMonChannelOccupancy(self.run_id)
+        self.aqmon_channel_occupancy = straxen.AqMonChannelOccupancy(self.v1495_config)
 
     def compute(self, aqmon_hits, start, end):
         # Allocate a nice big buffer and throw away the part we don't need later
