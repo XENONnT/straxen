@@ -227,7 +227,6 @@ class TestAqmonProcessing(TestCase):
         events = self.st.get_array(self.run_id, "event_basics")
         self.assertTrue(len(events))
 
-
     def test_veto_intervals(self, options=None):
         if options is not None:
             self.st.set_config(options)
@@ -238,10 +237,8 @@ class TestAqmonProcessing(TestCase):
         self.assertTrue(np.sum(self.TOTAL_DEADTIME))
         self.assertEqual(np.sum(veto_intervals["veto_interval"]), np.sum(self.TOTAL_DEADTIME))
 
-
     def test_veto_intervals_with_missing_on(self):
         self.test_veto_intervals(dict(start_with_channel_on=False))
-
 
     def test_make_veto_proximity(self):
         """I'm not going to do something fancy here, just checking if we can run the code."""

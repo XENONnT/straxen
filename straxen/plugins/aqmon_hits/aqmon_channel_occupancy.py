@@ -44,10 +44,9 @@ class AqMonChannelOccupancy:
     def prepare_settings(self):
         self.config = {
             k: (bool(v) if k.startswith(("is_", "_use_")) else v) for k, v in self.config.items()
-            }
+        }
         self.extract_settings()
         self._settings_check_plausilble()
-
 
     def extract_settings(self):
         """Decode V1495 config."""
@@ -73,6 +72,7 @@ class AqMonChannelOccupancy:
         """Check if V1495 config makes sense.
 
         Throw error otherwise. Redax should not allow most of these, but better be safe than sorry.
+
         """
         if self.fracLT_on:
             if not ((self.fracLT_veto_on_period > 0) and (self.fracLT_veto_off_period > 0)):

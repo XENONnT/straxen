@@ -49,7 +49,7 @@ class VetoIntervals(strax.ExhaustPlugin):
         default="run_doc://daq_config.V1495.tpc?run_id=plugin.run_id",
         type=dict,
         help="DAQ config for the V1495 board (firmware v10+).",
-        )
+    )
 
     def infer_dtype(self):
         dtype = [
