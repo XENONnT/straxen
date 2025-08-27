@@ -1,4 +1,3 @@
-import straxen
 from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 
 
