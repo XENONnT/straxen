@@ -180,6 +180,7 @@ class TestDAQReader(unittest.TestCase):
             "daq_chunk_duration": int(daq_config["strax_chunk_length"] * 1e9),
             "daq_overlap_chunk_duration": int(daq_config["strax_chunk_overlap"] * 1e9),
             "daq_compressor": daq_config.get("compressor", "lz4"),
+            "V1495": {"tpc": {}},
         }
         print(f"set config to {update_config}")
         st.set_config(update_config)
