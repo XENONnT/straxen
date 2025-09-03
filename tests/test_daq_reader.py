@@ -3,6 +3,7 @@
 import os
 import shutil
 import unittest
+from unittest.mock import patch
 import strax
 import straxen
 from straxen import download_test_data, get_resource
@@ -61,6 +62,17 @@ class TestDAQReader(unittest.TestCase):
     rundoc_file = "https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/6a6b02d7ff9cb5731e25ef39931ce0a803f2e150/strax_files/rundoc_999999.json"  # noqa
     data_file = "https://raw.githubusercontent.com/XAMS-nikhef/amstrax_files/73681f112d748f6cd0e95045970dd29c44e983b0/data/999999.tar"  # noqa
 
+    fake_rundoc_999999 = {
+        "number": 999999,
+        "mode": "tpc_bkg",
+        "start": 0,
+        "end": 1,
+        "tags": [],
+        "detectors": ["tpc",],
+        "daq_config": {"V1495": {"tpc": {"fractional_mode_active": 0}}}
+        }
+
+
     # # Part A. the actual tests
     def test_make(self) -> None:
         """Test if we can run the daq-reader without chrashing and if we actually stored the data
@@ -81,7 +93,7 @@ class TestDAQReader(unittest.TestCase):
         records-aqmon) if we set this value to an unrealistic value of 0.5 s.
 
         """
-        st = self.st
+        st = self.st.new_context()
         st.set_config(
             {
                 "safe_break_in_pulses": int(0.5e9),
@@ -97,7 +109,8 @@ class TestDAQReader(unittest.TestCase):
 
         st.register(straxen.AqmonHits)
         st.register(straxen.VetoIntervals)
-        veto_intervals = st.get_array(self.run_id, "veto_intervals")
+        with patch("straxen.config.protocols.read_rundoc", return_value=self.fake_rundoc_999999):
+            veto_intervals = st.get_array(self.run_id, "veto_intervals")
         assert np.sum(veto_intervals["veto_interval"]), "No artificial deadtime parsed!"
 
     def test_invalid_setting(self):
