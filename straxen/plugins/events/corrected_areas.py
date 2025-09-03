@@ -177,16 +177,7 @@ class CorrectedAreas(strax.Plugin):
 
             # Intermediate S2 corrections for studying correction order
             # "" will be cs2, including all corrections
-            names = [
-                "_w_bias",
-                "_w_bias_xy",
-                "_w_bias_segee",
-                "_w_bias_xy_segee",
-                "_w_bias_xy_elife",
-                "_w_elife",
-                "_w_xy_elife",
-                "",
-            ]
+            names = ["_w_bias", "_w_bias_xy", "_w_bias_segee", "_w_bias_xy_segee", "_w_bias_xy_elife", "_w_elife", "_w_xy_elife", ""]
 
             # Define what's included and excluded for each stage
             # E.g. _w_bias includes peak bias and excludes all other corrections
@@ -365,8 +356,8 @@ class CorrectedAreas(strax.Plugin):
         cs2_bottom_w_bias = s2_area_bottom / s2_bias_correction
         cs2_w_bias = cs2_top_w_bias + cs2_bottom_w_bias
         # S2 xy
-        cs2_top_w_bias_xy = cs2_top_w_bias / s2_xy_correction_top
-        cs2_bottom_w_bias_xy = cs2_bottom_w_bias / s2_xy_correction_bottom
+        cs2_top_w_bias_xy = cs2_top_w_bias / s2_xy_correction_top 
+        cs2_bottom_w_bias_xy = cs2_bottom_w_bias / s2_xy_correction_bottom 
         cs2_w_bias_xy = cs2_top_w_bias_xy + cs2_bottom_w_bias_xy
         # SEG/EE
         cs2_top_w_bias_xy_segee = cs2_top_w_bias_xy / seg_ee_corr
@@ -395,7 +386,7 @@ class CorrectedAreas(strax.Plugin):
         cs2_top_w_xy_elife = s2_area_top / s2_xy_correction_top * elife_correction
         cs2_bottom_w_xy_elife = s2_area_top / s2_xy_correction_bottom * elife_correction
         cs2_w_xy_elife = cs2_top_w_xy_elife + cs2_bottom_w_xy_elife
-
+        
         return (
             cs2,
             cs2_area_fraction_top,
