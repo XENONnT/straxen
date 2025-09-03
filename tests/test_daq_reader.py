@@ -58,7 +58,7 @@ class TestDAQReader(unittest.TestCase):
     run_id = "999999"
     run_doc_name = "rundoc_999999.json"
     live_data_path = f"./live_data/{run_id}"
-    rundoc_file = "https://github.com/XENONnT/strax_auxiliary_files/blob/6a6b02d7ff9cb5731e25ef39931ce0a803f2e150/strax_files/rundoc_999999.json"  # noqa
+    rundoc_file = "https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/6a6b02d7ff9cb5731e25ef39931ce0a803f2e150/strax_files/rundoc_999999.json"  # noqa
     data_file = "https://raw.githubusercontent.com/XAMS-nikhef/amstrax_files/73681f112d748f6cd0e95045970dd29c44e983b0/data/999999.tar"  # noqa
 
     # # Part A. the actual tests
