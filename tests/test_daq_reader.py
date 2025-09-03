@@ -3,7 +3,9 @@
 import os
 import shutil
 import unittest
-from unittest.mock import patch
+from unittest import TestCase
+from straxen.config.url_config import URLConfig, clear_config_caches
+import straxen.config.protocols as protocols
 import strax
 import straxen
 from straxen import download_test_data, get_resource
@@ -110,8 +112,7 @@ class TestDAQReader(unittest.TestCase):
 
         st.register(straxen.AqmonHits)
         st.register(straxen.VetoIntervals)
-        with patch("straxen.config.protocols.read_rundoc", return_value=self.fake_rundoc_999999):
-            veto_intervals = st.get_array(self.run_id, "veto_intervals")
+        veto_intervals = st.get_array(self.run_id, "veto_intervals")
         assert np.sum(veto_intervals["veto_interval"]), "No artificial deadtime parsed!"
 
     def test_invalid_setting(self):
@@ -151,11 +152,22 @@ class TestDAQReader(unittest.TestCase):
         self.st = st
         self.assertFalse(self.st.is_stored(self.run_id, "raw_records"))
 
+        # load fake rundocs
+        self._orig = protocols.read_rundoc
+        def _fake(*args, **kwargs):
+            return self.fake_rundoc_999999
+        clear_config_caches()
+        URLConfig.register("rundoc", _fake)
+
+
     def tearDown(self) -> None:
         data_path = self.st.storage[0].path
         if os.path.exists(data_path):
             shutil.rmtree(data_path)
             print(f"rm {data_path}")
+
+        URLConfig.register("rundoc", self._orig)
+        clear_config_caches()
 
     # # Part C. Some utility functions for A & B
     def download_test_data(self):
