@@ -68,10 +68,11 @@ class TestDAQReader(unittest.TestCase):
         "start": 0,
         "end": 1,
         "tags": [],
-        "detectors": ["tpc",],
-        "daq_config": {"V1495": {"tpc": {"fractional_mode_active": 0}}}
-        }
-
+        "detectors": [
+            "tpc",
+        ],
+        "daq_config": {"V1495": {"tpc": {"fractional_mode_active": 0}}},
+    }
 
     # # Part A. the actual tests
     def test_make(self) -> None:
