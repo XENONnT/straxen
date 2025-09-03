@@ -81,7 +81,7 @@ class TestDAQReader(unittest.TestCase):
         records-aqmon) if we set this value to an unrealistic value of 0.5 s.
 
         """
-        st = self.st.new_context()
+        st = self.st
         st.set_config(
             {
                 "safe_break_in_pulses": int(0.5e9),
