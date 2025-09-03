@@ -154,11 +154,12 @@ class TestDAQReader(unittest.TestCase):
 
         # load fake rundocs
         self._orig = protocols.read_rundoc
+
         def _fake(*args, **kwargs):
             return self.fake_rundoc_999999
+
         clear_config_caches()
         URLConfig.register("rundoc", _fake)
-
 
     def tearDown(self) -> None:
         data_path = self.st.storage[0].path
