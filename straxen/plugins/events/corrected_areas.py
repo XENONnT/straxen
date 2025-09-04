@@ -320,7 +320,7 @@ class CorrectedAreas(strax.Plugin):
         # Apply peak bias, S2 xy and SEG/EE to top and bottom
         cs2_top_wo_elife = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
         cs2_bottom_wo_elife = (
-            s2_area_top / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
+            s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
         )
         # Apply elife to get total cS2
         cs2 = (cs2_top_wo_elife + cs2_bottom_wo_elife) * elife_correction
