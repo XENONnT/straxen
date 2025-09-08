@@ -182,7 +182,8 @@ class CorrectedAreas(strax.Plugin):
             # 3. SEG/EE correction
             # 4. Photoionization correction for S2 bottom
             # 5. Electron lifetime correction
-            # Encode included corrections in binary strings (because that is easier to read than big lists of bools).
+            # Encode included corrections in binary strings
+            # (because that is easier to read than big lists of bools).
             # E.g. '01001' means correcting for S2xy and elife, but not for peak bias, SEG/EE and PI
             # '11111' is the fully corrected cS2.
 
