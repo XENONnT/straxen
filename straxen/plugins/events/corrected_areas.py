@@ -319,16 +319,14 @@ class CorrectedAreas(strax.Plugin):
         s2_area_bottom = s2_area * (1 - s2_aft)
 
         # Apply peak bias, S2 xy and SEG/EE to top and bottom
-        cs2_top_wo_elife = (
-            s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
-        )
+        cs2_top_wo_elife = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
         cs2_bottom_wo_elife = (
             s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
         )
-        
+
         # Apply elife to get total cS2
         cs2 = (cs2_top_wo_elife + cs2_bottom_wo_elife) * elife_correction
-        
+
         # Apply PI AFT correction to get cAFT
         # Do this on the cS2 without elife, because S2-only events have NaN as elife,
         # and elife cancels out in the AFT fraction anyway.
