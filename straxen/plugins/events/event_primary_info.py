@@ -54,6 +54,11 @@ class EventsPrimaryInfo(strax.Plugin):
         for i, cl in enumerate(clusters_per_event):
             if len(cl) == 0:
                 continue
+            
+            n_cl = len(cl)
+            for n in range(n_cl):
+                if (cl["x_pri"][n] != cl["x_pri"][0]) or (cl["y_pri"][n] != cl["y_pri"][0]) or (cl["z_pri"][n] != cl["z_pri"][0]):
+                    print(f"Warning: Event {i} has clusters with different primary coordinates:")
 
             result["x_pri"][i] = cl["x_pri"][0]
             result["y_pri"][i] = cl["y_pri"][0]
