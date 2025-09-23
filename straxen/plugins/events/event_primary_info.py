@@ -35,14 +35,14 @@ class EventsPrimaryInfo(strax.Plugin):
 
         clusters_per_event = strax.split_by_containment(interactions_in_roi, events)
 
-        out = np.zeros(len(events), dtype=self.dtype)
-        out["x_pri"][:] = np.nan
-        out["y_pri"][:] = np.nan
-        out["z_pri"][:] = np.nan
-        out["ed_total"][:] = np.nan
+        result = np.zeros(len(events), dtype=self.dtype)
+        result["x_pri"][:] = np.nan
+        result["y_pri"][:] = np.nan
+        result["z_pri"][:] = np.nan
+        result["ed_total"][:] = np.nan
 
-        out["time"] = events["time"]
-        out["endtime"] = events["endtime"]
+        result["time"] = events["time"]
+        result["endtime"] = events["endtime"]
 
         for f in ("x_pri", "y_pri", "z_pri", "ed"):
             if f not in interactions_in_roi.dtype.names:
@@ -55,10 +55,10 @@ class EventsPrimaryInfo(strax.Plugin):
             if len(cl) == 0:
                 continue
 
-            out["x_pri"][i] = cl["x_pri"][0]
-            out["y_pri"][i] = cl["y_pri"][0]
-            out["z_pri"][i] = cl["z_pri"][0]
+            result["x_pri"][i] = cl["x_pri"][0]
+            result["y_pri"][i] = cl["y_pri"][0]
+            result["z_pri"][i] = cl["z_pri"][0]
 
-            out["ed_total"][i] = np.nansum(cl["ed"]).astype(np.float32)
+            result["ed_total"][i] = np.nansum(cl["ed"]).astype(np.float32)
 
-        return out
+        return result
