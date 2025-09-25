@@ -26,7 +26,7 @@ class nVETORecorder(strax.Plugin):
 
     rechunk_on_save = True
     save_when = immutabledict(
-        raw_records_coin_nv=strax.SaveWhen.ALWAYS,
+        raw_records_coin_nv=strax.SaveWhen.TARGET,
         lone_raw_record_statistics_nv=strax.SaveWhen.ALWAYS,
     )
     compressor = "zstd"
