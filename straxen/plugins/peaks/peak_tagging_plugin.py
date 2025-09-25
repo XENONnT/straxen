@@ -9,7 +9,10 @@ class peak_tagging(strax.Plugin):
     """Gives tags to peaks, mainly in order to seperate physical S2s from not physical ones and
     e-train leakage.
 
-    Look at note - https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:analysis:analysts_overview_page:roi_frankel:ms_v2
+    Look at note - 
+    https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:
+    xenonnt:analysis:analysts_overview_page
+    :roi_frankel:ms_v2
 
     """
 
@@ -55,17 +58,20 @@ class peak_tagging(strax.Plugin):
         stop_point_edge = (
             3.5e4  # Maximum area for edge region classification (used in mask_in_edge_2)
         )
-        bottom_physical_horizontal_line_1 = 2.3e2  # Lower range_50p_area limit for V0,V1,V2 regions (used in mask_S2_V0, mask_S2_V1, mask_S2_V2)
+        bottom_physical_horizontal_line_1 = 2.3e2  # Lower range_50p_area limit for 
+        # V0,V1,V2 regions (used in mask_S2_V0, mask_S2_V1, mask_S2_V2)
         bottom_physical_horizontal_line_2 = (
             2e2  # Lower range_50p_area limit for V3 region (used in mask_S2_V3)
         )
-        y_mid_for_edge = 4e3  # Middle range_50p_area threshold for edge regions (used in mask_in_edge_0, mask_in_edge_1)
+        y_mid_for_edge = 4e3  # Middle range_50p_area threshold for
+        # edge regions (used in mask_in_edge_0, mask_in_edge_1)
         y_upper_for_edge = (
             5.6e3  # Upper range_50p_area threshold for edge region 2 (used in mask_in_edge_2)
         )
         y_2_of_3spl = (
             y_points_2spl[-1] + 2e3
-        )  # Extended Y-value for linear separation in V2,V3 regions (used in mask_S2_V2, mask_S2_V3, mask_in_edge_2)
+        )  # Extended Y-value for linear separation in V2,V3 regions
+        # (used in mask_S2_V2, mask_S2_V3, mask_in_edge_2)
         y_1 = np.polyval(
             coefficients_1spl, x_points_1spl[-1]  # Y-value at junction between polynomial curves
         )  # (used for offset calculation in mask_S2_V2, mask_in_edge_2)
@@ -83,13 +89,13 @@ class peak_tagging(strax.Plugin):
             len(peaks), "S2_not_associated_to_event", dtype="U50"
         )  # initial value for all peaks, array of peak tags to fill
         for event_i, (event, sp) in enumerate(zip(events, split_peaks)):
-            mask = split_peaks_ind == event_i  ## mask for peaks associated with the current event
+            mask = split_peaks_ind == event_i  # mask for peaks associated with the current event
             drift_times[mask] = sp["center_time"] - event["s1_center_time"]
             temp_peaks_tags_array = np.full(
                 len(sp["area"]), "undefined", dtype="U50"
             )  # temporary array to hold the peak tags for the current event
 
-            sp_S2_mask = sp["type"] == 2  ## mask for S2 peaks associated with the current event
+            sp_S2_mask = sp["type"] == 2  # mask for S2 peaks associated with the current event
 
             # creating the physical S2 region mask
             # start S2 area>V3
@@ -175,7 +181,8 @@ class peak_tagging(strax.Plugin):
             mask_in_edge = mask_in_edge_0 | mask_in_edge_1 | mask_in_edge_2
             # end of creating the edge region mask
 
-            # creating the e-train leakage mask based on the seperation parameters and area/dt*length condition
+            # creating the e-train leakage mask based on the 
+            # seperation parameters and area/dt*length condition
             # Safe division with NaN/zero handling
             # Calculate denominators first to check for zeros/NaNs
             denom_1 = sp["endtime"] - sp["time"]
