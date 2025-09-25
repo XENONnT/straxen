@@ -9,7 +9,7 @@ class peak_tagging(strax.Plugin):
     """Gives tags to peaks, mainly in order to seperate physical S2s from not physical ones and
     e-train leakage.
 
-    Look at note - 
+    Look at note -
     https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:
     xenonnt:analysis:analysts_overview_page
     :roi_frankel:ms_v2
@@ -58,7 +58,7 @@ class peak_tagging(strax.Plugin):
         stop_point_edge = (
             3.5e4  # Maximum area for edge region classification (used in mask_in_edge_2)
         )
-        bottom_physical_horizontal_line_1 = 2.3e2  # Lower range_50p_area limit for 
+        bottom_physical_horizontal_line_1 = 2.3e2  # Lower range_50p_area limit for
         # V0,V1,V2 regions (used in mask_S2_V0, mask_S2_V1, mask_S2_V2)
         bottom_physical_horizontal_line_2 = (
             2e2  # Lower range_50p_area limit for V3 region (used in mask_S2_V3)
@@ -181,7 +181,7 @@ class peak_tagging(strax.Plugin):
             mask_in_edge = mask_in_edge_0 | mask_in_edge_1 | mask_in_edge_2
             # end of creating the edge region mask
 
-            # creating the e-train leakage mask based on the 
+            # creating the e-train leakage mask based on the
             # seperation parameters and area/dt*length condition
             # Safe division with NaN/zero handling
             # Calculate denominators first to check for zeros/NaNs
