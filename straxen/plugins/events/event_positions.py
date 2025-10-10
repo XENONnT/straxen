@@ -46,8 +46,8 @@ class EventPositions(strax.Plugin):
     )
 
     z_bias_map = straxen.URLConfig(
-        default="itp_map://resource://XnT_z_bias_map_chargeup_20230329.json.gz"
-        "?fmt=json.gz&method=RegularGridInterpolator",
+        default="itp_map://resource:///home/changcai/nt_analysis/electron_drift/XnT_z_bias_map_chargeup_20251001.json.gz"
++        "?fmt=json.gz",
         infer_type=False,
         help="Map of Z bias due to non uniform drift velocity/field",
     )
