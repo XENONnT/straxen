@@ -34,10 +34,11 @@ class CorrectedAreas(strax.Plugin):
     - Single electron gain (SEG) and extraction efficiency (EE) correction (partition,time)
     - Photoionization correction for S2 bottom
     - Electron lifetime correction
+    - Time-dependent charger yield correction
 
     """
 
-    __version__ = "0.5.7"
+    __version__ = "0.5.8"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -90,6 +91,7 @@ class CorrectedAreas(strax.Plugin):
     )
 
     # relative charge yield
+    # defaults to no correction
     rel_charge_yield = straxen.URLConfig(default=1, help="Relative charge yield for SR2 only")
 
     # relative light yield
@@ -185,32 +187,42 @@ class CorrectedAreas(strax.Plugin):
             # 3. SEG/EE correction
             # 4. Photoionization correction for S2 bottom
             # 5. Electron lifetime correction
+            # 6. Realtive Cahrge yield
             # Encode included corrections in binary strings
             # (because that is easier to read than big lists of bools).
-            # E.g. '01001' means correcting for S2xy and elife, but not for peak bias, SEG/EE and PI
-            # '11111' is the fully corrected cS2.
+            # E.g. '010010' means correcting for S2xy and elife, but not for
+            # peak bias, SEG/EE, PI and relCY
+            # '111111' is the fully corrected cS2.
 
-            name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife"]
-            description_strs = ["peak bias", "S2 xy", "SEG/EE", "photoionization", "elife"]
+            name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife", "_rel_cy"]
+            description_strs = [
+                "peak bias",
+                "S2 xy",
+                "SEG/EE",
+                "photoionization",
+                "elife",
+                "rel_cy",
+            ]
             intermediate_cs2s = [
-                "11111",
-                "10000",
-                "11000",
-                "10100",
-                "11100",
-                "11001",
-                "00001",
-                "01001",
-                "01111",
-                "10111",
-                "11011",
-                "11101",
-                "11110",
+                "111111",
+                "111110",
+                "100000",
+                "110000",
+                "101000",
+                "111000",
+                "110010",
+                "000010",
+                "010010",
+                "011110",
+                "101110",
+                "110110",
+                "111010",
+                "111100",
             ]
 
             for encoding in intermediate_cs2s:
                 # if all corrections are included its the final cS2
-                if encoding == "11111":
+                if encoding == "111111":
                     postfix = ""
                     description = ""
                 else:
@@ -307,6 +319,7 @@ class CorrectedAreas(strax.Plugin):
         seg_ee_corr,
         pi_corr_bottom,
         elife_correction,
+        rel_cy_correction,
     ):
         """Apply S2 corrections and return various corrected areas. To study the impact of
         individual corrections, parameters of this function can be set to 1, thereby excluding the
@@ -328,7 +341,10 @@ class CorrectedAreas(strax.Plugin):
         )
 
         # Apply elife to get total cS2
-        cs2 = (cs2_top_wo_elife + cs2_bottom_wo_elife) * elife_correction
+        cs2_elife = (cs2_top_wo_elife + cs2_bottom_wo_elife) * elife_correction
+
+        # Apply rel_cy_correction to get total cS2
+        cs2 = cs2_elife * rel_cy_correction
 
         # Apply PI AFT correction to get cAFT
         # Do this on the cS2 without elife, because S2-only events have NaN as elife,
@@ -387,10 +403,12 @@ class CorrectedAreas(strax.Plugin):
             # 3. SEG/EE correction
             # 4. Photoionization correction for S2 bottom
             # 5. Electron lifetime correction
+            # 6. relative charge correction
 
             s2_bias_correction = 1 + self.s2_bias_map(s2_area.reshape(-1, 1)).flatten()
             s2_xy_correction_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
             s2_xy_correction_bottom = self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
+            rel_cy_correction_factor = self.rel_charge_yield
 
             seg_ee_corr = np.zeros(len(events))
             for partition, func in self.regions.items():
@@ -402,21 +420,22 @@ class CorrectedAreas(strax.Plugin):
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f"{el_string}drift_time"] / self.elife)
 
-            name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife"]
+            name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife", "_rel_cy"]
             intermediate_cs2s = [
-                "11111",
-                "10000",
-                "11000",
-                "10100",
-                "11100",
-                "11001",
-                "00001",
-                "01001",
-                "01111",
-                "10111",
-                "11011",
-                "11101",
-                "11110",
+                "111111",
+                "111110",
+                "100000",
+                "110000",
+                "101000",
+                "111000",
+                "110010",
+                "000010",
+                "010010",
+                "011110",
+                "101110",
+                "110110",
+                "111010",
+                "111100",
             ]
             corrections_parameters = [
                 s2_bias_correction,
@@ -425,13 +444,14 @@ class CorrectedAreas(strax.Plugin):
                 seg_ee_corr,
                 pi_corr_bottom,
                 elife_correction,
+                rel_cy_correction_factor,
             ]
 
             for encoding in intermediate_cs2s:
                 postfix = "_w"
                 # Set correction parameters that are not included in the encoding to 1
-                # Note that S2xy has 2 parameters, therefore this list has len 6
-                _correction_parameters = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+                # Note that S2xy has 2 parameters, therefore this list has len 7
+                _correction_parameters = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
                 for i_c, char in enumerate(encoding):
                     if int(char):
                         postfix += name_postfixes[i_c]
@@ -444,7 +464,7 @@ class CorrectedAreas(strax.Plugin):
                         else:
                             _correction_parameters[i_c + 1] = corrections_parameters[i_c + 1]
                 # No postfix for fully corrected
-                if encoding == "11111":
+                if encoding == "111111":
                     postfix = ""
                 (
                     result[f"{peak_type}cs2{postfix}"],
