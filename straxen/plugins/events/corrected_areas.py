@@ -90,10 +90,7 @@ class CorrectedAreas(strax.Plugin):
     )
 
     # relative charge yield
-    rel_charge_yield = straxen.URLConfig(
-        default=1,
-        help="Relative charge yield for SR2 only" 
-    )
+    rel_charge_yield = straxen.URLConfig(default=1, help="Relative charge yield for SR2 only")
 
     # relative light yield
     # defaults to no correction
