@@ -91,9 +91,8 @@ class CorrectedAreas(strax.Plugin):
 
     # relative charge yield
     rel_charge_yield = straxen.URLConfig(
-        default="xedocs://relative_charge_yield?"
-        "attr=value&run_id=plugin.run_id&version=ONLINE",
-        help="Relative charge yield (allows for time dependence)",
+        default=1,
+        help="Relative charge yield for SR2 only" 
     )
 
     # relative light yield
