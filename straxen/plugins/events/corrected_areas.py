@@ -194,7 +194,7 @@ class CorrectedAreas(strax.Plugin):
             # peak bias, SEG/EE, PI and relCY
             # '111111' is the fully corrected cS2.
 
-            name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife", "_rel_cy"]
+            name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife", "_relcy"]
             description_strs = [
                 "peak bias",
                 "S2 xy",
@@ -205,7 +205,6 @@ class CorrectedAreas(strax.Plugin):
             ]
             intermediate_cs2s = [
                 "111111",
-                "111110",
                 "100000",
                 "110000",
                 "101000",
@@ -218,6 +217,7 @@ class CorrectedAreas(strax.Plugin):
                 "110110",
                 "111010",
                 "111100",
+                "111110",
             ]
 
             for encoding in intermediate_cs2s:
@@ -420,10 +420,9 @@ class CorrectedAreas(strax.Plugin):
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f"{el_string}drift_time"] / self.elife)
 
-            name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife", "_rel_cy"]
+            name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife", "_relcy"]
             intermediate_cs2s = [
                 "111111",
-                "111110",
                 "100000",
                 "110000",
                 "101000",
@@ -436,6 +435,7 @@ class CorrectedAreas(strax.Plugin):
                 "110110",
                 "111010",
                 "111100",
+                "111110",
             ]
             corrections_parameters = [
                 s2_bias_correction,
