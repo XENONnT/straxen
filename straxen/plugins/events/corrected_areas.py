@@ -169,14 +169,14 @@ class CorrectedAreas(strax.Plugin):
     # peak bias, SEG/EE, PI and relCY
     # '111111' is the fully corrected cS2.
 
-    name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_elife", "_relcy"]
+    name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_relcy", "_elife"]
     description_strs = [
         "peak bias",
         "S2 xy",
         "SEG/EE",
         "photoionization",
-        "elife",
         "relative charge yield",
+        "elife",
     ]
     intermediate_cs2s = [
         "111111",
@@ -184,16 +184,16 @@ class CorrectedAreas(strax.Plugin):
         "110000",
         "101000",
         "111000",
-        "110010",
-        "000010",
-        "010010",
-        "011110",
-        "101110",
-        "110110",
-        "111010",
+        "110001",
+        "000001",
+        "010001",
+        "011101",
+        "101101",
+        "110101",
+        "111001",
         "111100",
-        "111110",
         "111101",
+        "111110",
     ]
 
     def infer_dtype(self):
@@ -341,11 +341,11 @@ class CorrectedAreas(strax.Plugin):
             s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
         )
 
-        # Apply elife to get total cS2
-        cs2_elife = (cs2_top_wo_elife + cs2_bottom_wo_elife) * elife_correction
+        # Apply rel_cy_correction
+        cs2_relcy = (cs2_top_wo_elife + cs2_bottom_wo_elife) * rel_cy_correction
 
-        # Apply rel_cy_correction to get total cS2
-        cs2 = cs2_elife * rel_cy_correction
+        # Apply elife to get total cS2
+        cs2 = cs2_relcy * elife_correction
 
         # Apply PI AFT correction to get cAFT
         # Do this on the cS2 without elife, because S2-only events have NaN as elife,
