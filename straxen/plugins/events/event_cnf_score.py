@@ -61,7 +61,7 @@ class EventCNFScore(strax.Plugin):
                         "cnf_nearest_s2_area",
                         "cnf_nearest_dr",
                     ]:
-                        result[f"{type_}_{p}"][event_i] = sp[[p]][type_index]
+                        result[f"{type_}_{p}"][event_i] = sp[p][type_index]
 
         # 2. Set time and endtime for events
         result["time"] = events["time"]
