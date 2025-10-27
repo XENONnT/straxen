@@ -34,7 +34,7 @@ class CorrectedAreas(strax.Plugin):
     - Single electron gain (SEG) and extraction efficiency (EE) correction (partition,time)
     - Photoionization correction for S2 bottom
     - Electron lifetime correction
-    - Time-dependent charger yield correction
+    - Time-dependent charge yield correction
 
     """
 
