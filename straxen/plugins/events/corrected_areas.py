@@ -162,7 +162,7 @@ class CorrectedAreas(strax.Plugin):
     # 3. SEG/EE correction
     # 4. Photoionization correction for S2 bottom
     # 5. Electron lifetime correction
-    # 6. Realtive charge yield
+    # 6. Relative charge yield correction
     # Encode included corrections in binary strings
     # (because that is easier to read than big lists of bools).
     # E.g. '010010' means correcting for S2xy and elife, but not for
@@ -403,7 +403,7 @@ class CorrectedAreas(strax.Plugin):
             # 3. SEG/EE correction
             # 4. Photoionization correction for S2 bottom
             # 5. Electron lifetime correction
-            # 6. relative charge correction
+            # 6. Relative charge yield correction
 
             s2_bias_correction = 1 + self.s2_bias_map(s2_area.reshape(-1, 1)).flatten()
             s2_xy_correction_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
