@@ -193,6 +193,7 @@ class CorrectedAreas(strax.Plugin):
         "111010",
         "111100",
         "111110",
+        "111101",
     ]
 
     def infer_dtype(self):
