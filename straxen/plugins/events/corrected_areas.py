@@ -176,7 +176,7 @@ class CorrectedAreas(strax.Plugin):
         "SEG/EE",
         "photoionization",
         "elife",
-        "rel_cy",
+        "relative charge yield",
     ]
     intermediate_cs2s = [
         "111111",
