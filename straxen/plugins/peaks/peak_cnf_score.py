@@ -170,7 +170,7 @@ class PeakCNFScore(strax.OverlapWindowPlugin):
     def infer_dtype(self):
         dtype = strax.time_fields + [
             (("Maximum conditional normalizing flow score", "cnf_score"), np.float32),
-            (("Time difference to the S2 casting maximum CNF score", "cnf_nearest_dt"), np.float32),
+            (("Time difference to the S2 casting maximum CNF score", "cnf_nearest_dt"), np.int64),
             (("S2 area of the S2 casting maximum CNF score", "cnf_nearest_s2_area"), np.float32),
             (
                 ("Position difference to the S2 casting maximum CNF score", "cnf_nearest_dr"),
