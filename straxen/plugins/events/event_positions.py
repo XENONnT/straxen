@@ -25,8 +25,8 @@ class EventPositions(strax.Plugin):
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
     )
 
-    electron_drift_velocity = straxen.URLConfig(
-        default="xedocs://electron_drift_velocities?attr=value&run_id=plugin.run_id&version=ONLINE",
+    electron_drift_velocity_center = straxen.URLConfig(
+        default="xedocs://electron_drift_velocitiy_center?attr=value&run_id=plugin.run_id&version=ONLINE",
         cache=True,
         help="Vertical electron drift velocity in cm/ns (1e4 m/ms)",
     )
@@ -46,7 +46,7 @@ class EventPositions(strax.Plugin):
     )
 
     z_bias_map = straxen.URLConfig(
-        default="itp_map://resource://XnT_z_bias_map_chargeup_20230329.json.gz"
+        default="itp_map://resource://XnT_z_bias_map_chargeup_20251110.json.gz"
         "?fmt=json.gz&method=RegularGridInterpolator",
         infer_type=False,
         help="Map of Z bias due to non uniform drift velocity/field",
@@ -137,7 +137,7 @@ class EventPositions(strax.Plugin):
         return dtype + strax.time_fields
 
     def setup(self):
-        self.coordinate_scales = [1.0, 1.0, -self.electron_drift_velocity]
+        self.coordinate_scales = [1.0, 1.0, -self.electron_drift_velocity_center]
         self.map = self.fdc_map
 
     def compute(self, events):
@@ -152,11 +152,11 @@ class EventPositions(strax.Plugin):
             drift_time = (
                 events["drift_time"] if not s_i else events[f"alt_s{s_i}_interaction_drift_time"]
             )
-            z_obs = -self.electron_drift_velocity * drift_time
+            z_obs = -self.electron_drift_velocity_center * drift_time
             xy_pos = "s2_" if s_i != 2 else "alt_s2_"
             orig_pos = np.vstack([events[f"{xy_pos}x"], events[f"{xy_pos}y"], z_obs]).T
             r_obs = np.linalg.norm(orig_pos[:, :2], axis=1)
-            z_obs = z_obs + self.electron_drift_velocity * self.electron_drift_time_gate
+            z_obs = z_obs + self.electron_drift_velocity_center * self.electron_drift_time_gate
 
             # apply z bias correction
             z_dv_delta = self.z_bias_map(np.array([r_obs, z_obs]).T, map_name="z_bias_map")
