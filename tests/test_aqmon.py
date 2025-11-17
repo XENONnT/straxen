@@ -1,6 +1,5 @@
 import os.path
 from typing import List, Optional
-
 from unittest import TestCase, skipIf
 import numpy as np
 import strax

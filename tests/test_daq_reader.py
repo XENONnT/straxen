@@ -3,6 +3,9 @@
 import os
 import shutil
 import unittest
+from unittest import TestCase
+from straxen.config.url_config import URLConfig, clear_config_caches
+import straxen.config.protocols as protocols
 import strax
 import straxen
 from straxen import download_test_data, get_resource
@@ -58,8 +61,20 @@ class TestDAQReader(unittest.TestCase):
     run_id = "999999"
     run_doc_name = "rundoc_999999.json"
     live_data_path = f"./live_data/{run_id}"
-    rundoc_file = "https://raw.githubusercontent.com/XAMS-nikhef/amstrax_files/73681f112d748f6cd0e95045970dd29c44e983b0/data/rundoc_999999.json"  # noqa
+    rundoc_file = "https://raw.githubusercontent.com/XENONnT/strax_auxiliary_files/6a6b02d7ff9cb5731e25ef39931ce0a803f2e150/strax_files/rundoc_999999.json"  # noqa
     data_file = "https://raw.githubusercontent.com/XAMS-nikhef/amstrax_files/73681f112d748f6cd0e95045970dd29c44e983b0/data/999999.tar"  # noqa
+
+    fake_rundoc_999999 = {
+        "number": 999999,
+        "mode": "tpc_bkg",
+        "start": 0,
+        "end": 1,
+        "tags": [],
+        "detectors": [
+            "tpc",
+        ],
+        "daq_config": {"V1495": {"tpc": {"fractional_mode_active": 0}}},
+    }
 
     # # Part A. the actual tests
     def test_make(self) -> None:
@@ -137,11 +152,23 @@ class TestDAQReader(unittest.TestCase):
         self.st = st
         self.assertFalse(self.st.is_stored(self.run_id, "raw_records"))
 
+        # load fake rundocs
+        self._orig = protocols.read_rundoc
+
+        def _fake(*args, **kwargs):
+            return self.fake_rundoc_999999
+
+        clear_config_caches()
+        URLConfig.register("rundoc", _fake)
+
     def tearDown(self) -> None:
         data_path = self.st.storage[0].path
         if os.path.exists(data_path):
             shutil.rmtree(data_path)
             print(f"rm {data_path}")
+
+        URLConfig.register("rundoc", self._orig)
+        clear_config_caches()
 
     # # Part C. Some utility functions for A & B
     def download_test_data(self):
