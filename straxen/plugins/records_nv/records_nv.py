@@ -2,7 +2,6 @@ import strax
 import straxen
 from straxen.plugins.defaults import NV_HIT_DEFAULTS
 
-
 export, __all__ = strax.exporter()
 
 
