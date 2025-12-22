@@ -850,7 +850,7 @@ class ReStrax(daq_core.DataBases):
 
     def _set_logger(self) -> None:
         versions = straxen.print_versions(
-            modules="strax straxen utilix daqnt numpy tensorflow numba".split(),
+            modules="strax straxen utilix daqnt numpy".split(),
             include_git=True,
             return_string=True,
         )
