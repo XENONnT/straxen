@@ -69,6 +69,11 @@ straxen.DAQReader.rechunk_on_load = False
 straxen.Peaklets.rechunk_on_load = False
 
 
+# Don't do the rechunk on load for raw_records and peaklets
+# It's something we do for offline reprocessing
+straxen.DAQReader.rechunk_on_load = False
+straxen.Peaklets.rechunk_on_load = False
+
 parser = argparse.ArgumentParser(description="XENONnT online processing manager")
 parser.add_argument(
     "--debug", action="store_true", help="Start strax processes with debug logging."
