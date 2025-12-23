@@ -50,7 +50,7 @@ if "check_global_version_configs" not in strax.Context.takes_config:
         ),
     )(strax.Context)
     _strax_context_check_global_version_decorated = False
-if not _strax_context_check_global_version_decorated:
+#if not _strax_context_check_global_version_decorated:
     # Overwrite get_components method
     # strax.Context.get_components = check_global_version_wrapper(strax.Context.get_components)
 
