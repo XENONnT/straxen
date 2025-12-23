@@ -38,7 +38,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.8"
+    __version__ = "0.5.9"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -403,8 +403,10 @@ class CorrectedAreas(strax.Plugin):
             # 2. S2 xy position correction
             # 3. SEG/EE correction
             # 4. Photoionization correction for S2 bottom
-            # 5. Electron lifetime correction
-            # 6. Relative charge yield correction
+            # 5. Relative charge yield correction
+            # 6. Electron lifetime correction
+            # Must make sure that the elife is the last
+            # because it will cause AFT nan for S2Only events
 
             s2_bias_correction = 1 + self.s2_bias_map(s2_area.reshape(-1, 1)).flatten()
             s2_xy_correction_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
@@ -427,8 +429,8 @@ class CorrectedAreas(strax.Plugin):
                 s2_xy_correction_bottom,
                 seg_ee_corr,
                 pi_corr_bottom,
-                elife_correction,
                 rel_cy_correction_factor,
+                elife_correction,
             ]
 
             for encoding in self.intermediate_cs2s:
