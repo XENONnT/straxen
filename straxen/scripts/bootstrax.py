@@ -357,7 +357,7 @@ def new_context(
         context.storage[0].local_only = True
 
     # not sure but maybe this was making the weird errors of day out of range
-    context.set_config({"check_global_version_configs": False})
+    context.set_context_config({"check_global_version_configs": False})
     return context
 
 
