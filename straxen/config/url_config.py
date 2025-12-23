@@ -129,6 +129,9 @@ class URLConfig(strax.Config):
 
         """
 
+        print("URL EVAL", protocol, arg, kwargs)
+
+        
         if protocol is not None and arg is None:
             protocol, arg, kwargs = cls.url_to_ast(protocol)
 
@@ -146,6 +149,8 @@ class URLConfig(strax.Config):
         # Just to be on the safe side
         kwargs = straxen.filter_kwargs(meth, kwargs)
 
+        print("RETURN METH", arg, kwargs)
+        
         return meth(arg, **kwargs)
 
     @classmethod
