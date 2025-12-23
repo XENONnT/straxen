@@ -62,9 +62,9 @@ if "plugin_attr_convert" not in strax.Context.takes_config:
         ),
     )(strax.Context)
     _strax_context_check_superruns_decorated = False
-if not _strax_context_check_superruns_decorated:
-    # Overwrite get_components method
-    strax.Context.get_components = check_superruns_wrapper(strax.Context.get_components)
+# if not _strax_context_check_superruns_decorated:
+#     # Overwrite get_components method
+#     strax.Context.get_components = check_superruns_wrapper(strax.Context.get_components)
 
 
 @strax.Context.add_method
