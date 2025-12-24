@@ -17,7 +17,7 @@ class EventBasicsVanilla(strax.Plugin):
 
     """
 
-    __version__ = "1.3.6"
+    __version__ = "1.3.7"
 
     depends_on = ("events", "peak_basics", "peak_positions", "peak_proximity")
     provides = "event_basics"
