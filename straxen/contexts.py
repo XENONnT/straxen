@@ -119,11 +119,13 @@ def xenonnt(
         "/project/lgrandi/xenonnt/processed_sr2_offline_round_1",
         "/project/lgrandi/xenonnt/processed_sr2_offline_round_2",
         "/project/lgrandi/xenonnt/processed_sr2_offline_round_3",
+        "/project/lgrandi/xenonnt/processed_sr2_offline_round_4",
         "/project2/lgrandi/xenonnt/processed",
         "/dali/lgrandi/xenonnt/processed",
         "/dali/lgrandi/xenonnt/processed_sr2_offline_round_1",
         "/dali/lgrandi/xenonnt/processed_sr2_offline_round_2",
         "/dali/lgrandi/xenonnt/processed_sr2_offline_round_3",
+        "/dali/lgrandi/xenonnt/processed_sr2_offline_round_4",
     ],
     # Testing options
     _database_init: bool = True,
