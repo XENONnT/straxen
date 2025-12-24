@@ -123,22 +123,25 @@ class EventBasicsVanilla(strax.Plugin):
             (f"alt_s2_x", np.float32, f"Alternate S2 reconstructed X position, uncorrected [cm]"),
             (f"alt_s2_y", np.float32, f"Alternate S2 reconstructed Y position, uncorrected [cm]"),
             (f"area_before_main_s2", np.float32, f"Sum of areas before Main S2 [PE]"),
-            (
-                f"large_s2_before_main_s2_area",
-                np.float32,
-                f"The largest S2 before the Main S2 [PE]",
-            ),
-            (
-                f"large_s2_before_main_s2_index",
-                np.int32,
-                f"Index of the largest S2 before the Main S2",
-            ),
-            (
-                f"large_s2_before_main_s2_center_time",
-                np.int64,
-                f"Center time of the largest S2 before the Main S2 [ns]",
-            ),
         ]
+        for where in ["before", "after"]:
+            dtype += [
+                (
+                    f"large_s2_{where}_main_s2_area",
+                    np.float32,
+                    f"The largest S2 {where} the Main S2 [PE]",
+                ),
+                (
+                    f"large_s2_{where}_main_s2_index",
+                    np.int32,
+                    f"Index of the largest S2 {where} the Main S2",
+                ),
+                (
+                    f"large_s2_{where}_main_s2_center_time",
+                    np.int64,
+                    f"Center time of the largest S2 {where} the Main S2 [ns]",
+                ),
+            ]
 
         dtype += self._get_posrec_dtypes()
         return dtype
@@ -367,18 +370,19 @@ class EventBasicsVanilla(strax.Plugin):
 
         # areas before main S2
         if len(largest_s2s):
-            peaks_before_ms2 = ~np.isnan(peaks["area"])
-            peaks_before_ms2 &= peaks["center_time"] < largest_s2s[0]["center_time"]
-            result["area_before_main_s2"] = np.sum(peaks["area"][peaks_before_ms2])
-
-            s2_before_ms2 = peaks_before_ms2 & (peaks["type"] == 2)
-            if np.any(s2_before_ms2):
-                i = np.arange(len(peaks))[s2_before_ms2][
-                    np.argmax(peaks["area"][s2_before_ms2]).item()
-                ]
-                result["large_s2_before_main_s2_area"] = peaks["area"][i]
-                result["large_s2_before_main_s2_index"] = i
-                result["large_s2_before_main_s2_center_time"] = peaks["center_time"][i]
+            peaks_before_ms2 = ~np.isnan(peaks["area"]) & (peaks["type"] == 2)
+            masks = [
+                peaks_before_ms2 & (peaks["center_time"] > largest_s2s[0]["center_time"]),
+                peaks_before_ms2 & (peaks["center_time"] < largest_s2s[0]["center_time"]),
+            ]
+            for mask, where in zip(masks, ["after", "before"]):
+                if np.any(mask):
+                    i = np.arange(len(peaks))[mask][np.argmax(peaks["area"][mask]).item()]
+                    result[f"large_s2_{where}_main_s2_area"] = peaks["area"][i]
+                    result[f"large_s2_{where}_main_s2_index"] = i
+                    result[f"large_s2_{where}_main_s2_center_time"] = peaks["center_time"][i]
+            # make sure masks arein order after & before
+            result["area_before_main_s2"] = np.sum(peaks["area"][mask])
         return result
 
     @staticmethod
