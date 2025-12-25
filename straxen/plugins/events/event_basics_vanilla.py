@@ -369,20 +369,27 @@ class EventBasicsVanilla(strax.Plugin):
                 )
 
         # areas before main S2
-        if len(largest_s2s):
-            peaks_before_ms2 = ~np.isnan(peaks["area"]) & (peaks["type"] == 2)
-            masks = [
-                peaks_before_ms2 & (peaks["center_time"] > largest_s2s[0]["center_time"]),
-                peaks_before_ms2 & (peaks["center_time"] < largest_s2s[0]["center_time"]),
-            ]
-            for mask, where in zip(masks, ["after", "before"]):
-                if np.any(mask):
-                    i = np.arange(len(peaks))[mask][np.argmax(peaks["area"][mask]).item()]
-                    result[f"large_s2_{where}_main_s2_area"] = peaks["area"][i]
-                    result[f"large_s2_{where}_main_s2_index"] = i
-                    result[f"large_s2_{where}_main_s2_center_time"] = peaks["center_time"][i]
-            # make sure masks arein order after & before
-            result["area_before_main_s2"] = np.sum(peaks["area"][mask])
+        if len(largest_s2s) > 0:
+            main_ct = largest_s2s[0]["center_time"]
+            s2_mask = (~np.isnan(peaks["area"])) & (peaks["type"] == 2)
+
+            after_mask = s2_mask & (peaks["center_time"] > main_ct)
+            before_mask = s2_mask & (peaks["center_time"] < main_ct)
+
+            if np.any(after_mask):
+                i = np.arange(len(peaks))[after_mask][np.argmax(peaks["area"][after_mask]).item()]
+                result["large_s2_after_main_s2_area"] = peaks["area"][i]
+                result["large_s2_after_main_s2_index"] = i
+                result["large_s2_after_main_s2_center_time"] = peaks["center_time"][i]
+
+            if np.any(before_mask):
+                i = np.arange(len(peaks))[before_mask][np.argmax(peaks["area"][before_mask]).item()]
+                result["large_s2_before_main_s2_area"] = peaks["area"][i]
+                result["large_s2_before_main_s2_index"] = i
+                result["large_s2_before_main_s2_center_time"] = peaks["center_time"][i]
+
+            # sum of areas before main S2 (your original code used the *last* loop mask by accident)
+            result["area_before_main_s2"] = np.sum(peaks["area"][before_mask])
         return result
 
     @staticmethod
