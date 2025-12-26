@@ -1,3 +1,11 @@
+3.2.5 / 2025-12-26
+-------------------
+* Add more offline reprocessing storage paths by @dachengx in https://github.com/XENONnT/straxen/pull/1633
+* Largest S2 before and after the main S2 by @dachengx in https://github.com/XENONnT/straxen/pull/1634
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.4...v3.2.5
+
+
 3.2.4 / 2025-12-21
 -------------------
 * Skip `cs2_area_fraction_top` check when `cs2` is NaN by @dachengx in https://github.com/XENONnT/straxen/pull/1625
