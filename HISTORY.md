@@ -1,3 +1,10 @@
+3.2.6 / 2026-01-13
+-------------------
+* fixed relative charge yield implementation by @caioishikawa in https://github.com/XENONnT/straxen/pull/1636
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.5...v3.2.6
+
+
 3.2.5 / 2025-12-26
 -------------------
 * Add more offline reprocessing storage paths by @dachengx in https://github.com/XENONnT/straxen/pull/1633
