@@ -342,7 +342,7 @@ class CorrectedAreas(strax.Plugin):
         )
 
         # Apply rel_cy_correction
-        cs2_relcy = (cs2_top_wo_elife + cs2_bottom_wo_elife) * rel_cy_correction
+        cs2_relcy = (cs2_top_wo_elife + cs2_bottom_wo_elife) / rel_cy_correction
 
         # Apply elife to get total cS2
         cs2 = cs2_relcy * elife_correction
