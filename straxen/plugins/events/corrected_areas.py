@@ -38,7 +38,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.9"
+    __version__ = "0.5.10"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -342,7 +342,7 @@ class CorrectedAreas(strax.Plugin):
         )
 
         # Apply rel_cy_correction
-        cs2_relcy = (cs2_top_wo_elife + cs2_bottom_wo_elife) * rel_cy_correction
+        cs2_relcy = (cs2_top_wo_elife + cs2_bottom_wo_elife) / rel_cy_correction
 
         # Apply elife to get total cS2
         cs2 = cs2_relcy * elife_correction
