@@ -10,7 +10,7 @@ class SCInterfaceTest(unittest.TestCase):
         self.resources_available()
         # Simple query test:
         # Query 5 s of data:
-        self.start = 1609682275000000000
+        self.start = 1709682275000000000
         # Add micro-second to check if query does not fail if inquery precsion > SC precision
         self.start += 10**6
         self.end = self.start + 5 * straxen.units.s
