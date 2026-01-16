@@ -38,7 +38,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.10"
+    __version__ = "0.5.11"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
