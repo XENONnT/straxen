@@ -1,3 +1,10 @@
+3.2.7 / 2026-01-16
+-------------------
+* fixed the order of the corrections in apply_s2_correction() by @caioishikawa in https://github.com/XENONnT/straxen/pull/1638
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.6...v3.2.7
+
+
 3.2.6 / 2026-01-13
 -------------------
 * fixed relative charge yield implementation by @caioishikawa in https://github.com/XENONnT/straxen/pull/1636
