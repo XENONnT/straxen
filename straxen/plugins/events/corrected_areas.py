@@ -38,7 +38,7 @@ class CorrectedAreas(strax.Plugin):
 
     """
 
-    __version__ = "0.5.10"
+    __version__ = "0.6.0"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -319,8 +319,8 @@ class CorrectedAreas(strax.Plugin):
         s2_xy_correction_bottom,
         seg_ee_corr,
         pi_corr_bottom,
-        elife_correction,
         rel_cy_correction,
+        elife_correction,
     ):
         """Apply S2 corrections and return various corrected areas. To study the impact of
         individual corrections, parameters of this function can be set to 1, thereby excluding the
