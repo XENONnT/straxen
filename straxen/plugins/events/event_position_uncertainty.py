@@ -24,7 +24,6 @@ class EventPositionContour(strax.Plugin):
         provides (str): Output data type provided by this plugin.
         compressor (str): Compression algorithm used for data storage.
         data_kind (str): Kind of data this plugin processes.
-        loop_over (str): Data structure to iterate over during computation.
 
     Configuration options:
         n_poly (int): Number of points in the uncertainty contour.
@@ -42,7 +41,6 @@ class EventPositionContour(strax.Plugin):
     provides = "event_position_contour"
     compressor = "zstd"
     data_kind = "events"
-    loop_over = "events"
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
