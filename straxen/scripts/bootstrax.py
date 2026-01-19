@@ -45,6 +45,13 @@ from glob import glob
 from straxen import daq_core
 from straxen.daq_core import now
 
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message="MongoClient opened before fork",
+    category=UserWarning,
+)
 
 # Patch for targeted (uncompressed) chunk size
 straxen.DAQReader.chunk_target_size_mb = 50
