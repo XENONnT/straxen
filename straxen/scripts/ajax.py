@@ -956,7 +956,7 @@ def wait_on_delete_thread():
             wait = True
             while wait:
                 wait = False
-                if thread.isAlive():
+                if thread.is_alive():
                     log.info(
                         f"{thread.name} still running take a {ajax_thresholds['short_nap']} s nap"
                     )
