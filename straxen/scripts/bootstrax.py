@@ -341,16 +341,23 @@ log = daqnt.get_daq_logger(
 # -----------------------------------------------------------------------------
 
 def _configure_python_logging_for_debug(debug: bool) -> None:
-    """Configure stdlib logging so we can see mailbox logs in --debug."""
+    """Configure stdlib logging so we can see mailbox logs in --debug.
+
+    Important:
+    - Avoid touching the root logger/handlers in the parent. bootstrax uses daqnt/loguru
+      for its own output; if we add root handlers we can easily get duplicated lines.
+    - Instead, attach a dedicated StreamHandler only to the loggers we care about
+      (strax mailbox / processors) and disable propagation for them.
+    """
     if not debug:
         return
 
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    def _ensure_stream_handler(lgr: logging.Logger) -> None:
+        # Do not add duplicates if bootstrax is reloaded or called multiple times
+        for h in lgr.handlers:
+            if isinstance(h, logging.StreamHandler) and getattr(h, "_bootstrax_mailbox_handler", False):
+                return
 
-    # Ensure there is at least one stdlib handler, but do NOT reuse DAQ handlers
-    # (that causes double logging and is not fork-safe).
-    if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
         sh = logging.StreamHandler(stream=sys.stdout)
         sh.setLevel(logging.DEBUG)
         sh.setFormatter(
@@ -359,22 +366,38 @@ def _configure_python_logging_for_debug(debug: bool) -> None:
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
         )
-        root.addHandler(sh)
+        # Mark so we can detect it later
+        sh._bootstrax_mailbox_handler = True  # type: ignore[attr-defined]
+        lgr.addHandler(sh)
 
-    # Only mailbox / processor loggers verbose
+    # The logger we will use for our own mailbox heartbeat
+    hb = logging.getLogger("bootstrax.mailbox")
+    hb.setLevel(logging.DEBUG)
+    hb.propagate = False
+    _ensure_stream_handler(hb)
+
+    # Enable mailbox-related DEBUG and ensure they do NOT propagate into any
+    # other handler stacks (daqnt/loguru), to avoid double printing.
     for name in (
         "ThreadedMailboxProcessor",
         "strax.mailbox",
         "strax.processors.threaded_mailbox",
+        "strax.processors.mailbox",
         "strax.processors",
     ):
-        logging.getLogger(name).setLevel(logging.DEBUG)
+        lgr = logging.getLogger(name)
+        lgr.setLevel(logging.DEBUG)
+        lgr.propagate = False
+        _ensure_stream_handler(lgr)
 
     # Silence the spammy ones regardless
     for name in (
-        "numba", "numba.core", "numba.parfors",
+        "numba",
+        "numba.core",
+        "numba.parfors",
         "llvmlite",
-        "jax", "jaxlib",
+        "jax",
+        "jaxlib",
     ):
         logging.getLogger(name).setLevel(logging.WARNING)
 
@@ -405,30 +428,37 @@ def _configure_child_logging_for_debug(debug: bool) -> None:
     # Always rebind: daqnt handlers are not fork-safe.
     _rebind_global_log_to_stream(f"{log_name}.child")
 
-    # Ensure DEBUG logs from stdlib loggers are not filtered out in the child
     root = logging.getLogger()
 
-    if debug:
-        # Drop any inherited handlers (daqnt / previous config) to avoid duplicates
-        root.handlers = []
-        sh = logging.StreamHandler(stream=sys.stdout)
-        sh.setLevel(logging.DEBUG)
-        sh.setFormatter(logging.Formatter(
+    # In the child, we *do* control the stdlib logging stack.
+    # Start from a clean slate to avoid inherited handlers and duplicate output.
+    root.handlers = []
+
+    sh = logging.StreamHandler(stream=sys.stdout)
+    sh.setLevel(logging.DEBUG if debug else logging.INFO)
+    sh.setFormatter(
+        logging.Formatter(
             fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
-        ))
-        root.addHandler(sh)
+        )
+    )
+    # Mark so we can detect it later
+    sh._bootstrax_mailbox_handler = True  # type: ignore[attr-defined]
+    root.addHandler(sh)
 
     root.setLevel(logging.DEBUG if debug else logging.INFO)
-    for h in root.handlers:
-        # Ensure handlers don't filter out DEBUG records when --debug is used
-        if debug:
-            h.setLevel(logging.DEBUG)
 
     if debug:
-        logging.getLogger("ThreadedMailboxProcessor").setLevel(logging.DEBUG)
-        logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
-        logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
+        for name in (
+            "ThreadedMailboxProcessor",
+            "strax.mailbox",
+            "strax.processors.threaded_mailbox",
+            "strax.processors.mailbox",
+            "strax.processors",
+        ):
+            lgr = logging.getLogger(name)
+            lgr.setLevel(logging.DEBUG)
+            lgr.propagate = False
 
         for name in (
             "numba", "numba.core", "numba.parfors",
@@ -1507,32 +1537,6 @@ def run_strax(
     # double check by forcefully clearing shm
     clear_shm()
 
-    if debug:
-        # Root/handlers are configured by _configure_child_logging_for_debug(debug).
-        # Here we only tweak specific logger levels.
-        for name in (
-            "ThreadedMailboxProcessor",
-            "strax.mailbox",
-            "strax.processors.threaded_mailbox",
-            "strax.processors.mailbox",
-            "strax.processors",
-        ):
-            logging.getLogger(name).setLevel(logging.DEBUG)
-
-        # Reduce noise from common chatty dependencies
-        for noisy in (
-            "numba",
-            "numba.core",
-            "numba.core.byteflow",
-            "numba.core.ssa",
-            "numba.core.ir",
-            "numba.core.interpreter",
-            "llvmlite",
-            "llvmlite.binding",
-            "jax",
-            "jaxlib",
-        ):
-            logging.getLogger(noisy).setLevel(logging.WARNING)
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 
@@ -1559,8 +1563,8 @@ def run_strax(
         # Patch the actual registered plugin classes
         # Processes for CNF/SOM, threads for light tail
         for k, mode in [
-            ("peaklet_positions_cnf", "process"),
-            ("peaklet_classification", "process"),
+            ("peaklet_positions_cnf", True),
+            ("peaklet_classification", True),
             ("peaks", True),
             ("peak_basics", True),
         ]:
@@ -1699,7 +1703,9 @@ def run_strax(
             """Run strax."""
 
             if debug:
-                _bootstrax_start_mailbox_heartbeat(logging.getLogger("bootstrax.mailbox"), interval_s=5.0)
+                hb = logging.getLogger("bootstrax.mailbox")
+                hb.propagate = False
+                _bootstrax_start_mailbox_heartbeat(hb, interval_s=5.0)
 
             strax_config = dict(
                 daq_input_dir=input_dir,
