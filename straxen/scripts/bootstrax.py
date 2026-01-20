@@ -410,9 +410,12 @@ def _configure_python_logging_for_debug(debug: bool) -> None:
 
     # Silence the spammy ones regardless
     for name in (
-        "numba", "numba.core", "numba.parfors",
+        "numba",
+        "numba.core",
+        "numba.parfors",
         "llvmlite",
-        "jax", "jaxlib",
+        "jax",
+        "jaxlib",
     ):
         logging.getLogger(name).setLevel(logging.WARNING)
 
