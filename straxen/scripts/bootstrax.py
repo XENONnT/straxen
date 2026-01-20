@@ -329,46 +329,34 @@ log = daqnt.get_daq_logger(
 # Also, some deps (numba/jax/llvmlite) can be extremely chatty.
 # -----------------------------------------------------------------------------
 if args.debug:
-    _fmt = logging.Formatter(
-        fmt="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    # Ensure root has at least one handler, but keep it at INFO to avoid floods.
+    # 1) Attach DAQ handlers to root so library loggers become visible
     root = logging.getLogger()
-    if not root.handlers:
-        _h = logging.StreamHandler(stream=sys.stdout)
-        _h.setFormatter(_fmt)
-        root.addHandler(_h)
-    root.setLevel(logging.INFO)
+    root.setLevel(logging.INFO)  # keep root sane
 
-    # Turn on strax mailbox / processor debug output.
-    for _lname in (
-        "strax.mailbox",
-        "strax.processors.threaded_mailbox",
-        "ThreadedMailboxProcessor",
-        "strax",
-    ):
-        _l = logging.getLogger(_lname)
-        _l.setLevel(logging.DEBUG)
-        _l.propagate = True
+    for h in daq_logger.handlers:
+        # Avoid double-adding handlers if this runs more than once
+        if h not in root.handlers:
+            root.addHandler(h)
 
-    # Silence known noisy libraries unless they warn/error.
-    for _noisy in (
-        "numba",
-        "numba.core",
-        "numba.core.byteflow",
-        "numba.core.ssa",
-        "numba.core.ir",
-        "numba.core.interpreter",
+    # 2) Make *only* mailbox / processor loggers verbose
+    if debug:
+        for name in (
+            "ThreadedMailboxProcessor",   # <--- this is the big one in your code
+            "Mailbox",                    # sometimes used by strax.Mailbox (depends on version)
+            "strax",
+            "strax.mailbox",
+            "strax.processors",
+        ):
+            logging.getLogger(name).setLevel(logging.DEBUG)
+
+    # 3) Silence the spammy ones regardless
+    for name in (
+        "numba", "numba.core", "numba.parfors",
         "llvmlite",
-        "llvmlite.binding",
-        "jax",
-        "jaxlib",
-        "jax._src",
-        "jax._src.xla_bridge",
+        "jax", "jaxlib",
     ):
-        logging.getLogger(_noisy).setLevel(logging.WARNING)
+        logging.getLogger(name).setLevel(logging.WARNING)
+
 
 # Set the output folder
 output_folder = daq_core.pre_folder if args.production else test_data_folder
