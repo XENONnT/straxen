@@ -340,15 +340,14 @@ if args.debug:
             root.addHandler(h)
 
     # 2) Make *only* mailbox / processor loggers verbose
-    if debug:
-        for name in (
-            "ThreadedMailboxProcessor",   # <--- this is the big one in your code
-            "Mailbox",                    # sometimes used by strax.Mailbox (depends on version)
-            "strax",
-            "strax.mailbox",
-            "strax.processors",
-        ):
-            logging.getLogger(name).setLevel(logging.DEBUG)
+    for name in (
+        "ThreadedMailboxProcessor",   # <--- this is the big one in your code
+        "Mailbox",                    # sometimes used by strax.Mailbox (depends on version)
+        "strax",
+        "strax.mailbox",
+        "strax.processors",
+    ):
+        logging.getLogger(name).setLevel(logging.DEBUG)
 
     # 3) Silence the spammy ones regardless
     for name in (
