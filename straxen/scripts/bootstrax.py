@@ -333,7 +333,11 @@ log = daqnt.get_daq_logger(
 
 
 # -----------------------------------------------------------------------------
-# Python stdlib logging configuration
+# Python logging configuration for --debug
+#
+# Bootstrax uses a DAQ logger (daqnt), but strax (including Mailbox) uses the
+# stdlib `logging` module. We want mailbox DEBUG logs without enabling a flood
+# from numba/jax/llvmlite.
 #
 # Bootstrax uses a DAQ logger (daqnt), but strax (including Mailbox) uses the
 # stdlib `logging` module. We want mailbox DEBUG logs without enabling a flood
@@ -406,12 +410,9 @@ def _configure_python_logging_for_debug(debug: bool) -> None:
 
     # Silence the spammy ones regardless
     for name in (
-        "numba",
-        "numba.core",
-        "numba.parfors",
+        "numba", "numba.core", "numba.parfors",
         "llvmlite",
-        "jax",
-        "jaxlib",
+        "jax", "jaxlib",
     ):
         logging.getLogger(name).setLevel(logging.WARNING)
 
@@ -1515,7 +1516,6 @@ def manual_fail(*, mongo_id=None, number=None, reason=""):
 
 
 def run_strax(
-    _configure_child_logging_if_needed(args.debug)
     run_id,
     input_dir,
     targets,
