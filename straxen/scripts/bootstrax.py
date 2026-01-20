@@ -1558,10 +1558,93 @@ def run_strax(
                 log.warning(f"Cannot patch {k}: not in registry")
 
 
+
+
+        import weakref
+
+        _BOOTSTRAX_MAILBOXES = weakref.WeakSet()
+
+
+        def _bootstrax_patch_mailbox_registry() -> None:
+            """Patch `strax.Mailbox.__init__` once to register created mailboxes."""
+            if getattr(strax.Mailbox, "_bootstrax_registry_patched", False):
+                return
+
+            _orig_init = strax.Mailbox.__init__
+
+            def _init_and_register(self, *args, **kwargs):
+                _orig_init(self, *args, **kwargs)
+                try:
+                    _BOOTSTRAX_MAILBOXES.add(self)
+                except Exception:
+                    pass
+
+            strax.Mailbox.__init__ = _init_and_register  # type: ignore[assignment]
+            strax.Mailbox._bootstrax_registry_patched = True  # type: ignore[attr-defined]
+
+
+        def _bootstrax_mailbox_snapshot(m) -> str:
+            parts = [
+                f"name={getattr(m, 'name', '?')}",
+                f"max={getattr(m, 'max_messages', '?')}",
+                f"timeout={getattr(m, 'timeout', '?')}",
+            ]
+
+            # Best-effort buffer length across strax versions
+            for attr in ("_mailbox", "_queue", "_buffer", "_messages", "_items"):
+                if hasattr(m, attr):
+                    try:
+                        parts.append(f"{attr}={len(getattr(m, attr))}")
+                    except Exception:
+                        pass
+
+            # Threads started by mailbox (ThreadedMailboxProcessor creates these)
+            threads = getattr(m, "_threads", None)
+            if threads:
+                try:
+                    parts.append(
+                        "threads=" + ",".join([f"{t.name}:{'alive' if t.is_alive() else 'dead'}" for t in threads])
+                    )
+                except Exception:
+                    pass
+
+            return " ".join(parts)
+
+
+        def _bootstrax_start_mailbox_heartbeat(logger: logging.Logger, interval_s: float = 5.0) -> None:
+            """Start a daemon thread that periodically logs mailbox snapshots."""
+            _bootstrax_patch_mailbox_registry()
+
+            if getattr(_bootstrax_start_mailbox_heartbeat, "_started", False):
+                return
+
+            stop_evt = threading.Event()
+
+            def _worker():
+                while not stop_evt.is_set():
+                    try:
+                        mbs = list(_BOOTSTRAX_MAILBOXES)
+                        if mbs:
+                            logger.debug("Mailbox heartbeat (%d mailboxes):", len(mbs))
+                            for m in sorted(mbs, key=lambda x: getattr(x, "name", "")):
+                                logger.debug("  %s", _bootstrax_mailbox_snapshot(m))
+                    except Exception:
+                        pass
+                    stop_evt.wait(interval_s)
+
+            t = threading.Thread(target=_worker, name="mailbox-heartbeat", daemon=True)
+            t.start()
+            _bootstrax_start_mailbox_heartbeat._started = True  # type: ignore[attr-defined]
+
+
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
             """Run strax."""
+
+            if args.debug:
+                _bootstrax_start_mailbox_heartbeat(log, interval_s=5.0)
+
             strax_config = dict(
                 daq_input_dir=input_dir,
                 daq_compressor=compressor,
