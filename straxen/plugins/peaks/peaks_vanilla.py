@@ -53,12 +53,14 @@ class PeaksVanilla(strax.Plugin):
         return merged_dtype
 
     def compute(self, peaklets, merged_s2s):
-        _peaks = self.replace_merged(peaklets, merged_s2s, merge_s0=self.merge_s0)
+        # Force merged_s2s into peaklets dtype (SOM-style)
+        _merged_s2s = strax.merge_arrs([merged_s2s], dtype=peaklets.dtype)
+
+        _peaks = self.replace_merged(peaklets, _merged_s2s, merge_s0=self.merge_s0)
 
         if self.diagnose_sorting:
             assert np.all(np.diff(_peaks["time"]) >= 0), "Peaks not sorted"
             to_check = _peaks["type"] == 2
-
             assert np.all(
                 _peaks["time"][to_check][1:] >= strax.endtime(_peaks)[to_check][:-1]
             ), "Peaks not disjoint"
@@ -66,6 +68,7 @@ class PeaksVanilla(strax.Plugin):
         peaks = np.zeros(len(_peaks), dtype=self.dtype)
         strax.copy_to_buffer(_peaks, peaks, f"_copy_requested_{self.provides[0]}_fields")
         return peaks
+
 
     @staticmethod
     def replace_merged(peaklets, merged_s2s, merge_s0=True):
