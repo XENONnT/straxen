@@ -81,7 +81,6 @@ class PeaksVanilla(strax.Plugin):
 
         return peaks
 
-
     @staticmethod
     def replace_merged(peaklets, merged_s2s, merge_s0=True):
         # pick out type FAR_XYPOS_S2_TYPE because they might overlap with other merged S2s
