@@ -1373,8 +1373,40 @@ def run_strax(
     clear_shm()
 
     if debug:
-        logging.basicConfig(force=True)
-        logging.getLogger().setLevel(logging.DEBUG)
+        # Keep debug output focused on strax mailbox internals.
+        # Do NOT set the root logger to DEBUG, otherwise libraries such as numba
+        # flood the logs.
+        logging.basicConfig(
+            level=logging.INFO,
+            force=True,
+            format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
+        )
+
+        # Enable detailed mailbox / processor debug logs
+        for name in (
+            "strax.mailbox",
+            "strax.processors.threaded_mailbox",
+            "strax.processors.mailbox",
+            "strax.processors",
+        ):
+            logging.getLogger(name).setLevel(logging.DEBUG)
+
+        # Reduce noise from common chatty dependencies
+        for noisy in (
+            "numba",
+            "numba.core",
+            "numba.core.byteflow",
+            "numba.core.ssa",
+            "numba.core.ir",
+            "numba.core.interpreter",
+            "llvmlite",
+            "llvmlite.binding",
+        ):
+            logging.getLogger(noisy).setLevel(logging.WARNING)
+
+        # If something still floods, it will usually be on the root logger;
+        # keep it at INFO.
+        logging.getLogger().setLevel(logging.INFO)
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 
@@ -1389,6 +1421,10 @@ def run_strax(
             max_messages=max_messages,
             timeout=timeout,
         )
+        # Ensure strax mailbox debug logging stays enabled after context creation
+        if debug:
+            logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
+            logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
 
         for t in ("raw_records", "records", "records_nv", "hitlets_nv"):
             # Set the (raw)records processor to the inferred one
