@@ -59,16 +59,15 @@ straxen.Peaklets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 
 # Suppose these are the classes you want to parallelize
-from straxen import PeakletClassificationSOM
-from straxen import PeakletPositionsCNF
-from straxen import PeaksSOM
-from straxen import PeakBasicsSOM
-
-# Option A: threads
-PeakletClassificationSOM.parallel = True
-PeakletPositionsCNF.parallel = True
-PeaksSOM.parallel = True
-PeakBasicsSOM.parallel = True
+# Safer we do it later after st = get_context()
+# from straxen import PeakletClassificationSOM
+# from straxen import PeakletPositionsCNF
+# from straxen import PeaksSOM
+# from straxen import PeakBasicsSOM
+# PeakletClassificationSOM.parallel = True
+# PeakletPositionsCNF.parallel = True
+# PeaksSOM.parallel = True
+# PeakBasicsSOM.parallel = True
 
 # Don't do the rechunk on load for raw_records and peaklets
 # It's something we do for offline reprocessing
@@ -1394,6 +1393,21 @@ def run_strax(
         for t in ("raw_records", "records", "records_nv", "hitlets_nv"):
             # Set the (raw)records processor to the inferred one
             st._plugin_class_registry[t].compressor = records_compressor
+
+        # Patch the actual registered plugin classes
+        # Processes for CNF/SOM, threads for light tail
+        for k, mode in [
+            ("peaklet_positions_cnf", "process"),
+            ("peaklet_classification", "process"),
+            ("peaks", True),
+            ("peak_basics", True),
+        ]:
+            if k in st._plugin_class_registry:
+                st._plugin_class_registry[k].parallel = mode
+                log.info(f"Patched {k}.parallel -> {mode}")
+            else:
+                log.warning(f"Cannot patch {k}: not in registry")
+
 
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
