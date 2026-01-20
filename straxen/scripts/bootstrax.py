@@ -333,7 +333,7 @@ log = daqnt.get_daq_logger(
 
 
 # -----------------------------------------------------------------------------
-# Python logging configuration for --debug
+# Python stdlib logging configuration
 #
 # Bootstrax uses a DAQ logger (daqnt), but strax (including Mailbox) uses the
 # stdlib `logging` module. We want mailbox DEBUG logs without enabling a flood
@@ -1515,6 +1515,7 @@ def manual_fail(*, mongo_id=None, number=None, reason=""):
 
 
 def run_strax(
+    _configure_child_logging_if_needed(args.debug)
     run_id,
     input_dir,
     targets,
