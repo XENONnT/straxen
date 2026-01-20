@@ -330,10 +330,11 @@ log = daqnt.get_daq_logger(
 # -----------------------------------------------------------------------------
 if args.debug:
     # 1) Attach DAQ handlers to root so library loggers become visible
+
     root = logging.getLogger()
     root.setLevel(logging.INFO)  # keep root sane
 
-    for h in daq_logger.handlers:
+    for h in log.handlers:
         # Avoid double-adding handlers if this runs more than once
         if h not in root.handlers:
             root.addHandler(h)
