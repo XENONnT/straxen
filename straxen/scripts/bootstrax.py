@@ -320,6 +320,55 @@ log = daqnt.get_daq_logger(
     opening_message=f"I am processing with these software versions: {versions}",
 )
 
+# -----------------------------------------------------------------------------
+# Python logging configuration for --debug
+#
+# Bootstrax uses a DAQ logger, but strax (including Mailbox) uses the stdlib
+# `logging` module. Without a handler, mailbox DEBUG logsmsgs won't show up.
+# Also, some deps (numba/jax/llvmlite) can be extremely chatty.
+# -----------------------------------------------------------------------------
+if args.debug:
+    _fmt = logging.Formatter(
+        fmt="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # Ensure root has at least one handler, but keep it at INFO to avoid floods.
+    root = logging.getLogger()
+    if not root.handlers:
+        _h = logging.StreamHandler(stream=sys.stdout)
+        _h.setFormatter(_fmt)
+        root.addHandler(_h)
+    root.setLevel(logging.INFO)
+
+    # Turn on strax mailbox / processor debug output.
+    for _lname in (
+        "strax.mailbox",
+        "strax.processors.threaded_mailbox",
+        "ThreadedMailboxProcessor",
+        "strax",
+    ):
+        _l = logging.getLogger(_lname)
+        _l.setLevel(logging.DEBUG)
+        _l.propagate = True
+
+    # Silence known noisy libraries unless they warn/error.
+    for _noisy in (
+        "numba",
+        "numba.core",
+        "numba.core.byteflow",
+        "numba.core.ssa",
+        "numba.core.ir",
+        "numba.core.interpreter",
+        "llvmlite",
+        "llvmlite.binding",
+        "jax",
+        "jaxlib",
+        "jax._src",
+        "jax._src.xla_bridge",
+    ):
+        logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 # Set the output folder
 output_folder = daq_core.pre_folder if args.production else test_data_folder
 
@@ -382,6 +431,9 @@ def new_context(
 
     # not sure but maybe this was making the weird errors of day out of range
     context.set_context_config({"check_global_version_configs": False})
+    if args.debug:
+        logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
+        logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
     return context
 
 
