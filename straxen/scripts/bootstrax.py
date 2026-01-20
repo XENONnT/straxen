@@ -322,40 +322,85 @@ log = daqnt.get_daq_logger(
 )
 
 # -----------------------------------------------------------------------------
-# Python logging configuration for --debug
+# Python stdlib logging configuration
 #
-# Bootstrax uses a DAQ logger, but strax (including Mailbox) uses the stdlib
-# `logging` module. Without a handler, mailbox DEBUG logsmsgs won't show up.
-# Also, some deps (numba/jax/llvmlite) can be extremely chatty.
+# Bootstrax uses a DAQ logger (daqnt), while strax uses the stdlib `logging`.
+# We want to:
+#   - see mailbox/processor debug when --debug
+#   - avoid numba/jax/llvmlite spam
+#   - avoid duplicated log lines
+#   - avoid daqnt file-handler issues in forked child processes
 # -----------------------------------------------------------------------------
-if args.debug:
-    # 1) Attach DAQ handlers to root so library loggers become visible
+MAIN_PID = os.getpid()
 
+
+def _configure_std_logging(debug: bool) -> None:
+    """Configure stdlib logging so that strax/mailbox debug can be shown.
+
+    We intentionally do NOT attach the daqnt handlers to the root logger, since
+    doing so causes duplicated log lines and can break in forked child processes
+    (daqnt file handler may be closed in the child).
+    """
     root = logging.getLogger()
-    root.setLevel(logging.INFO)  # keep root sane
+    root.setLevel(logging.INFO)
 
-    for h in log.handlers:
-        # Avoid double-adding handlers if this runs more than once
-        if h not in root.handlers:
-            root.addHandler(h)
+    # Ensure there's at least one stream handler for stdlib logs
+    if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
+        sh = logging.StreamHandler()
+        sh.setFormatter(
+            logging.Formatter("%(asctime)s | %(levelname)-7s | %(name)s | %(message)s")
+        )
+        root.addHandler(sh)
 
-    # 2) Make *only* mailbox / processor loggers verbose
+    # Prevent DAQ logger messages from being printed twice via root propagation
+    try:
+        log.propagate = False
+    except Exception:
+        pass
+
+    if debug:
+        for name in (
+            "ThreadedMailboxProcessor",
+            "Mailbox",
+            "strax.mailbox",
+            "strax.processors",
+            "strax.processors.threaded_mailbox",
+        ):
+            logging.getLogger(name).setLevel(logging.DEBUG)
+
+    # Silence common noisy deps
     for name in (
-        "ThreadedMailboxProcessor",   # <--- this is the big one in your code
-        "Mailbox",                    # sometimes used by strax.Mailbox (depends on version)
-        "strax",
-        "strax.mailbox",
-        "strax.processors",
-    ):
-        logging.getLogger(name).setLevel(logging.DEBUG)
-
-    # 3) Silence the spammy ones regardless
-    for name in (
-        "numba", "numba.core", "numba.parfors",
+        "numba",
+        "numba.core",
+        "numba.parfors",
         "llvmlite",
-        "jax", "jaxlib",
+        "jax",
+        "jaxlib",
     ):
         logging.getLogger(name).setLevel(logging.WARNING)
+
+
+def _configure_child_logging_if_needed(debug: bool) -> None:
+    """Make logging safe in multiprocessing child processes.
+
+    In a forked child, daqnt's file handler can be in a bad/closed state.
+    Remove handlers from the DAQ logger and let stdlib root handler print.
+    """
+    if os.getpid() == MAIN_PID:
+        return
+
+    # Detach problematic handlers in the child process
+    try:
+        for h in list(log.handlers):
+            log.removeHandler(h)
+    except Exception:
+        pass
+
+    # Ensure stdlib logging is configured in the child too
+    _configure_std_logging(debug)
+
+
+_configure_std_logging(args.debug)
 
 
 # Set the output folder
@@ -421,8 +466,7 @@ def new_context(
     # not sure but maybe this was making the weird errors of day out of range
     context.set_context_config({"check_global_version_configs": False})
     if args.debug:
-        logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
-        logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
+        pass
     return context
 
 
@@ -1389,6 +1433,7 @@ def manual_fail(*, mongo_id=None, number=None, reason=""):
 
 
 def run_strax(
+    _configure_child_logging_if_needed(args.debug)
     run_id,
     input_dir,
     targets,
