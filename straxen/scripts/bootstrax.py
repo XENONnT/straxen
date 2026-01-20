@@ -1724,36 +1724,54 @@ def run_strax(
             strax.Mailbox._bootstrax_registry_patched = True  # type: ignore[attr-defined]
 
 
-        def _bootstrax_mailbox_snapshot(m) -> str:
-            parts = [
-                f"name={getattr(m, 'name', '?')}",
-                f"max={getattr(m, 'max_messages', '?')}",
-                f"timeout={getattr(m, 'timeout', '?')}",
-            ]
-
-            # Best-effort buffer length across strax versions
+        def _bootstrax_mailbox_len(m) -> ty.Optional[int]:
+            """Best-effort mailbox queue length across strax versions."""
             for attr in ("_mailbox", "_queue", "_buffer", "_messages", "_items"):
                 if hasattr(m, attr):
                     try:
-                        parts.append(f"{attr}={len(getattr(m, attr))}")
+                        return len(getattr(m, attr))
                     except Exception:
                         pass
+            return None
 
-            # Threads started by mailbox (ThreadedMailboxProcessor creates these)
+
+        def _bootstrax_mailbox_snapshot(m) -> ty.Optional[ty.Tuple[float, str]]:
+            """Return (fill_fraction, human_string) or None if not measurable."""
+            name = getattr(m, "name", "?")
+            maxm = getattr(m, "max_messages", None)
+            q = _bootstrax_mailbox_len(m)
+            if q is None or not isinstance(maxm, int) or maxm <= 0:
+                return None
+
+            fill = q / maxm
+            tag = " FULL" if q >= maxm else ""
+
+            # Include threads status (short)
             threads = getattr(m, "_threads", None)
+            tinfo = ""
             if threads:
                 try:
-                    parts.append(
-                        "threads=" + ",".join([f"{t.name}:{'alive' if t.is_alive() else 'dead'}" for t in threads])
-                    )
+                    alive = [t.name for t in threads if t.is_alive()]
+                    dead = [t.name for t in threads if not t.is_alive()]
+                    if alive or dead:
+                        tinfo = f" thr(+{len(alive)}/-{len(dead)})"
                 except Exception:
                     pass
 
-            return " ".join(parts)
+            return fill, f"{name}={q}/{maxm}{tag}{tinfo}"
 
 
-        def _bootstrax_start_mailbox_heartbeat(logger: logging.Logger, interval_s: float = 5.0) -> None:
-            """Start a daemon thread that periodically logs mailbox snapshots."""
+        def _bootstrax_start_mailbox_heartbeat(
+            logger: logging.Logger,
+            interval_s: float = 5.0,
+            only_interesting: bool = True,
+            top_n: int = 10,
+            near_full_frac: float = 0.80,
+        ) -> None:
+            """Start a daemon thread that periodically logs mailbox pressure.
+
+            Prints one compact line, prioritizing the most filled mailboxes.
+            """
             _bootstrax_patch_mailbox_registry()
 
             if getattr(_bootstrax_start_mailbox_heartbeat, "_started", False):
@@ -1765,12 +1783,37 @@ def run_strax(
                 while not stop_evt.is_set():
                     try:
                         mbs = list(_BOOTSTRAX_MAILBOXES)
-                        if mbs:
-                            logger.debug("Mailbox heartbeat (%d mailboxes):", len(mbs))
-                            for m in sorted(mbs, key=lambda x: getattr(x, "name", "")):
-                                logger.debug("  %s", _bootstrax_mailbox_snapshot(m))
+                        if not mbs:
+                            stop_evt.wait(interval_s)
+                            continue
+
+                        rows: ty.List[ty.Tuple[float, str]] = []
+                        for m in mbs:
+                            snap = _bootstrax_mailbox_snapshot(m)
+                            if snap is None:
+                                continue
+                            fill, s = snap
+
+                            if only_interesting:
+                                # Only show non-empty and near-full/full mailboxes
+                                # (this is what matters for backpressure)
+                                # Show anything >= near_full_frac OR FULL.
+                                # FULL is encoded by q/max == 1.0 or higher.
+                                if fill <= 0:
+                                    continue
+                                if fill < near_full_frac and fill < 1.0:
+                                    continue
+
+                            rows.append((fill, s))
+
+                        if rows:
+                            rows.sort(key=lambda x: x[0], reverse=True)
+                            msg = "MB: " + " | ".join([s for _, s in rows[:top_n]])
+                            logger.debug(msg)
                     except Exception:
+                        # Never crash the child on debug helpers
                         pass
+
                     stop_evt.wait(interval_s)
 
             t = threading.Thread(target=_worker, name="mailbox-heartbeat", daemon=True)
