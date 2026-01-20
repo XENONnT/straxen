@@ -321,86 +321,105 @@ log = daqnt.get_daq_logger(
     opening_message=f"I am processing with these software versions: {versions}",
 )
 
+
 # -----------------------------------------------------------------------------
-# Python stdlib logging configuration
+# Python logging configuration for --debug
 #
-# Bootstrax uses a DAQ logger (daqnt), while strax uses the stdlib `logging`.
-# We want to:
-#   - see mailbox/processor debug when --debug
-#   - avoid numba/jax/llvmlite spam
-#   - avoid duplicated log lines
-#   - avoid daqnt file-handler issues in forked child processes
+# Bootstrax uses a DAQ logger (daqnt), but strax (including Mailbox) uses the
+# stdlib `logging` module. We want mailbox DEBUG logs without enabling a flood
+# from numba/jax/llvmlite.
+#
+# IMPORTANT: bootstrax spawns a child process for strax. daqnt log handlers are
+# not fork-safe and can crash in the child with:
+#   ValueError: I/O operation on closed file
+#
+# Strategy:
+# - Parent: do NOT attach DAQ handlers to root (avoids duplicate logs).
+#   Instead, add a simple StreamHandler so stdlib logs can show.
+# - Child: rebind the global `log` to a stdlib Stream logger (no daqnt handlers)
+#   before any logging happens.
 # -----------------------------------------------------------------------------
-MAIN_PID = os.getpid()
 
+def _configure_python_logging_for_debug(debug: bool) -> None:
+    """Configure stdlib logging so we can see mailbox logs in --debug."""
+    if not debug:
+        return
 
-def _configure_std_logging(debug: bool) -> None:
-    """Configure stdlib logging so that strax/mailbox debug can be shown.
-
-    We intentionally do NOT attach the daqnt handlers to the root logger, since
-    doing so causes duplicated log lines and can break in forked child processes
-    (daqnt file handler may be closed in the child).
-    """
     root = logging.getLogger()
     root.setLevel(logging.INFO)
 
-    # Ensure there's at least one stream handler for stdlib logs
+    # Ensure there is at least one stdlib handler, but do NOT reuse DAQ handlers
+    # (that causes double logging and is not fork-safe).
     if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
-        sh = logging.StreamHandler()
+        sh = logging.StreamHandler(stream=sys.stdout)
+        sh.setLevel(logging.INFO)
         sh.setFormatter(
-            logging.Formatter("%(asctime)s | %(levelname)-7s | %(name)s | %(message)s")
+            logging.Formatter(
+                fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
         )
         root.addHandler(sh)
 
-    # Prevent DAQ logger messages from being printed twice via root propagation
-    try:
-        log.propagate = False
-    except Exception:
-        pass
-
-    if debug:
-        for name in (
-            "ThreadedMailboxProcessor",
-            "Mailbox",
-            "strax.mailbox",
-            "strax.processors",
-            "strax.processors.threaded_mailbox",
-        ):
-            logging.getLogger(name).setLevel(logging.DEBUG)
-
-    # Silence common noisy deps
+    # Only mailbox / processor loggers verbose
     for name in (
-        "numba",
-        "numba.core",
-        "numba.parfors",
+        "ThreadedMailboxProcessor",
+        "strax.mailbox",
+        "strax.processors.threaded_mailbox",
+        "strax.processors",
+    ):
+        logging.getLogger(name).setLevel(logging.DEBUG)
+
+    # Silence the spammy ones regardless
+    for name in (
+        "numba", "numba.core", "numba.parfors",
         "llvmlite",
-        "jax",
-        "jaxlib",
+        "jax", "jaxlib",
     ):
         logging.getLogger(name).setLevel(logging.WARNING)
 
 
-def _configure_child_logging_if_needed(debug: bool) -> None:
-    """Make logging safe in multiprocessing child processes.
+def _rebind_global_log_to_stream(logger_name: str) -> None:
+    """Replace global `log` (daqnt logger) by a fork-safe stdlib logger."""
+    global log
+    new_log = logging.getLogger(logger_name)
+    new_log.propagate = False
+    new_log.handlers = []
+    new_log.setLevel(logging.DEBUG if args.debug else logging.INFO)
 
-    In a forked child, daqnt's file handler can be in a bad/closed state.
-    Remove handlers from the DAQ logger and let stdlib root handler print.
-    """
-    if os.getpid() == MAIN_PID:
-        return
+    sh = logging.StreamHandler(stream=sys.stdout)
+    sh.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    sh.setFormatter(
+        logging.Formatter(
+            fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    new_log.addHandler(sh)
 
-    # Detach problematic handlers in the child process
-    try:
-        for h in list(log.handlers):
-            log.removeHandler(h)
-    except Exception:
-        pass
-
-    # Ensure stdlib logging is configured in the child too
-    _configure_std_logging(debug)
+    log = new_log
 
 
-_configure_std_logging(args.debug)
+def _configure_child_logging_for_debug(debug: bool) -> None:
+    """Called inside the multiprocessing child before any logging happens."""
+    # Always rebind: daqnt handlers are not fork-safe.
+    _rebind_global_log_to_stream(f"{log_name}.child")
+
+    if debug:
+        logging.getLogger("ThreadedMailboxProcessor").setLevel(logging.DEBUG)
+        logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
+        logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
+
+        for name in (
+            "numba", "numba.core", "numba.parfors",
+            "llvmlite",
+            "jax", "jaxlib",
+        ):
+            logging.getLogger(name).setLevel(logging.WARNING)
+
+
+# Configure parent-side stdlib logging (mailbox debug) if requested
+_configure_python_logging_for_debug(args.debug)
 
 
 # Set the output folder
@@ -466,7 +485,8 @@ def new_context(
     # not sure but maybe this was making the weird errors of day out of range
     context.set_context_config({"check_global_version_configs": False})
     if args.debug:
-        pass
+        logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
+        logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
     return context
 
 
@@ -1433,7 +1453,6 @@ def manual_fail(*, mongo_id=None, number=None, reason=""):
 
 
 def run_strax(
-    _configure_child_logging_if_needed(args.debug)
     run_id,
     input_dir,
     targets,
