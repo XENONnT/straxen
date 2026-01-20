@@ -59,10 +59,10 @@ straxen.Peaklets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 
 # Suppose these are the classes you want to parallelize
-from straxen.plugins.peaklets import PeakletClassificationSOM
-from straxen.plugins.peaklet_positions import PeakletPositionsCNF
-from straxen.plugins.peaks import PeaksSOM
-from straxen.plugins.peak_basics import PeakBasicsSOM
+from straxen import PeakletClassificationSOM
+from straxen import PeakletPositionsCNF
+from straxen import PeaksSOM
+from straxen import PeakBasicsSOM
 
 # Option A: threads
 PeakletClassificationSOM.parallel = True
