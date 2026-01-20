@@ -1767,7 +1767,7 @@ def run_strax(
         def _bootstrax_start_mailbox_heartbeat(
             logger: logging.Logger,
             interval_s: float = 5.0,
-            only_interesting: bool = True,
+            only_interesting: bool = False,
             top_n: int = 10,
             near_full_frac: float = 0.80,
         ) -> None:
