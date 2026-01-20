@@ -127,7 +127,13 @@ parser.add_argument(
     "be used if some run is very valuable but some checks are failing.",
 )
 parser.add_argument("--max_messages", type=int, default=10, help="number of max mailbox messages")
-
+parser.add_argument(
+    "--processor", 
+    type=str, 
+    default="threaded_mailbox", 
+    choices=["threaded_mailbox", "single_thread"], 
+    help="Processor to use, for DAQ we use Mailbox"
+)
 
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument(
@@ -464,7 +470,14 @@ def loop():
         set_state("busy")
         if eb_can_process():
             # Process new runs
-            rd = consider_run({"bootstrax.state": None}, test_counter=new_runs_seen)
+            rd = consider_run(
+                {
+                    "bootstrax.state": None,
+                    # there is not a tags.name called "hold-processing"
+                    "tags.name": {"$ne": "hold-processing"},
+                },
+                test_counter=new_runs_seen,
+            )
             if rd is not None:
                 new_runs_seen += 1
                 process_run(rd)
@@ -1338,6 +1351,7 @@ def run_strax(
     daq_overlap_chunk_duration,
     post_processing,
     records_compressor,
+    processor,
     debug=False,
 ):
     # Check mongo connection
@@ -1382,10 +1396,18 @@ def run_strax(
                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
                 readout_threads=readout_threads,
                 check_raw_record_overlaps=True,
+                processor = processor,
             )
             log.info(f"Making {run_id}-{targets}")
             log.debug(f"With {strax_config}, n-cores {cores}")
-            st.make(run_id, targets, allow_multiple=True, config=strax_config, max_workers=cores, processor = 'threaded_mailbox')
+            st.make(
+                run_id, 
+                targets, 
+                allow_multiple=True, 
+                config=strax_config, 
+                max_workers=cores, 
+                processor = processor
+            )
 
             if len(post_processing):
                 for post_target in post_processing:
@@ -1404,6 +1426,7 @@ def run_strax(
                             config=strax_config,
                             progress_bar=True,
                             max_workers=cores,
+                            processor = processor,
                         )
                     else:
                         log.info(f"Not making {post_target}, it is already stored")
@@ -1560,6 +1583,7 @@ def process_run(rd, send_heartbeats=args.production):
         run_strax_config.update(infer_target(rd))
         run_strax_config.update(infer_mode(rd))
         run_strax_config["debug"] = args.debug
+        run_strax_config["processor"] = args.processor
         strax_proc = multiprocessing.Process(target=run_strax, kwargs=run_strax_config)
 
         t0 = now()
