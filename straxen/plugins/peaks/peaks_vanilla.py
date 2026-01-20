@@ -50,13 +50,23 @@ class PeaksVanilla(strax.Plugin):
             "enhanced_peaklet_classification"
         )
         merged_dtype = strax.merged_dtype((peaklets_dtype, peaklet_classification_dtype))
-        return merged_dtype
+        # Numba is very picky about alignment for structured dtypes. Ensure an aligned dtype
+        # so assignments inside strax.replace_merged don't see "unaligned array(...)".
+        return np.dtype(merged_dtype, align=True)
 
     def compute(self, peaklets, merged_s2s):
-        # Force merged_s2s into peaklets dtype (SOM-style)
-        _merged_s2s = strax.merge_arrs([merged_s2s], dtype=peaklets.dtype)
+        # strax.replace_merged is numba-jitted and requires the two inputs to have the
+        # exact same (and aligned) structured dtype. Some recent dtype-merging paths
+        # produce unaligned dtypes, which triggers TypingError in numba.
+        common_dtype = self.dtype
 
-        _peaks = self.replace_merged(peaklets, _merged_s2s, merge_s0=self.merge_s0)
+        _peaklets = np.zeros(len(peaklets), dtype=common_dtype)
+        strax.copy_to_buffer(peaklets, _peaklets, f"_cast_{self.provides[0]}_peaklets")
+
+        _merged_s2s = np.zeros(len(merged_s2s), dtype=common_dtype)
+        strax.copy_to_buffer(merged_s2s, _merged_s2s, f"_cast_{self.provides[0]}_merged_s2s")
+
+        _peaks = self.replace_merged(_peaklets, _merged_s2s, merge_s0=self.merge_s0)
 
         if self.diagnose_sorting:
             assert np.all(np.diff(_peaks["time"]) >= 0), "Peaks not sorted"
@@ -68,7 +78,6 @@ class PeaksVanilla(strax.Plugin):
         peaks = np.zeros(len(_peaks), dtype=self.dtype)
         strax.copy_to_buffer(_peaks, peaks, f"_copy_requested_{self.provides[0]}_fields")
         return peaks
-
 
     @staticmethod
     def replace_merged(peaklets, merged_s2s, merge_s0=True):
