@@ -346,13 +346,13 @@ def _configure_python_logging_for_debug(debug: bool) -> None:
         return
 
     root = logging.getLogger()
-    root.setLevel(logging.INFO)
+    root.setLevel(logging.DEBUG)
 
     # Ensure there is at least one stdlib handler, but do NOT reuse DAQ handlers
     # (that causes double logging and is not fork-safe).
     if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
         sh = logging.StreamHandler(stream=sys.stdout)
-        sh.setLevel(logging.INFO)
+        sh.setLevel(logging.DEBUG)
         sh.setFormatter(
             logging.Formatter(
                 fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
@@ -404,6 +404,14 @@ def _configure_child_logging_for_debug(debug: bool) -> None:
     """Called inside the multiprocessing child before any logging happens."""
     # Always rebind: daqnt handlers are not fork-safe.
     _rebind_global_log_to_stream(f"{log_name}.child")
+
+    # Ensure DEBUG logs from stdlib loggers are not filtered out in the child
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG if debug else logging.INFO)
+    for h in root.handlers:
+        # Ensure handlers don't filter out DEBUG records when --debug is used
+        if debug:
+            h.setLevel(logging.DEBUG)
 
     if debug:
         logging.getLogger("ThreadedMailboxProcessor").setLevel(logging.DEBUG)
