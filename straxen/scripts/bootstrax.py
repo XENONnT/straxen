@@ -58,6 +58,18 @@ straxen.DAQReader.chunk_target_size_mb = 50
 straxen.Peaklets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 
+# Suppose these are the classes you want to parallelize
+from straxen.plugins.peaklets import PeakletClassificationSOM
+from straxen.plugins.peaklet_positions import PeakletPositionsCNF
+from straxen.plugins.peaks import PeaksSOM
+from straxen.plugins.peak_basics import PeakBasicsSOM
+
+# Option A: threads
+PeakletClassificationSOM.parallel = True
+PeakletPositionsCNF.parallel = True
+PeaksSOM.parallel = True
+PeakBasicsSOM.parallel = True
+
 # Don't do the rechunk on load for raw_records and peaklets
 # It's something we do for offline reprocessing
 straxen.DAQReader.rechunk_on_load = False
