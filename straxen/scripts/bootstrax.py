@@ -507,6 +507,12 @@ def new_context(
     if args.debug:
         logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
         logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
+
+
+    context.register(straxen.PeaksVanilla)
+    context.register(straxen.PeakBasicsVanilla)
+    context.register(straxen.PeakletClassificationVanilla)
+
     return context
 
 
