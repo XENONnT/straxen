@@ -407,6 +407,18 @@ def _configure_child_logging_for_debug(debug: bool) -> None:
 
     # Ensure DEBUG logs from stdlib loggers are not filtered out in the child
     root = logging.getLogger()
+
+    if debug:
+        # Drop any inherited handlers (daqnt / previous config) to avoid duplicates
+        root.handlers = []
+        sh = logging.StreamHandler(stream=sys.stdout)
+        sh.setLevel(logging.DEBUG)
+        sh.setFormatter(logging.Formatter(
+            fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        root.addHandler(sh)
+
     root.setLevel(logging.DEBUG if debug else logging.INFO)
     for h in root.handlers:
         # Ensure handlers don't filter out DEBUG records when --debug is used
@@ -1478,6 +1490,10 @@ def run_strax(
     processor,
     debug=False,
 ):
+    # In a multiprocessing child we must NOT use daqnt/loguru handlers.
+    # Rebind global `log` to a fork-safe stdlib logger and configure root handlers.
+    _configure_child_logging_for_debug(debug)
+
     # Check mongo connection
     ping_dbs()
     # Clear the swap memory used by npshmmex
@@ -1486,17 +1502,10 @@ def run_strax(
     clear_shm()
 
     if debug:
-        # Keep debug output focused on strax mailbox internals.
-        # Do NOT set the root logger to DEBUG, otherwise libraries such as numba
-        # flood the logs.
-        logging.basicConfig(
-            level=logging.INFO,
-            force=True,
-            format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
-        )
-
-        # Enable detailed mailbox / processor debug logs
+        # Root/handlers are configured by _configure_child_logging_for_debug(debug).
+        # Here we only tweak specific logger levels.
         for name in (
+            "ThreadedMailboxProcessor",
             "strax.mailbox",
             "strax.processors.threaded_mailbox",
             "strax.processors.mailbox",
@@ -1514,12 +1523,10 @@ def run_strax(
             "numba.core.interpreter",
             "llvmlite",
             "llvmlite.binding",
+            "jax",
+            "jaxlib",
         ):
             logging.getLogger(noisy).setLevel(logging.WARNING)
-
-        # If something still floods, it will usually be on the root logger;
-        # keep it at INFO.
-        logging.getLogger().setLevel(logging.INFO)
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 
@@ -1583,36 +1590,54 @@ def run_strax(
             strax.Mailbox._bootstrax_registry_patched = True  # type: ignore[attr-defined]
 
 
-        def _bootstrax_mailbox_snapshot(m) -> str:
-            parts = [
-                f"name={getattr(m, 'name', '?')}",
-                f"max={getattr(m, 'max_messages', '?')}",
-                f"timeout={getattr(m, 'timeout', '?')}",
-            ]
-
-            # Best-effort buffer length across strax versions
+        def _bootstrax_mailbox_len(m) -> ty.Optional[int]:
+            """Best-effort mailbox queue length across strax versions."""
             for attr in ("_mailbox", "_queue", "_buffer", "_messages", "_items"):
                 if hasattr(m, attr):
                     try:
-                        parts.append(f"{attr}={len(getattr(m, attr))}")
+                        return len(getattr(m, attr))
                     except Exception:
                         pass
+            return None
 
-            # Threads started by mailbox (ThreadedMailboxProcessor creates these)
+
+        def _bootstrax_mailbox_snapshot(m) -> ty.Optional[ty.Tuple[float, str]]:
+            """Return (fill_fraction, human_string) or None if not measurable."""
+            name = getattr(m, "name", "?")
+            maxm = getattr(m, "max_messages", None)
+            q = _bootstrax_mailbox_len(m)
+            if q is None or not isinstance(maxm, int) or maxm <= 0:
+                return None
+
+            fill = q / maxm
+            tag = " FULL" if q >= maxm else ""
+
+            # Include threads status (short)
             threads = getattr(m, "_threads", None)
+            tinfo = ""
             if threads:
                 try:
-                    parts.append(
-                        "threads=" + ",".join([f"{t.name}:{'alive' if t.is_alive() else 'dead'}" for t in threads])
-                    )
+                    alive = [t.name for t in threads if t.is_alive()]
+                    dead = [t.name for t in threads if not t.is_alive()]
+                    if alive or dead:
+                        tinfo = f" thr(+{len(alive)}/-{len(dead)})"
                 except Exception:
                     pass
 
-            return " ".join(parts)
+            return fill, f"{name}={q}/{maxm}{tag}{tinfo}"
 
 
-        def _bootstrax_start_mailbox_heartbeat(logger: logging.Logger, interval_s: float = 5.0) -> None:
-            """Start a daemon thread that periodically logs mailbox snapshots."""
+        def _bootstrax_start_mailbox_heartbeat(
+            logger: logging.Logger,
+            interval_s: float = 5.0,
+            only_interesting: bool = True,
+            top_n: int = 10,
+            near_full_frac: float = 0.80,
+        ) -> None:
+            """Start a daemon thread that periodically logs mailbox pressure.
+
+            Prints one compact line, prioritizing the most filled mailboxes.
+            """
             _bootstrax_patch_mailbox_registry()
 
             if getattr(_bootstrax_start_mailbox_heartbeat, "_started", False):
@@ -1624,12 +1649,37 @@ def run_strax(
                 while not stop_evt.is_set():
                     try:
                         mbs = list(_BOOTSTRAX_MAILBOXES)
-                        if mbs:
-                            logger.debug("Mailbox heartbeat (%d mailboxes):", len(mbs))
-                            for m in sorted(mbs, key=lambda x: getattr(x, "name", "")):
-                                logger.debug("  %s", _bootstrax_mailbox_snapshot(m))
+                        if not mbs:
+                            stop_evt.wait(interval_s)
+                            continue
+
+                        rows: ty.List[ty.Tuple[float, str]] = []
+                        for m in mbs:
+                            snap = _bootstrax_mailbox_snapshot(m)
+                            if snap is None:
+                                continue
+                            fill, s = snap
+
+                            if only_interesting:
+                                # Only show non-empty and near-full/full mailboxes
+                                # (this is what matters for backpressure)
+                                # Show anything >= near_full_frac OR FULL.
+                                # FULL is encoded by q/max == 1.0 or higher.
+                                if fill <= 0:
+                                    continue
+                                if fill < near_full_frac and fill < 1.0:
+                                    continue
+
+                            rows.append((fill, s))
+
+                        if rows:
+                            rows.sort(key=lambda x: x[0], reverse=True)
+                            msg = "MB: " + " | ".join([s for _, s in rows[:top_n]])
+                            logger.debug(msg)
                     except Exception:
+                        # Never crash the child on debug helpers
                         pass
+
                     stop_evt.wait(interval_s)
 
             t = threading.Thread(target=_worker, name="mailbox-heartbeat", daemon=True)
@@ -1642,8 +1692,8 @@ def run_strax(
         def st_make():
             """Run strax."""
 
-            if args.debug:
-                _bootstrax_start_mailbox_heartbeat(log, interval_s=5.0)
+            if debug:
+                _bootstrax_start_mailbox_heartbeat(logging.getLogger("bootstrax.mailbox"), interval_s=5.0)
 
             strax_config = dict(
                 daq_input_dir=input_dir,
