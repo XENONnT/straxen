@@ -1567,6 +1567,8 @@ def run_strax(
             ("peaklet_classification", True),
             ("peaks", True),
             ("peak_basics", True),
+            ("peaklets", False),
+            ("lone_hits", False),
         ]:
             if k in st._plugin_class_registry:
                 st._plugin_class_registry[k].parallel = mode
