@@ -50,6 +50,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merged_s2s="merged_s2s", enhanced_peaklet_classification="peaklets"
     )
 
+    save_when = immutabledict(
+        merged_s2s=strax.SaveWhen.TARGET,
+        enhanced_peaklet_classification=strax.SaveWhen.TARGET,
+    )
+
+
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
 
     n_top_pmts = straxen.URLConfig(type=int, help="Number of top TPC array PMTs")
