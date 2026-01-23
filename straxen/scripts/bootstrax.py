@@ -1557,7 +1557,7 @@ def run_strax(
             logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
 
         for t in ("raw_records", "records", "records_nv", "hitlets_nv"):
-            # Set the (raw)records processor to the inferred one
+            # Set the (raw)recor    st.register(straxen.PeakBasicsVanilla)ds processor to the inferred one
             st._plugin_class_registry[t].compressor = records_compressor
 
         # Patch the actual registered plugin classes
