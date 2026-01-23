@@ -543,6 +543,13 @@ def new_context(
     context.register(straxen.PeakBasicsVanilla)
     context.register(straxen.PeakletClassificationVanilla)
 
+    context.set_config(
+        {
+            "use_bayesian_merging": False,
+            "rm_sparse_xy": False
+        }
+    )
+
     return context
 
 
