@@ -7,6 +7,8 @@ import strax
 import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE
 from straxen.plugins.peaklets.peaklets import drop_data_field
+from immutabledict import immutabledict
+
 
 
 export, __all__ = strax.exporter()
