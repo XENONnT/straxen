@@ -91,12 +91,9 @@ PLUGINS_TO_REGISTER = [
     straxen.PeakBasicsVanilla,
     straxen.PeakletClassificationVanilla,
 ]
-
+# Save when to target
 straxen.MergedS2s.save_when = SaveWhen.TARGET
-straxen.PeakletPositionsBase.save_when = SaveWhen.TARGET
 straxen.PeakletClassificationVanilla.save_when = SaveWhen.TARGET
-straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
-straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
 straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
 
 
