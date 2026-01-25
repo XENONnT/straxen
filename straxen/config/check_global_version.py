@@ -6,8 +6,6 @@ def check_global_version_wrapper(func):
     """Check whether all configs for superruns-allowed plugins are the same for subruns."""
 
     def wrapper(self, run_id, targets=tuple(), **kwargs):
-        print("WHY ARE WE HERE", run_id, targets)
-        
         if (
             not self.context_config["check_global_version_configs"]
             or "xedocs_version" not in self.context_config
@@ -50,9 +48,9 @@ if "check_global_version_configs" not in strax.Context.takes_config:
         ),
     )(strax.Context)
     _strax_context_check_global_version_decorated = False
-#if not _strax_context_check_global_version_decorated:
+if not _strax_context_check_global_version_decorated:
     # Overwrite get_components method
-    # strax.Context.get_components = check_global_version_wrapper(strax.Context.get_components)
+    strax.Context.get_components = check_global_version_wrapper(strax.Context.get_components)
 
 
 @strax.Context.add_method
