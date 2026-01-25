@@ -32,8 +32,6 @@ class PeakletPositionsCNF(PeakletPositionsBase):
     algorithm = "cnf"
     provides = "peaklet_positions_cnf"
 
-    save_when = strax.SaveWhen.TARGET
-
     n_poly = straxen.URLConfig(
         default=16,
         infer_type=False,

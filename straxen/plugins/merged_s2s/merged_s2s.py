@@ -7,8 +7,6 @@ import strax
 import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE
 from straxen.plugins.peaklets.peaklets import drop_data_field
-from immutabledict import immutabledict
-
 
 
 export, __all__ = strax.exporter()
@@ -51,12 +49,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
     data_kind: Union[Dict[str, str], str] = dict(
         merged_s2s="merged_s2s", enhanced_peaklet_classification="peaklets"
     )
-
-    save_when = immutabledict(
-        merged_s2s=strax.SaveWhen.TARGET,
-        enhanced_peaklet_classification=strax.SaveWhen.TARGET,
-    )
-
 
     n_tpc_pmts = straxen.URLConfig(type=int, help="Number of TPC PMTs")
 

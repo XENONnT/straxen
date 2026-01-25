@@ -44,6 +44,7 @@ import fnmatch
 from glob import glob
 from straxen import daq_core
 from straxen.daq_core import now
+from strax import SaveWhen
 import sys
 import warnings
 
@@ -84,6 +85,20 @@ straxen.Peaklets.rechunk_on_load = False
 # It's something we do for offline reprocessing
 straxen.DAQReader.rechunk_on_load = False
 straxen.Peaklets.rechunk_on_load = False
+# Register plugins
+PLUGINS_TO_REGISTER = [
+    straxen.PeaksVanilla,
+    straxen.PeakBasicsVanilla,
+    straxen.PeakletClassificationVanilla,
+]
+
+straxen.MergedS2s.save_when = SaveWhen.TARGET
+straxen.PeakletPositionsBase.save_when = SaveWhen.TARGET
+straxen.PeakletClassificationVanilla.save_when = SaveWhen.TARGET
+straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
+straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
+straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
+
 
 parser = argparse.ArgumentParser(description="XENONnT online processing manager")
 parser.add_argument(

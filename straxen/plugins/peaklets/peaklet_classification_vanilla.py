@@ -21,8 +21,6 @@ class PeakletClassificationVanilla(strax.Plugin):
         ("merged", bool, "Peaklet is merging input or peak is merged from peaklets"),
     ]
 
-    save_when = strax.SaveWhen.TARGET
-
     s1_risetime_area_parameters = straxen.URLConfig(
         default=(50, 80, 12),
         type=(list, tuple),
