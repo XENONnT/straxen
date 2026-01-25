@@ -13,7 +13,5 @@ class MergedS2PositionsCNF(PeakletPositionsCNF):
     depends_on = "merged_s2s"
     provides = "merged_s2_positions_cnf"
 
-    save_when = strax.SaveWhen.TARGET
-
     def compute(self, merged_s2s):
         return super().compute(merged_s2s)

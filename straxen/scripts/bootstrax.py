@@ -15,7 +15,7 @@ For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
 
-__version__ = "2.0.1"
+__version__ = "3.0.0"
 
 import os
 import os.path as osp
@@ -44,36 +44,44 @@ import fnmatch
 from glob import glob
 from straxen import daq_core
 from straxen.daq_core import now
+from strax import SaveWhen
 import sys
-
 import warnings
 
+# Ignore MongoClient opened before fork warning
+# even if it could be a problem, it never gave issues and we remove it from the logs
 warnings.filterwarnings(
     "ignore",
     message="MongoClient opened before fork",
     category=UserWarning,
 )
 
+############
+# Patches to straxen
+############
+
 # Patch for targeted (uncompressed) chunk size
 straxen.DAQReader.chunk_target_size_mb = 50
 straxen.Peaklets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
-
-# Suppose these are the classes you want to parallelize
-# Safer we do it later after st = get_context()
-# from straxen import PeakletClassificationSOM
-# from straxen import PeakletPositionsCNF
-# from straxen import PeaksSOM
-# from straxen import PeakBasicsSOM
-# PeakletClassificationSOM.parallel = True
-# PeakletPositionsCNF.parallel = True
-# PeaksSOM.parallel = True
-# PeakBasicsSOM.parallel = True
-
 # Don't do the rechunk on load for raw_records and peaklets
 # It's something we do for offline reprocessing
 straxen.DAQReader.rechunk_on_load = False
 straxen.Peaklets.rechunk_on_load = False
+# Register plugins
+PLUGINS_TO_REGISTER = [
+    straxen.PeaksVanilla,
+    straxen.PeakBasicsVanilla,
+    straxen.PeakletClassificationVanilla,
+]
+
+straxen.MergedS2s.save_when = SaveWhen.TARGET
+straxen.PeakletPositionsBase.save_when = SaveWhen.TARGET
+straxen.PeakletClassificationVanilla.save_when = SaveWhen.TARGET
+straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
+straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
+straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
+
 
 parser = argparse.ArgumentParser(description="XENONnT online processing manager")
 parser.add_argument(
@@ -532,23 +540,8 @@ def new_context(
         context.storage[0].readonly = True
         context.storage[0].local_only = True
 
-    # not sure but maybe this was making the weird errors of day out of range
-    context.set_context_config({"check_global_version_configs": False})
-    if args.debug:
-        logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
-        logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
-
-
-    context.register(straxen.PeaksVanilla)
-    context.register(straxen.PeakBasicsVanilla)
-    context.register(straxen.PeakletClassificationVanilla)
-
-    context.set_config(
-        {
-            "use_bayesian_merging": False,
-            "rm_sparse_xy": False
-        }
-    )
+    for plugin in PLUGINS_TO_REGISTER:
+        context.register(plugin)
 
     return context
 
