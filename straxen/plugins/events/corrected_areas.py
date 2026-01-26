@@ -22,9 +22,23 @@ class CorrectedAreas(strax.Plugin):
         cs2_top and cs2_bottom are corrected by the corresponding maps,
         and cs2 is the sum of the two.
 
+    N-1 corrections are also provided, where each variable has all corrections
+    applied except for one specific correction. This allows studying the impact
+    of individual corrections.
+
+    The following corrections are applied:
+    - Peak reconstruction bias correction (corrects for bias in peak finding algorithm)
+    - S1 xyz correction (light collection efficiency)
+    - S2 xy correction (light collection efficiency)
+    - Time-dependent light yield correction
+    - Single electron gain (SEG) and extraction efficiency (EE) correction (partition,time)
+    - Photoionization correction for S2 bottom
+    - Electron lifetime correction
+    - Time-dependent charge yield correction
+
     """
 
-    __version__ = "0.5.3"
+    __version__ = "0.6.0"
 
     depends_on: Tuple[str, ...] = ("event_basics", "event_positions")
 
@@ -76,11 +90,27 @@ class CorrectedAreas(strax.Plugin):
         help="Relative extraction efficiency for this run (allows for time dependence)",
     )
 
+    # relative charge yield
+    # defaults to no correction
+    rel_charge_yield = straxen.URLConfig(default=1, help="Relative charge yield for SR2 only")
+
     # relative light yield
     # defaults to no correction
     rel_light_yield = straxen.URLConfig(
         default="xedocs://relative_light_yield?attr=value&run_id=plugin.run_id&version=ONLINE",
         help="Relative light yield (allows for time dependence)",
+    )
+
+    # b parameter for z-dependent relative light yield correction
+    b_rel_light_yield = straxen.URLConfig(
+        default=0.0,
+        help="b parameter for z-dependent relative light yield correction",
+    )
+
+    # slope parameter for z-dependent relative light yield correction
+    slope_rel_light_yield = straxen.URLConfig(
+        default=0.0,
+        help="Slope parameter for z-dependent relative light yield correction",
     )
 
     # Single electron gain partition
@@ -97,54 +127,128 @@ class CorrectedAreas(strax.Plugin):
         ),
     )
 
-    # cS2 AFT correction due to photon ionization
+    # cS2 AFT correction due to photoionization
     # https://xe1t-wiki.lngs.infn.it/doku.php?id=xenon:xenonnt:zihao:sr1_s2aft_photonionization_correction
     cs2_bottom_top_ratio_correction = straxen.URLConfig(
-        default=1, help="Scaling factor for cS2 AFT correction due to photon ionization"
+        default=1, help="Scaling factor for cS2 AFT correction due to photoionization"
     )
+
+    # S1 Peak Reconstruction Bias Map
+    s1_bias_map = straxen.URLConfig(
+        default="itp_map://resource://xedocs://peak_reconstruction_bias"
+        "?attr=value&run_id=plugin.run_id&signal=s1&fmt=json&version=ONLINE",
+        help="Interpolation map for S1 peak bias correction. "
+        "Bias is defined as (reconstructed / raw) - 1."
+        "So, the bias correction is reconstructed / (1 + bias).",
+    )
+
+    # S2 Peak Reconstruction Bias Map
+    s2_bias_map = straxen.URLConfig(
+        default="itp_map://resource://xedocs://peak_reconstruction_bias"
+        "?attr=value&run_id=plugin.run_id&signal=s2&fmt=json&version=ONLINE",
+        help="Interpolation map for S2 peak bias correction. "
+        "Bias is defined as (reconstructed / raw) - 1."
+        "So, the bias correction is reconstructed / (1 + bias).",
+    )
+
+    check_s2_only_aft = straxen.URLConfig(
+        default=True, type=bool, track=False, help="Whether to check NaN AFT of S2-Only events"
+    )
+
+    # Intermediate S2 corrections for studying correction order
+    # Correction factors, listed in the order of application:
+    # 1. Peak bias correction
+    # 2. S2 xy position correction
+    # 3. SEG/EE correction
+    # 4. Photoionization correction for S2 bottom
+    # 5. Electron lifetime correction
+    # 6. Relative charge yield correction
+    # Encode included corrections in binary strings
+    # (because that is easier to read than big lists of bools).
+    # E.g. '010010' means correcting for S2xy and elife, but not for
+    # peak bias, SEG/EE, PI and relCY
+    # '111111' is the fully corrected cS2.
+
+    name_postfixes = ["_bias", "_xy", "_segee", "_pi", "_relcy", "_elife"]
+    description_strs = [
+        "peak bias",
+        "S2 xy",
+        "SEG/EE",
+        "photoionization",
+        "relative charge yield",
+        "elife",
+    ]
+    intermediate_cs2s = [
+        "111111",
+        "100000",
+        "110000",
+        "101000",
+        "111000",
+        "110001",
+        "000001",
+        "010001",
+        "011101",
+        "101101",
+        "110101",
+        "111001",
+        "111100",
+        "111101",
+        "111110",
+    ]
 
     def infer_dtype(self):
         dtype = []
         dtype += strax.time_fields
 
         for peak_type, peak_name in zip(["", "alt_"], ["main", "alternate"]):
-            # Only apply
+            # S1 corrections
             dtype += [
                 (f"{peak_type}cs1", np.float32, f"Corrected area of {peak_name} S1 [PE]"),
                 (
                     f"{peak_type}cs1_wo_timecorr",
                     np.float32,
-                    f"Corrected area of {peak_name} S1 (before LY correction) [PE]",
+                    f"Corrected area of {peak_name} S1 (without rel LY evolution correction) [PE]",
+                ),
+                (
+                    f"{peak_type}cs1_wo_xyzcorr",
+                    np.float32,
+                    f"Corrected area of {peak_name} S1 (without xyz position correction) [PE]",
+                ),
+                (
+                    f"{peak_type}cs1_wo_peakbiascorr",
+                    np.float32,
+                    f"Corrected area of {peak_name} S1 (without peak bias correction) [PE]",
                 ),
             ]
-            names = ["_wo_timecorr", "_wo_picorr", "_wo_elifecorr", ""]
-            descriptions = ["S2 xy", "SEG/EE", "photon ionization", "elife"]
-            for i, name in enumerate(names):
-                if i == len(names) - 1:
+
+            for encoding in self.intermediate_cs2s:
+                # if all corrections are included its the final cS2
+                if encoding == "111111":
+                    postfix = ""
                     description = ""
-                elif i == 0:
-                    # special treatment for wo_timecorr, apply elife correction
-                    description = " (before " + " + ".join(descriptions[i + 1 : -1])
-                    description += (
-                        ", after " + " + ".join(descriptions[: i + 1] + descriptions[-1:]) + ")"
-                    )
                 else:
-                    description = " (before " + " + ".join(descriptions[i + 1 :])
-                    description += ", after " + " + ".join(descriptions[: i + 1]) + ")"
+                    postfix = "_w"
+                    including = []
+                    excluding = []
+                    for i_c, char in enumerate(encoding):
+                        if int(char):
+                            postfix += self.name_postfixes[i_c]
+                            including.append(self.description_strs[i_c])
+                        else:
+                            excluding.append(self.description_strs[i_c])
+                    inc_str = " + ".join(including)
+                    exc_str = " + ".join(excluding)
+                    description = f" (including {inc_str}, excluding {exc_str})"
+
+                main_comment = f"Corrected area of {peak_name} S2{description} [PE]"
+                aft_comment = (
+                    f"Fraction of area seen by the top PMT array for corrected "
+                    f"{peak_name} S2{description}"
+                )
+
                 dtype += [
-                    (
-                        f"{peak_type}cs2{name}",
-                        np.float32,
-                        f"Corrected area of {peak_name} S2{description} [PE]",
-                    ),
-                    (
-                        f"{peak_type}cs2_area_fraction_top{name}",
-                        np.float32,
-                        (
-                            "Fraction of area seen by the top PMT array for corrected "
-                            f"{peak_name} S2{description}"
-                        ),
-                    ),
+                    (f"{peak_type}cs2{postfix}", np.float32, main_comment),
+                    (f"{peak_type}cs2_area_fraction_top{postfix}", np.float32, aft_comment),
                 ]
         return dtype
 
@@ -195,6 +299,66 @@ class CorrectedAreas(strax.Plugin):
 
         return seg, avg_seg, ee
 
+    def rel_light_yield_correction(self, events):
+        """Compute relative light yield correction (z- and t-dependent)."""
+
+        a = self.slope_rel_light_yield * (self.rel_light_yield - 1)
+        b = self.b_rel_light_yield
+
+        # Compute full z- and t-dependent correction
+        rel_ly_zt_corr = self.rel_light_yield * (a * (events["z"] ** 2 + b * events["z"]) + 1)
+
+        return rel_ly_zt_corr
+
+    def apply_s2_corrections(
+        self,
+        s2_area,
+        s2_aft,
+        s2_bias_correction,
+        s2_xy_correction_top,
+        s2_xy_correction_bottom,
+        seg_ee_corr,
+        pi_corr_bottom,
+        rel_cy_correction,
+        elife_correction,
+    ):
+        """Apply S2 corrections and return various corrected areas. To study the impact of
+        individual corrections, parameters of this function can be set to 1, thereby excluding the
+        corresponding correction.
+
+        Returns:
+            cs2,
+            cs2_area_fraction_top
+
+        """
+        # Base areas
+        s2_area_top = s2_area * s2_aft
+        s2_area_bottom = s2_area * (1 - s2_aft)
+
+        # Apply peak bias, S2 xy and SEG/EE to top and bottom
+        cs2_top_wo_elife = s2_area_top / s2_bias_correction / s2_xy_correction_top / seg_ee_corr
+        cs2_bottom_wo_elife = (
+            s2_area_bottom / s2_bias_correction / s2_xy_correction_bottom / seg_ee_corr
+        )
+
+        # Apply rel_cy_correction
+        cs2_relcy = (cs2_top_wo_elife + cs2_bottom_wo_elife) / rel_cy_correction
+
+        # Apply elife to get total cS2
+        cs2 = cs2_relcy * elife_correction
+
+        # Apply PI AFT correction to get cAFT
+        # Do this on the cS2 without elife, because S2-only events have NaN as elife,
+        # and elife cancels out in the AFT fraction anyway.
+        cs2_area_fraction_top = cs2_top_wo_elife / (
+            cs2_top_wo_elife + cs2_bottom_wo_elife * pi_corr_bottom
+        )
+
+        return (
+            cs2,
+            cs2_area_fraction_top,
+        )
+
     def compute(self, events):
         result = np.zeros(len(events), self.dtype)
         result["time"] = events["time"]
@@ -205,82 +369,105 @@ class CorrectedAreas(strax.Plugin):
         # fine as the S1 correction varies slowly.
         event_positions = np.vstack([events["x"], events["y"], events["z"]]).T
 
+        # S1 corrections
         for peak_type in ["", "alt_"]:
-            result[f"{peak_type}cs1_wo_timecorr"] = events[f"{peak_type}s1_area"] / self.s1_xyz_map(
-                event_positions
+            # Correction factors
+            s1_area = events[f"{peak_type}s1_area"]
+            s1_bias_correction = 1 + self.s1_bias_map(s1_area.reshape(-1, 1)).flatten()
+            s1_xyz_correction = self.s1_xyz_map(event_positions)
+            s1_time_correction = self.rel_light_yield_correction(events)
+
+            # Apply all corrections
+            result[f"{peak_type}cs1"] = (
+                s1_area / s1_bias_correction / s1_xyz_correction / s1_time_correction
             )
-            result[f"{peak_type}cs1"] = result[f"{peak_type}cs1_wo_timecorr"] / self.rel_light_yield
+
+            # N-1 corrections for S1
+            result[f"{peak_type}cs1_wo_peakbiascorr"] = (
+                s1_area / s1_xyz_correction / s1_time_correction
+            )
+            result[f"{peak_type}cs1_wo_xyzcorr"] = s1_area / s1_bias_correction / s1_time_correction
+            result[f"{peak_type}cs1_wo_timecorr"] = s1_area / s1_bias_correction / s1_xyz_correction
 
         # S2 corrections
         s2_top_map_name, s2_bottom_map_name = self.s2_map_names()
         seg, avg_seg, ee = self.seg_ee_correction_preparation()
 
-        # now can start doing corrections
         for peak_type in ["", "alt_"]:
-            # S2(x,y) corrections use the observed S2 positions
+            s2_area = events[f"{peak_type}s2_area"]
+            s2_aft = events[f"{peak_type}s2_area_fraction_top"]
             s2_positions = np.vstack([events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"]]).T
 
-            # corrected S2 with S2(x,y) map only, i.e. no elife correction
-            # this is for S2-only events which don't have drift time info
-            s2_xy_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
-            cs2_top_xycorr = (
-                events[f"{peak_type}s2_area"]
-                * events[f"{peak_type}s2_area_fraction_top"]
-                / s2_xy_top
-            )
-            s2_xy_bottom = self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
-            cs2_bottom_xycorr = (
-                events[f"{peak_type}s2_area"]
-                * (1 - events[f"{peak_type}s2_area_fraction_top"])
-                / s2_xy_bottom
-            )
+            # Correction factors, listed in the order of application:
+            # 1. Peak bias correction
+            # 2. S2 xy position correction
+            # 3. SEG/EE correction
+            # 4. Photoionization correction for S2 bottom
+            # 5. Relative charge yield correction
+            # 6. Electron lifetime correction
+            # Must make sure that the elife is the last
+            # because it will cause AFT nan for S2Only events
 
-            # collect electron lifetime correction
-            # for electron lifetime corrections to the S2s,
-            # use drift time computed using the main S1.
+            s2_bias_correction = 1 + self.s2_bias_map(s2_area.reshape(-1, 1)).flatten()
+            s2_xy_correction_top = self.s2_xy_map(s2_positions, map_name=s2_top_map_name)
+            s2_xy_correction_bottom = self.s2_xy_map(s2_positions, map_name=s2_bottom_map_name)
+            rel_cy_correction_factor = self.rel_charge_yield
+
+            seg_ee_corr = np.zeros(len(events))
+            for partition, func in self.regions.items():
+                mask = func(events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"])
+                seg_ee_corr[mask] = seg[partition] / avg_seg[partition] * ee[partition]
+
+            pi_corr_bottom = self.cs2_bottom_top_ratio_correction
+
             el_string = peak_type + "s2_interaction_" if peak_type == "alt_" else peak_type
             elife_correction = np.exp(events[f"{el_string}drift_time"] / self.elife)
 
-            # collect SEG and EE corrections
-            seg_ee_corr = np.zeros(len(events))
-            for partition, func in self.regions.items():
-                # partitioned SEG and EE
-                partition_mask = func(events[f"{peak_type}s2_x"], events[f"{peak_type}s2_y"])
-                # correct for SEG and EE
-                seg_ee_corr[partition_mask] = seg[partition] / avg_seg[partition] * ee[partition]
-
-            # apply S2 xy correction
-            cs2_xycorr = cs2_top_xycorr + cs2_bottom_xycorr
-            result[f"{peak_type}cs2_wo_timecorr"] = cs2_xycorr * elife_correction
-            result[f"{peak_type}cs2_area_fraction_top_wo_timecorr"] = cs2_top_xycorr / cs2_xycorr
-
-            # apply SEG and EE correction
-            cs2_top_wo_picorr = cs2_top_xycorr / seg_ee_corr
-            cs2_bottom_wo_picorr = cs2_bottom_xycorr / seg_ee_corr
-            cs2_wo_picorr = cs2_top_wo_picorr + cs2_bottom_wo_picorr
-            result[f"{peak_type}cs2_wo_picorr"] = cs2_wo_picorr
-            result[f"{peak_type}cs2_area_fraction_top_wo_picorr"] = (
-                cs2_top_wo_picorr / result[f"{peak_type}cs2_wo_picorr"]
-            )
-
-            # apply photon ionization intensity and cS2 AFT correction (see #1247)
-            # cS2 bottom should be corrected by photon ionization, but not cS2 top
-            cs2_top_wo_elifecorr = cs2_top_wo_picorr
-            cs2_bottom_wo_elifecorr = cs2_bottom_wo_picorr * self.cs2_bottom_top_ratio_correction
-            cs2_wo_elifecorr = cs2_top_wo_elifecorr + cs2_bottom_wo_elifecorr
-            # scale top and bottom to ensure total cS2 is conserved, since the time
-            # dependence of it has been already corrected by SEG correction
-            cs2_top_wo_elifecorr *= cs2_wo_picorr / cs2_wo_elifecorr
-            cs2_bottom_wo_elifecorr *= cs2_wo_picorr / cs2_wo_elifecorr
-            cs2_wo_elifecorr = cs2_wo_picorr
-            result[f"{peak_type}cs2_wo_elifecorr"] = cs2_wo_elifecorr
-            result[f"{peak_type}cs2_area_fraction_top_wo_elifecorr"] = (
-                cs2_top_wo_elifecorr / result[f"{peak_type}cs2_wo_elifecorr"]
-            )
-
-            # apply electron lifetime correction
-            result[f"{peak_type}cs2"] = result[f"{peak_type}cs2_wo_elifecorr"] * elife_correction
-            result[f"{peak_type}cs2_area_fraction_top"] = result[
-                f"{peak_type}cs2_area_fraction_top_wo_elifecorr"
+            corrections_parameters = [
+                s2_bias_correction,
+                s2_xy_correction_top,
+                s2_xy_correction_bottom,
+                seg_ee_corr,
+                pi_corr_bottom,
+                rel_cy_correction_factor,
+                elife_correction,
             ]
+
+            for encoding in self.intermediate_cs2s:
+                postfix = "_w"
+                # Set correction parameters that are not included in the encoding to 1
+                # Note that S2xy has 2 parameters, therefore this list has len 7
+                _correction_parameters = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+                for i_c, char in enumerate(encoding):
+                    if int(char):
+                        postfix += self.name_postfixes[i_c]
+                        # S2xy has 2 values...
+                        if i_c == 0:
+                            _correction_parameters[i_c] = corrections_parameters[i_c]
+                        elif i_c == 1:
+                            _correction_parameters[i_c] = corrections_parameters[i_c]
+                            _correction_parameters[i_c + 1] = corrections_parameters[i_c + 1]
+                        else:
+                            _correction_parameters[i_c + 1] = corrections_parameters[i_c + 1]
+                # No postfix for fully corrected
+                if encoding == "111111":
+                    postfix = ""
+                (
+                    result[f"{peak_type}cs2{postfix}"],
+                    result[f"{peak_type}cs2_area_fraction_top{postfix}"],
+                ) = self.apply_s2_corrections(
+                    s2_area,
+                    s2_aft,
+                    *_correction_parameters,
+                )
+
+        if self.check_s2_only_aft:
+            s2_only = np.isnan(events["s1_area"])
+            s2_only &= ~np.isnan(result["cs2"])
+            if np.any(np.isnan(result["cs2_area_fraction_top"][s2_only])):
+                raise ValueError(
+                    "NaN AFT for S2-Only events! "
+                    "Even for S2-Only events (w/o cS2), the AFT should be defined."
+                )
+
         return result

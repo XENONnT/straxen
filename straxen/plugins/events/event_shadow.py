@@ -29,7 +29,7 @@ class EventShadow(strax.Plugin):
                     (
                         (
                             (
-                                f"largest {tp_desc} shadow casting from previous {type_str} to"
+                                f"Largest {tp_desc} shadow casting from previous {type_str} to"
                                 f" {main_peak_desc} [PE/ns]"
                             ),
                             f"{main_peak}shadow_{key}",
@@ -41,7 +41,7 @@ class EventShadow(strax.Plugin):
                     (
                         (
                             (
-                                f"time difference from the previous {type_str} casting largest"
+                                f"Time difference from the previous {type_str} casting largest"
                                 f" {tp_desc} shadow to {main_peak_desc} [ns]"
                             ),
                             f"{main_peak}dt_{key}",
@@ -55,7 +55,7 @@ class EventShadow(strax.Plugin):
                         (
                             (
                                 (
-                                    f"x of previous s2 peak casting largest {tp_desc} shadow on"
+                                    f"X of previous s2 peak casting largest {tp_desc} shadow on"
                                     f" {main_peak_desc} [cm]"
                                 ),
                                 f"{main_peak}x_{key}",
@@ -67,7 +67,7 @@ class EventShadow(strax.Plugin):
                         (
                             (
                                 (
-                                    f"y of previous s2 peak casting largest {tp_desc} shadow on"
+                                    f"Y of previous s2 peak casting largest {tp_desc} shadow on"
                                     f" {main_peak_desc} [cm]"
                                 ),
                                 f"{main_peak}y_{key}",
@@ -80,8 +80,17 @@ class EventShadow(strax.Plugin):
                     dtype.append(
                         (
                             (
+                                (f"The nearest previous large {type_str} to {main_peak_desc} [ns]"),
+                                f"{main_peak}nearest_{type_str}",
+                            ),
+                            np.float32,
+                        )
+                    )
+                    dtype.append(
+                        (
+                            (
                                 (
-                                    f"time difference from the nearest previous large {type_str} to"
+                                    f"Time difference from the nearest previous large {type_str} to"
                                     f" {main_peak_desc} [ns]"
                                 ),
                                 f"{main_peak}nearest_dt_{type_str}",
@@ -119,6 +128,7 @@ class EventShadow(strax.Plugin):
                         res_i[f"{main_peak}shadow_{key}"] = sp[f"shadow_{key}"][idx]
                         res_i[f"{main_peak}dt_{key}"] = sp[f"dt_{key}"][idx]
                         if "time" in key:
+                            res_i[f"{main_peak}nearest_{type_str}"] = sp[f"nearest_{type_str}"][idx]
                             res_i[f"{main_peak}nearest_dt_{type_str}"] = sp[
                                 f"nearest_dt_{type_str}"
                             ][idx]

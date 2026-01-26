@@ -457,8 +457,8 @@ def dependency_tree(
         if include_class:
             label += f"\n{p.__class__.__name__}"
         if include_level:
-            label += f"\nlevel: {st.tree_levels[d]['level']} "
-            label += f"order: {st.tree_levels[d]['order']}"
+            label += f"\nlevel: {st.tree_levels[False][d]['level']} "
+            label += f"order: {st.tree_levels[False][d]['order']}"
         graph.node(
             d,
             label=label,

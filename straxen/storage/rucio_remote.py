@@ -180,9 +180,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
         downloaded = admix.download(
             metadata_did,
             location=self.staging_dir,
-            rse=rse,
             tries=self.tries,
             num_threads=self.num_threads,
+            rse=rse,
             stage=self.stage,
         )
         if len(downloaded) != 1:
@@ -221,7 +221,12 @@ class RucioRemoteBackend(strax.FileSytemBackend):
             chunk_did = f"{scope}:{chunk_file}"
             warn(f"Downloading {chunk_did} from {rse}")
             downloaded = admix.download(
-                chunk_did, rse=rse, location=self.staging_dir, stage=self.stage
+                chunk_did,
+                location=self.staging_dir,
+                tries=self.tries,
+                num_threads=self.num_threads,
+                rse=rse,
+                stage=self.stage,
             )
             if len(downloaded) != 1:
                 raise ValueError(

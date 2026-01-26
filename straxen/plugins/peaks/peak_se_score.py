@@ -148,7 +148,7 @@ class PeakSEScore(strax.OverlapWindowPlugin):
     def compute(self, peaks):
         # sort peaks by center_time
         argsort = strax.stable_argsort(peaks["center_time"])
-        _peaks = strax.stable_sort(peaks, order="center_time")
+        _peaks = peaks[argsort].copy()
         mask_nan = np.isnan(_peaks["x"]) | np.isnan(_peaks["y"])
         # prepare output
         se_nearby_probability = np.zeros(len(peaks))

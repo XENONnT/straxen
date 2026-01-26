@@ -1,3 +1,103 @@
+3.2.7 / 2026-01-16
+-------------------
+* fixed the order of the corrections in apply_s2_correction() by @caioishikawa in https://github.com/XENONnT/straxen/pull/1638
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.6...v3.2.7
+
+
+3.2.6 / 2026-01-13
+-------------------
+* fixed relative charge yield implementation by @caioishikawa in https://github.com/XENONnT/straxen/pull/1636
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.5...v3.2.6
+
+
+3.2.5 / 2025-12-26
+-------------------
+* Add more offline reprocessing storage paths by @dachengx in https://github.com/XENONnT/straxen/pull/1633
+* Largest S2 before and after the main S2 by @dachengx in https://github.com/XENONnT/straxen/pull/1634
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.4...v3.2.5
+
+
+3.2.4 / 2025-12-21
+-------------------
+* Skip `cs2_area_fraction_top` check when `cs2` is NaN by @dachengx in https://github.com/XENONnT/straxen/pull/1625
+* Remove cAFT bottom corr form cS2 by @sebvetter in https://github.com/XENONnT/straxen/pull/1626
+* Relative charge yield correction by @caioishikawa in https://github.com/XENONnT/straxen/pull/1629
+* Add cS2 without elife correction by @dachengx in https://github.com/XENONnT/straxen/pull/1630
+
+New Contributors
+* @sebvetter made their first contribution in https://github.com/XENONnT/straxen/pull/1626
+* @caioishikawa made their first contribution in https://github.com/XENONnT/straxen/pull/1629
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.3...v3.2.4
+
+
+3.2.3 / 2025-07-21
+-------------------
+* Be compatible with https://github.com/AxFoundation/strax/pull/996 by @dachengx in https://github.com/XENONnT/straxen/pull/1620
+* Rotated map interpolation by @l-althueser in https://github.com/XENONnT/straxen/pull/1349
+* Avoid NaN `cs2_area_fraction_top` by @dachengx in https://github.com/XENONnT/straxen/pull/1621
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.2...v3.2.3
+
+
+3.2.2 / 2025-07-02
+-------------------
+* Set `unique` when `times` and `center_times` are not assigned by @dachengx in https://github.com/XENONnT/straxen/pull/1611
+* Add relative z- t- dependent LY correction by @GianMarco98 in https://github.com/XENONnT/straxen/pull/1600
+* Add peak bias correction by @cfuselli in https://github.com/XENONnT/straxen/pull/1592
+* Define "before" as the order of `center_time` by @dachengx in https://github.com/XENONnT/straxen/pull/1612
+* Check `peaklets`'s channel number `DIGITAL_SUM_WAVEFORM_CHANNEL` by @dachengx in https://github.com/XENONnT/straxen/pull/1616
+* Implement N-1 correction variables by @DonNabla in https://github.com/XENONnT/straxen/pull/1598
+
+New Contributors
+* @GianMarco98 made their first contribution in https://github.com/XENONnT/straxen/pull/1600
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.1...v3.2.2
+
+
+3.2.1 / 2025-05-18
+-------------------
+* Set Sum(S2 / dt) as S2 Time Shadow, not Max(S2 / dt) anymore by @dachengx in https://github.com/XENONnT/straxen/pull/1609
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.0...v3.2.1
+
+
+3.2.0 / 2025-05-16
+-------------------
+* Also retries multiple time when downloading chunks by @dachengx in https://github.com/XENONnT/straxen/pull/1601
+* Do not depend anything on `event_info` by @dachengx in https://github.com/XENONnT/straxen/pull/1602
+* Add more docstring of MergedS2s by @dachengx in https://github.com/XENONnT/straxen/pull/1599
+* Use numbered version of `docformatter` by @dachengx in https://github.com/XENONnT/straxen/pull/1603
+* Update docstring by @LuisSanchez25 in https://github.com/XENONnT/straxen/pull/1606
+* Add a field `merged` to `peak_basics` indicating whether it is merged from peaklets by @dachengx in https://github.com/XENONnT/straxen/pull/1604
+* Force `steps_per_execution` to be not None by @dachengx in https://github.com/XENONnT/straxen/pull/1607
+* Anti-AC new events building by @dachengx in https://github.com/XENONnT/straxen/pull/1563
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.5...v3.2.0
+
+
+3.1.5 / 2025-04-28
+-------------------
+* Convert `sr` from attribute of plugin by @dachengx in https://github.com/XENONnT/straxen/pull/1582
+* Fix a parentheses in error message by @dachengx in https://github.com/XENONnT/straxen/pull/1583
+* Added more colors+types to waveform_plot by @MerzJohannes in https://github.com/XENONnT/straxen/pull/1581
+* Add interactive peaks display by @dachengx in https://github.com/XENONnT/straxen/pull/1586
+* Warn `xedocs_version` usage in `xenonnt` by @dachengx in https://github.com/XENONnT/straxen/pull/1587
+* Render hover tool only for targeted plots by @dachengx in https://github.com/XENONnT/straxen/pull/1589
+* Plot CNF contour in event and peaks interactive display by @dachengx in https://github.com/XENONnT/straxen/pull/1590
+* Print time and endtime of event or peaks in the title of interactive display by @dachengx in https://github.com/XENONnT/straxen/pull/1591
+* Make sure `version=ONLINE` is not used when global version is not `global_ONLINE` by @dachengx in https://github.com/XENONnT/straxen/pull/1594
+* Add offline reprocessing storage path in `/dali` by @dachengx in https://github.com/XENONnT/straxen/pull/1595
+
+New Contributors
+* @MerzJohannes made their first contribution in https://github.com/XENONnT/straxen/pull/1581
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.1.4...v3.1.5
+
+
 3.1.4 / 2025-03-09
 -------------------
 * Set targeted chunk size of hitlets_nv as 2GB by @dachengx in https://github.com/XENONnT/straxen/pull/1574

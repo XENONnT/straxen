@@ -10,7 +10,7 @@ class SCInterfaceTest(unittest.TestCase):
         self.resources_available()
         # Simple query test:
         # Query 5 s of data:
-        self.start = 1609682275000000000
+        self.start = 1709682275000000000
         # Add micro-second to check if query does not fail if inquery precsion > SC precision
         self.start += 10**6
         self.end = self.start + 5 * straxen.units.s
@@ -104,7 +104,9 @@ class SCInterfaceTest(unittest.TestCase):
             query_type_lab=False,
         )
 
-        assert df["SomeParameter"][0] // 1 == 1253, "First values returned is not corrrect."
+        # This correspond to parameter value
+        # at the start = 1709682275000000000
+        assert df["SomeParameter"][0] // 1 == 1211, "First values returned is not corrrect."
         assert np.all(np.isnan(df["SomeParameter"][1:])), "Subsequent values are not correct."
 
         print("Testing forwardfill option:")
@@ -117,10 +119,14 @@ class SCInterfaceTest(unittest.TestCase):
             every_nth_value=1,
             query_type_lab=False,
         )
+        # This correspond to parameter value
+        # at the start = 1709682275000000000
         assert np.all(
-            np.isclose(df[:4], 2.079859)
+            np.isclose(df[:4], 3.572651)
         ), "First four values deviate from queried values."
-        assert np.all(np.isclose(df[4:], 2.117820)), "Last two values deviate from queried values."
+        # This correspond to parameter value
+        # at the start = 1709682275000000000
+        assert np.all(np.isclose(df[4:], 3.572651)), "Last two values deviate from queried values."
         print("Testing interpolation option:")
         self.sc.get_scada_values(
             parameters,
@@ -175,7 +181,9 @@ class SCInterfaceTest(unittest.TestCase):
             end=self.end,
             query_type_lab=True,
         )
-        is_sorrect = np.all(df["SomeParameter"] // 1 == -96)
+        # This correspond to parameter value
+        # at the start = 1709682275000000000
+        is_sorrect = np.all(df["SomeParameter"] // 1 == -95)
         assert is_sorrect, "Not all values are correct for query type lab."
 
     def test_long_query(self):

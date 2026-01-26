@@ -241,6 +241,8 @@ class Peaklets(strax.Plugin):
         # Make sure peaklets don't extend out of the chunk boundary
         # This should be very rare in normal data due to the ADC pretrigger
         # window.
+        # The different chunking causes different results, but this is
+        # NOT tracked by lineage
         self.clip_peaklet_times(peaklets, start, end)
 
         # Get hits outside peaklets, and store them separately.
@@ -384,9 +386,10 @@ class Peaklets(strax.Plugin):
 
         # Check channel of peaklets
         peaklets_unique_channel = np.unique(peaklets["channel"])
-        if (peaklets_unique_channel == DIGITAL_SUM_WAVEFORM_CHANNEL).sum() > 1:
+        if np.any(peaklets_unique_channel != DIGITAL_SUM_WAVEFORM_CHANNEL):
             raise ValueError(
-                f"Found channel number of peaklets other than {DIGITAL_SUM_WAVEFORM_CHANNEL}"
+                f"Found channel number of peaklets other than "
+                f"{DIGITAL_SUM_WAVEFORM_CHANNEL}: {peaklets_unique_channel.tolist()}"
             )
         # Check tight_coincidence
         if not np.all(peaklets["n_hits"] >= peaklets["tight_coincidence"]):

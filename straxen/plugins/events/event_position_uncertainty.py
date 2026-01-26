@@ -24,7 +24,6 @@ class EventPositionContour(strax.Plugin):
         provides (str): Output data type provided by this plugin.
         compressor (str): Compression algorithm used for data storage.
         data_kind (str): Kind of data this plugin processes.
-        loop_over (str): Data structure to iterate over during computation.
 
     Configuration options:
         n_poly (int): Number of points in the uncertainty contour.
@@ -35,14 +34,13 @@ class EventPositionContour(strax.Plugin):
 
     """
 
-    __version__ = "0.1.0"
+    __version__ = "0.1.1"
 
     depends_on = ("event_basics", "event_positions", "peak_positions_cnf", "peak_basics")
 
     provides = "event_position_contour"
     compressor = "zstd"
     data_kind = "events"
-    loop_over = "events"
 
     default_reconstruction_algorithm = straxen.URLConfig(
         default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
@@ -104,7 +102,14 @@ class EventPositionContour(strax.Plugin):
                     ),
                     np.float32,
                     (self.n_poly + 1, 2),
-                )
+                ),
+                (
+                    (
+                        f"Area in position uncertainty contour for {infoline[type_]}",
+                        f"{type_}_position_contour_area_cnf",
+                    ),
+                    np.float32,
+                ),
             ]
 
         # Add fields for flow position contour and corrected positions
@@ -153,6 +158,7 @@ class EventPositionContour(strax.Plugin):
         # Initialize contour fields with NaN values
         for type_ in ["s2", "alt_s2"]:
             result[f"{type_}_position_contour_cnf"] *= np.nan
+            result[f"{type_}_position_contour_area_cnf"] *= np.nan
         result["position_contour_cnf_fdc"] *= np.nan
 
         # Split peaks by containment in events
@@ -167,6 +173,9 @@ class EventPositionContour(strax.Plugin):
                     result[f"{type_}_position_contour_cnf"][event_i] = sp["position_contour_cnf"][
                         type_index
                     ]
+                    result[f"{type_}_position_contour_area_cnf"][event_i] = sp[
+                        "position_contour_area_cnf"
+                    ][type_index]
 
                 if type_ == "s2":
                     if self.use_fdc_for_contour:
