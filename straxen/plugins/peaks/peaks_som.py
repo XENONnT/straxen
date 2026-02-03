@@ -2,6 +2,7 @@ import strax
 import numpy as np
 from straxen.plugins.peaklets.peaklet_classification_som import som_additional_fields
 from straxen.plugins.peaks.peaks_vanilla import PeaksVanilla
+from typing import Tuple, Union
 
 export, __all__ = strax.exporter()
 
@@ -16,6 +17,12 @@ class PeaksSOM(PeaksVanilla):
 
     __version__ = "0.0.1"
     child_plugin = True
+
+    depends_on: Union[Tuple[str, ...], str] = (
+        "peaklets",
+        "enhanced_peaklet_classification",
+        "merged_s2s",
+    )
 
     def compute(self, peaklets, merged_s2s):
         som_additional = np.zeros(

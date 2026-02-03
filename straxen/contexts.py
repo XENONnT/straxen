@@ -34,6 +34,32 @@ common_opts: Dict[str, Any] = dict(
     use_per_run_defaults=False,
 )
 
+common_opts_vanilla: Dict[str, Any] = dict(
+    register_all=[straxen.plugins],
+    register=[
+        straxen.PulseProcessing,
+        straxen.Peaklets,
+        straxen.PeakletClassificationVanilla,
+        straxen.MergedS2sVanilla,
+        straxen.MergedS2sHighEnergyVanilla,
+        straxen.PeaksVanilla,
+        straxen.PeakBasicsVanilla,
+        straxen.PeakProximity,
+        straxen.Events,
+        straxen.EventBasicsVanilla,
+        straxen.EventPositions,
+        straxen.CorrectedAreas,
+        straxen.EnergyEstimates,
+        straxen.EventInfoDouble,
+        straxen.DistinctChannels,
+        straxen.PeakPositionsMLPVanilla,
+        straxen.PeakPositionsCNFVanilla,
+    ],
+    check_available=("peak_basics", "event_basics"),
+    store_run_fields=("name", "number", "start", "end", "livetime", "mode", "source"),
+    use_per_run_defaults=False,
+)
+
 
 common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
@@ -163,6 +189,9 @@ def xenonnt(
         )
 
     context_options = {**straxen.contexts.common_opts, **kwargs}
+
+    print("Creating XENONnT online context...")
+    print(f"Using context options: {context_options}")
 
     st = strax.Context(config=straxen.contexts.common_config, **context_options)
     st.register(
@@ -298,7 +327,12 @@ def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
     if not _from_cutax and xedocs_version != "global_ONLINE":
         warnings.warn("Don't load a context directly from straxen, use cutax instead!")
 
-    st = straxen.contexts.xenonnt(**kwargs)
+    context_options = {**straxen.contexts.common_opts_vanilla, **kwargs}
+
+    print("Creating XENONnT online context...")
+    print(f"Using context options: {context_options}")
+
+    st = straxen.contexts.xenonnt(**context_options)
     st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
     return st

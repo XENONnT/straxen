@@ -21,7 +21,7 @@ class PeaksVanilla(strax.Plugin):
 
     depends_on: Union[Tuple[str, ...], str] = (
         "peaklets",
-        "enhanced_peaklet_classification",
+        "peaklet_classification",
         "merged_s2s",
     )
     data_kind = "peaks"
@@ -46,8 +46,8 @@ class PeaksVanilla(strax.Plugin):
         # In case enhanced_peaklet_classification has more fields than peaklets,
         # we need to merge them
         peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
-        peaklet_classification_dtype = self.deps["enhanced_peaklet_classification"].dtype_for(
-            "enhanced_peaklet_classification"
+        peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
+            "peaklet_classification"
         )
         merged_dtype = strax.merged_dtype((peaklets_dtype, peaklet_classification_dtype))
         # Numba is very picky about alignment for structured dtypes. Ensure an aligned dtype
