@@ -1720,7 +1720,6 @@ def run_strax(
 
         _BOOTSTRAX_MAILBOXES = weakref.WeakSet()
 
-
         def _bootstrax_patch_mailbox_registry() -> None:
             """Patch `strax.Mailbox.__init__` once to register created mailboxes."""
             if getattr(strax.Mailbox, "_bootstrax_registry_patched", False):
@@ -1738,7 +1737,6 @@ def run_strax(
             strax.Mailbox.__init__ = _init_and_register  # type: ignore[assignment]
             strax.Mailbox._bootstrax_registry_patched = True  # type: ignore[attr-defined]
 
-
         def _bootstrax_mailbox_len(m) -> ty.Optional[int]:
             """Best-effort mailbox queue length across strax versions."""
             for attr in ("_mailbox", "_queue", "_buffer", "_messages", "_items"):
@@ -1748,7 +1746,6 @@ def run_strax(
                     except Exception:
                         pass
             return None
-
 
         def _bootstrax_mailbox_snapshot(m) -> ty.Optional[ty.Tuple[float, str]]:
             """Return (fill_fraction, human_string) or None if not measurable."""
@@ -1775,7 +1772,6 @@ def run_strax(
 
             return fill, f"{name}={q}/{maxm}{tag}{tinfo}"
 
-
         def _bootstrax_start_mailbox_heartbeat(
             logger: logging.Logger,
             interval_s: float = 5.0,
@@ -1786,6 +1782,7 @@ def run_strax(
             """Start a daemon thread that periodically logs mailbox pressure.
 
             Prints one compact line, prioritizing the most filled mailboxes.
+
             """
             _bootstrax_patch_mailbox_registry()
 
@@ -1834,7 +1831,6 @@ def run_strax(
             t = threading.Thread(target=_worker, name="mailbox-heartbeat", daemon=True)
             t.start()
             _bootstrax_start_mailbox_heartbeat._started = True  # type: ignore[attr-defined]
-
 
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
