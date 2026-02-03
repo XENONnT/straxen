@@ -65,6 +65,10 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
     )
 
+    indicator_dtype = np.dtype(
+        [(("Peaklet is merging input or peak is merged from peaklets", "merged"), bool)]
+    )
+
     def setup(self):
         self.to_pe = self.gain_model
 
