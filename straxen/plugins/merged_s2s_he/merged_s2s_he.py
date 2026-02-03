@@ -37,4 +37,3 @@ class MergedS2sHighEnergy(MergedS2s):
         # so create a dummy for the compute method.
         lone_hits = np.zeros(0, dtype=strax.hit_dtype)
         return self.merge(_peaklets_he, lone_hits, start, end)[0]
-

@@ -76,6 +76,7 @@ eb_can_clean_ceph = "eb0.xenon.local"
 # Main functions
 ##
 
+
 def main():
     global args, hostname, databases, log, run_db, run_coll, daq_db, bs_coll, st
 
@@ -198,8 +199,6 @@ def main():
 
     wait_on_delete_thread()
     log.info(f"main::\tAjax finished, bye bye")
-
-
 
 
 def main_ajax():

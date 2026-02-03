@@ -18,7 +18,8 @@ class PeakPositionsCNF(PeakPositionsBase):
     )
     provides = "peak_positions_cnf"
 
-@export 
+
+@export
 class PeakPositionsCNFVanilla(PeakPositionsCNF):
     """Plugin to compute peak positions using the CNF algorithm (vanilla version)."""
 

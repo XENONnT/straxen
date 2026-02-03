@@ -18,6 +18,7 @@ class PeakPositionsMLP(PeakPositionsBase):
     )
     provides = "peak_positions_mlp"
 
+
 @export
 class PeakPositionsMLPVanilla(PeakPositionsMLP):
     """Plugin to compute peak positions using the MLP algorithm (vanilla version)."""

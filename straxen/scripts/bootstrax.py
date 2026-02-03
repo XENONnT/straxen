@@ -145,11 +145,11 @@ parser.add_argument(
 )
 parser.add_argument("--max_messages", type=int, default=10, help="number of max mailbox messages")
 parser.add_argument(
-    "--processor", 
-    type=str, 
-    default="threaded_mailbox", 
-    choices=["threaded_mailbox", "single_thread"], 
-    help="Processor to use, for DAQ we use Mailbox"
+    "--processor",
+    type=str,
+    default="threaded_mailbox",
+    choices=["threaded_mailbox", "single_thread"],
+    help="Processor to use, for DAQ we use Mailbox",
 )
 
 actions = parser.add_mutually_exclusive_group()
@@ -345,6 +345,7 @@ log = daqnt.get_daq_logger(
 #   before any logging happens.
 # -----------------------------------------------------------------------------
 
+
 def _configure_python_logging_for_debug(debug: bool) -> None:
     """Configure stdlib logging so we can see mailbox logs in --debug.
 
@@ -353,6 +354,7 @@ def _configure_python_logging_for_debug(debug: bool) -> None:
       for its own output; if we add root handlers we can easily get duplicated lines.
     - Instead, attach a dedicated StreamHandler only to the loggers we care about
       (strax mailbox / processors) and disable propagation for them.
+
     """
     if not debug:
         return
@@ -360,7 +362,9 @@ def _configure_python_logging_for_debug(debug: bool) -> None:
     def _ensure_stream_handler(lgr: logging.Logger) -> None:
         # Do not add duplicates if bootstrax is reloaded or called multiple times
         for h in lgr.handlers:
-            if isinstance(h, logging.StreamHandler) and getattr(h, "_bootstrax_mailbox_handler", False):
+            if isinstance(h, logging.StreamHandler) and getattr(
+                h, "_bootstrax_mailbox_handler", False
+            ):
                 return
 
         sh = logging.StreamHandler(stream=sys.stdout)
@@ -466,9 +470,12 @@ def _configure_child_logging_for_debug(debug: bool) -> None:
             lgr.propagate = False
 
         for name in (
-            "numba", "numba.core", "numba.parfors",
+            "numba",
+            "numba.core",
+            "numba.parfors",
             "llvmlite",
-            "jax", "jaxlib",
+            "jax",
+            "jaxlib",
         ):
             logging.getLogger(name).setLevel(logging.WARNING)
 
@@ -1573,13 +1580,9 @@ def run_strax(
             else:
                 log.warning(f"Cannot patch {k}: not in registry")
 
-
-
-
         import weakref
 
         _BOOTSTRAX_MAILBOXES = weakref.WeakSet()
-
 
         def _bootstrax_patch_mailbox_registry() -> None:
             """Patch `strax.Mailbox.__init__` once to register created mailboxes."""
@@ -1598,7 +1601,6 @@ def run_strax(
             strax.Mailbox.__init__ = _init_and_register  # type: ignore[assignment]
             strax.Mailbox._bootstrax_registry_patched = True  # type: ignore[attr-defined]
 
-
         def _bootstrax_mailbox_len(m) -> ty.Optional[int]:
             """Best-effort mailbox queue length across strax versions."""
             for attr in ("_mailbox", "_queue", "_buffer", "_messages", "_items"):
@@ -1608,7 +1610,6 @@ def run_strax(
                     except Exception:
                         pass
             return None
-
 
         def _bootstrax_mailbox_snapshot(m) -> ty.Optional[ty.Tuple[float, str]]:
             """Return (fill_fraction, human_string) or None if not measurable."""
@@ -1635,7 +1636,6 @@ def run_strax(
 
             return fill, f"{name}={q}/{maxm}{tag}{tinfo}"
 
-
         def _bootstrax_start_mailbox_heartbeat(
             logger: logging.Logger,
             interval_s: float = 5.0,
@@ -1646,6 +1646,7 @@ def run_strax(
             """Start a daemon thread that periodically logs mailbox pressure.
 
             Prints one compact line, prioritizing the most filled mailboxes.
+
             """
             _bootstrax_patch_mailbox_registry()
 
@@ -1695,7 +1696,6 @@ def run_strax(
             t.start()
             _bootstrax_start_mailbox_heartbeat._started = True  # type: ignore[attr-defined]
 
-
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
@@ -1715,17 +1715,17 @@ def run_strax(
                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
                 readout_threads=readout_threads,
                 check_raw_record_overlaps=True,
-                processor = processor,
+                processor=processor,
             )
             log.info(f"Making {run_id}-{targets}")
             log.debug(f"With {strax_config}, n-cores {cores}")
             st.make(
-                run_id, 
-                targets, 
-                allow_multiple=True, 
-                config=strax_config, 
-                max_workers=cores, 
-                processor = processor
+                run_id,
+                targets,
+                allow_multiple=True,
+                config=strax_config,
+                max_workers=cores,
+                processor=processor,
             )
 
             if len(post_processing):
@@ -1745,7 +1745,7 @@ def run_strax(
                             config=strax_config,
                             progress_bar=True,
                             max_workers=cores,
-                            processor = processor,
+                            processor=processor,
                         )
                     else:
                         log.info(f"Not making {post_target}, it is already stored")
