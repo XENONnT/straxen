@@ -24,6 +24,18 @@ class PeaksSOM(PeaksVanilla):
         "merged_s2s",
     )
 
+    def infer_dtype(self):
+        # In case enhanced_peaklet_classification has more fields than peaklets,
+        # we need to merge them
+        peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
+        peaklet_classification_dtype = self.deps["enhanced_peaklet_classification"].dtype_for(
+            "enhanced_peaklet_classification"
+        )
+        merged_dtype = strax.merged_dtype((peaklets_dtype, peaklet_classification_dtype))
+        # Numba is very picky about alignment for structured dtypes. Ensure an aligned dtype
+        # so assignments inside strax.replace_merged don't see "unaligned array(...)".
+        return np.dtype(merged_dtype, align=True)
+
     def compute(self, peaklets, merged_s2s):
         som_additional = np.zeros(
             len(merged_s2s), dtype=strax.to_numpy_dtype(som_additional_fields)
