@@ -81,7 +81,11 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         # It must be first classification then peaklet
         # Otherwise strax will raise an error
         # when checking for the returned dtype!
-        merged_s2s_dtype = strax.merged_dtype((peaklet_classification_dtype, peaklets_dtype, self.indicator_dtype))
+        merged_s2s_dtype = strax.merged_dtype((
+            peaklet_classification_dtype, 
+            peaklets_dtype, 
+            # self.indicator_dtype
+        ))
         return merged_s2s_dtype
 
     def get_window_size(self):
