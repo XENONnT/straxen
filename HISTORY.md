@@ -1,3 +1,39 @@
+3.2.7 / 2026-01-16
+-------------------
+* fixed the order of the corrections in apply_s2_correction() by @caioishikawa in https://github.com/XENONnT/straxen/pull/1638
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.6...v3.2.7
+
+
+3.2.6 / 2026-01-13
+-------------------
+* fixed relative charge yield implementation by @caioishikawa in https://github.com/XENONnT/straxen/pull/1636
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.5...v3.2.6
+
+
+3.2.5 / 2025-12-26
+-------------------
+* Add more offline reprocessing storage paths by @dachengx in https://github.com/XENONnT/straxen/pull/1633
+* Largest S2 before and after the main S2 by @dachengx in https://github.com/XENONnT/straxen/pull/1634
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.4...v3.2.5
+
+
+3.2.4 / 2025-12-21
+-------------------
+* Skip `cs2_area_fraction_top` check when `cs2` is NaN by @dachengx in https://github.com/XENONnT/straxen/pull/1625
+* Remove cAFT bottom corr form cS2 by @sebvetter in https://github.com/XENONnT/straxen/pull/1626
+* Relative charge yield correction by @caioishikawa in https://github.com/XENONnT/straxen/pull/1629
+* Add cS2 without elife correction by @dachengx in https://github.com/XENONnT/straxen/pull/1630
+
+New Contributors
+* @sebvetter made their first contribution in https://github.com/XENONnT/straxen/pull/1626
+* @caioishikawa made their first contribution in https://github.com/XENONnT/straxen/pull/1629
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.3...v3.2.4
+
+
 3.2.3 / 2025-07-21
 -------------------
 * Be compatible with https://github.com/AxFoundation/strax/pull/996 by @dachengx in https://github.com/XENONnT/straxen/pull/1620
