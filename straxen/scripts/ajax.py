@@ -185,7 +185,7 @@ def main():
 
     # DAQ database
     daq_db = databases.daq_db
-    log_coll = databases.log_coll
+    # log_coll = databases.log_coll
     bs_coll = databases.bs_coll
     daq_db.command("ping")
 

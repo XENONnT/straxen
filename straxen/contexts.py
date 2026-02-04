@@ -190,9 +190,6 @@ def xenonnt(
 
     context_options = {**straxen.contexts.common_opts, **kwargs}
 
-    print("Creating XENONnT online context...")
-    print(f"Using context options: {context_options}")
-
     st = strax.Context(config=straxen.contexts.common_config, **context_options)
     st.register(
         [
@@ -331,9 +328,6 @@ def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
         context_options = {**straxen.contexts.common_opts, **kwargs}
     else:
         context_options = {**straxen.contexts.common_opts_vanilla, **kwargs}
-
-    print("Creating XENONnT online context...")
-    print(f"Using context options: {context_options}")
 
     st = straxen.contexts.xenonnt(**context_options)
     st.apply_xedocs_configs(version=xedocs_version, **kwargs)
