@@ -327,7 +327,10 @@ def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
     if not _from_cutax and xedocs_version != "global_ONLINE":
         warnings.warn("Don't load a context directly from straxen, use cutax instead!")
 
-    context_options = {**straxen.contexts.common_opts_vanilla, **kwargs}
+    if _from_cutax and xedocs_version != "global_ONLINE":
+        context_options = {**straxen.contexts.common_opts, **kwargs}
+    else:
+        context_options = {**straxen.contexts.common_opts_vanilla, **kwargs}
 
     print("Creating XENONnT online context...")
     print(f"Using context options: {context_options}")

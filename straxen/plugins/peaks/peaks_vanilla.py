@@ -55,18 +55,19 @@ class PeaksVanilla(strax.Plugin):
         return np.dtype(merged_dtype, align=True)
 
     def compute(self, peaklets, merged_s2s):
-        # strax.replace_merged is numba-jitted and requires the two inputs to have the
-        # exact same (and aligned) structured dtype. Some recent dtype-merging paths
-        # produce unaligned dtypes, which triggers TypingError in numba.
-        common_dtype = self.dtype
+        # # strax.replace_merged is numba-jitted and requires the two inputs to have the
+        # # exact same (and aligned) structured dtype. Some recent dtype-merging paths
+        # # produce unaligned dtypes, which triggers TypingError in numba.
+        # common_dtype = self.dtype
 
-        _peaklets = np.zeros(len(peaklets), dtype=common_dtype)
-        strax.copy_to_buffer(peaklets, _peaklets, f"_cast_{self.provides[0]}_peaklets")
+        # _peaklets = np.zeros(len(peaklets), dtype=common_dtype)
+        # strax.copy_to_buffer(peaklets, _peaklets, f"_cast_{self.provides[0]}_peaklets")
 
-        _merged_s2s = np.zeros(len(merged_s2s), dtype=common_dtype)
-        strax.copy_to_buffer(merged_s2s, _merged_s2s, f"_cast_{self.provides[0]}_merged_s2s")
+        # _merged_s2s = np.zeros(len(merged_s2s), dtype=common_dtype)
+        # strax.copy_to_buffer(merged_s2s, _merged_s2s, f"_cast_{self.provides[0]}_merged_s2s")
 
-        _peaks = self.replace_merged(_peaklets, _merged_s2s, merge_s0=self.merge_s0)
+        # _peaks = self.replace_merged(_peaklets, _merged_s2s, merge_s0=self.merge_s0)
+        _peaks = self.replace_merged(peaklets, merged_s2s, merge_s0=self.merge_s0)
 
         if self.diagnose_sorting:
             assert np.all(np.diff(_peaks["time"]) >= 0), "Peaks not sorted"
