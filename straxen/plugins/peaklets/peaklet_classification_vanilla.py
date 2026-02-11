@@ -107,6 +107,8 @@ class PeakletClassificationVanilla(strax.Plugin):
         peaklets_classification["dt"] = peaklets["dt"]
         peaklets_classification["length"] = peaklets["length"]
         peaklets_classification["channel"] = -1
-        peaklets_classification["merged"] = False  # Peaklets are not merged yet
+        # Set merged field if it exists in dtype (vanilla context)
+        if "merged" in self.dtype.names:
+            peaklets_classification["merged"] = False  # Peaklets are not merged yet
 
         return peaklets_classification
