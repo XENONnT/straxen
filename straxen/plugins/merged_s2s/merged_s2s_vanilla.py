@@ -155,8 +155,9 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
 
         strax.compute_widths(merged_s2s)
 
-        # Set merged field to True for all merged S2s
-        merged_s2s["merged"] = True
+        # Set merged field to True for all merged S2s (if field exists)
+        if "merged" in merged_s2s.dtype.names:
+            merged_s2s["merged"] = True
 
         if n_top_pmts_if_digitize_top <= 0:
             merged_s2s = drop_data_top_field(merged_s2s, self.dtype, "_drop_top_merged_s2s")

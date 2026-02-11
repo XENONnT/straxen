@@ -76,7 +76,7 @@ class PeaksVanilla(strax.Plugin):
 
         # Merged field was copied from peaklets (via peaklet_classification)
         # All values are False by default. Set to True for peaks from merged_s2s
-        if len(merged_s2s) > 0:
+        if len(merged_s2s) > 0 and "merged" in peaks.dtype.names:
             peaks["merged"] = strax.fully_contained_in(peaks, merged_s2s) >= 0
 
         return peaks
