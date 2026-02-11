@@ -77,7 +77,7 @@ class SetupContextNt(PluginTestCase):
         context_name = os.environ.get("STRAXEN_TEST_CONTEXT", "xenonnt")
         cls.st = straxen.test_utils.nt_test_context(context_name)
         cls.run_id = nt_test_run_id
-        
+
         # For online context, exclude ML-based position reconstruction plugins
         # They require model files not available in test environments
         if context_name == "xenonnt_online":
