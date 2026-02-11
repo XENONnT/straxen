@@ -1,3 +1,5 @@
+# This plugin has been adapted from the original MergedS2s plugin in straxen v2.2.7
+
 from typing import Tuple
 
 import strax

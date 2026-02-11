@@ -68,12 +68,7 @@ straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 # It's something we do for offline reprocessing
 straxen.DAQReader.rechunk_on_load = False
 straxen.Peaklets.rechunk_on_load = False
-# Register plugins
-PLUGINS_TO_REGISTER = [
-    straxen.PeaksVanilla,
-    straxen.PeakBasicsVanilla,
-    straxen.PeakletClassificationVanilla,
-]
+
 # Save when to target
 straxen.MergedS2s.save_when = SaveWhen.TARGET
 straxen.PeakletClassificationVanilla.save_when = SaveWhen.TARGET
@@ -543,9 +538,6 @@ def new_context(
         context.storage = [context.storage[0], strax.DataDirectory(output_folder)]
         context.storage[0].readonly = True
         context.storage[0].local_only = True
-
-    for plugin in PLUGINS_TO_REGISTER:
-        context.register(plugin)
 
     return context
 
