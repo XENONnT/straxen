@@ -17,7 +17,7 @@ class PeaksVanilla(strax.Plugin):
 
     """
 
-    __version__ = "0.1.2"
+    __version__ = "0.1.3"
 
     depends_on: Union[Tuple[str, ...], str] = (
         "peaklets",
@@ -49,19 +49,19 @@ class PeaksVanilla(strax.Plugin):
         peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
             "peaklet_classification"
         )
-        # Add indicator_dtype for the merged field
-        indicator_dtype = np.dtype(
-            [(("Peaklet is merging input or peak is merged from peaklets", "merged"), bool)]
-        )
-        merged_dtype = strax.merged_dtype(
-            (peaklets_dtype, peaklet_classification_dtype, indicator_dtype)
-        )
+        # merged field comes from peaklet_classification (which now has it)
+        merged_dtype = strax.merged_dtype((peaklets_dtype, peaklet_classification_dtype))
         # Numba is very picky about alignment for structured dtypes. Ensure an aligned dtype
         # so assignments inside strax.replace_merged don't see "unaligned array(...)".
         return np.dtype(merged_dtype, align=True)
 
     def compute(self, peaklets, merged_s2s):
-        _peaks = self.replace_merged(peaklets, merged_s2s, merge_s0=self.merge_s0)
+        # Convert merged_s2s dtype to match peaklets (like PeaksSOM does)
+        # This drops the merged field from merged_s2s temporarily
+        _merged_s2s = strax.merge_arrs([merged_s2s], dtype=peaklets.dtype)
+        
+        # Now both inputs have the same dtype (no merged field)
+        _peaks = self.replace_merged(peaklets, _merged_s2s, merge_s0=self.merge_s0)
 
         if self.diagnose_sorting:
             assert np.all(np.diff(_peaks["time"]) >= 0), "Peaks not sorted"
@@ -70,15 +70,14 @@ class PeaksVanilla(strax.Plugin):
                 _peaks["time"][to_check][1:] >= strax.endtime(_peaks)[to_check][:-1]
             ), "Peaks not disjoint"
 
+        # Copy to output dtype (which has merged field from peaklet_classification)
         peaks = np.zeros(len(_peaks), dtype=self.dtype)
         strax.copy_to_buffer(_peaks, peaks, f"_copy_requested_{self.provides[0]}_fields")
         
-        # Set merged field: True for peaks that came from merged_s2s, False for unmerged peaklets
-        # We identify merged peaks by checking if they exist in merged_s2s timewindows
+        # Merged field was copied from peaklets (via peaklet_classification)
+        # All values are False by default. Set to True for peaks from merged_s2s
         if len(merged_s2s) > 0:
             peaks["merged"] = strax.fully_contained_in(peaks, merged_s2s) >= 0
-        else:
-            peaks["merged"] = False
         
         return peaks
 
