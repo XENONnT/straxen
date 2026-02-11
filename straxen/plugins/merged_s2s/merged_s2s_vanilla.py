@@ -84,11 +84,7 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         # Otherwise strax will raise an error
         # when checking for the returned dtype!
         merged_s2s_dtype = strax.merged_dtype(
-            (
-                peaklet_classification_dtype,
-                peaklets_dtype,
-                self.indicator_dtype
-            )
+            (peaklet_classification_dtype, peaklets_dtype, self.indicator_dtype)
         )
         return merged_s2s_dtype
 
