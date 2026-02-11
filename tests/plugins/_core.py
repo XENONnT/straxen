@@ -1,3 +1,4 @@
+import os
 import strax
 from unittest import TestCase
 import tempfile
@@ -71,8 +72,10 @@ class SetupContextNt(PluginTestCase):
         class. Only after running all the tests, we run the cleanup.
 
         """
-        # TODO: xenonnt_online should be used here
-        cls.st = straxen.test_utils.nt_test_context("xenonnt")
+        # Context can be controlled via STRAXEN_TEST_CONTEXT environment variable.
+        # Default is 'xenonnt' (SOM plugins), set to 'xenonnt_online' to test vanilla plugins.
+        context_name = os.environ.get("STRAXEN_TEST_CONTEXT", "xenonnt")
+        cls.st = straxen.test_utils.nt_test_context(context_name)
         cls.run_id = nt_test_run_id
 
         # Make sure that we only write to the temp-dir we cleanup after each test
