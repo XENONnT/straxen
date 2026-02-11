@@ -87,7 +87,7 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             (
                 peaklet_classification_dtype,
                 peaklets_dtype,
-                # self.indicator_dtype
+                self.indicator_dtype
             )
         )
         return merged_s2s_dtype
@@ -156,6 +156,9 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         strax.add_lone_hits(merged_s2s, lh, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
 
         strax.compute_widths(merged_s2s)
+
+        # Mark all merged S2s as merged
+        merged_s2s["merged"] = True
 
         if n_top_pmts_if_digitize_top <= 0:
             merged_s2s = drop_data_top_field(merged_s2s, self.dtype, "_drop_top_merged_s2s")
