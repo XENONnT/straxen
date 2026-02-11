@@ -59,7 +59,7 @@ class PeaksVanilla(strax.Plugin):
         # Convert merged_s2s dtype to match peaklets (like PeaksSOM does)
         # This drops the merged field from merged_s2s temporarily
         _merged_s2s = strax.merge_arrs([merged_s2s], dtype=peaklets.dtype)
-        
+
         # Now both inputs have the same dtype (no merged field)
         _peaks = self.replace_merged(peaklets, _merged_s2s, merge_s0=self.merge_s0)
 
@@ -73,12 +73,12 @@ class PeaksVanilla(strax.Plugin):
         # Copy to output dtype (which has merged field from peaklet_classification)
         peaks = np.zeros(len(_peaks), dtype=self.dtype)
         strax.copy_to_buffer(_peaks, peaks, f"_copy_requested_{self.provides[0]}_fields")
-        
+
         # Merged field was copied from peaklets (via peaklet_classification)
         # All values are False by default. Set to True for peaks from merged_s2s
         if len(merged_s2s) > 0:
             peaks["merged"] = strax.fully_contained_in(peaks, merged_s2s) >= 0
-        
+
         return peaks
 
     @staticmethod
