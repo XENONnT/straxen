@@ -17,7 +17,7 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.0.2"
+    __version__ = "1.0.3"
 
     depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
     data_kind = "merged_s2s"
@@ -79,16 +79,14 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             "peaklet_classification"
         )
         peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
+        # Include indicator_dtype - the merged field will be in the output
+        # peaklet_classification now has merged field, so final dtype will have it too
         # The merged dtype is argument position dependent!
         # It must be first classification then peaklet
         # Otherwise strax will raise an error
         # when checking for the returned dtype!
         merged_s2s_dtype = strax.merged_dtype(
-            (
-                peaklet_classification_dtype,
-                peaklets_dtype,
-                # self.indicator_dtype
-            )
+            (peaklet_classification_dtype, peaklets_dtype, self.indicator_dtype)
         )
         return merged_s2s_dtype
 
@@ -157,6 +155,9 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
 
         strax.compute_widths(merged_s2s)
 
+        # Set merged field to True for all merged S2s
+        merged_s2s["merged"] = True
+        
         if n_top_pmts_if_digitize_top <= 0:
             merged_s2s = drop_data_top_field(merged_s2s, self.dtype, "_drop_top_merged_s2s")
         return merged_s2s
