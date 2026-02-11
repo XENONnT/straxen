@@ -79,12 +79,14 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             "peaklet_classification"
         )
         peaklets_dtype = self.deps["peaklets"].dtype_for("peaklets")
+        # DON'T include indicator_dtype here! It causes dtype mismatch in strax.replace_merged()
+        # The merged field will be added later in PeaksVanilla
         # The merged dtype is argument position dependent!
         # It must be first classification then peaklet
         # Otherwise strax will raise an error
         # when checking for the returned dtype!
         merged_s2s_dtype = strax.merged_dtype(
-            (peaklet_classification_dtype, peaklets_dtype, self.indicator_dtype)
+            (peaklet_classification_dtype, peaklets_dtype)
         )
         return merged_s2s_dtype
 
@@ -153,13 +155,9 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
 
         strax.compute_widths(merged_s2s)
 
-        # Add the merged field to the dtype and set it to True
-        # merged_s2s from strax.merge_peaks doesn't have the indicator_dtype fields yet
-        merged_s2s_with_field = np.zeros(len(merged_s2s), dtype=self.dtype)
-        strax.copy_to_buffer(merged_s2s, merged_s2s_with_field, "_add_merged_field")
-        merged_s2s_with_field["merged"] = True
-        merged_s2s = merged_s2s_with_field
-
+        # Don't add merged field here - it will be added in PeaksVanilla
+        # to avoid dtype mismatch in strax.replace_merged()
+        
         if n_top_pmts_if_digitize_top <= 0:
             merged_s2s = drop_data_top_field(merged_s2s, self.dtype, "_drop_top_merged_s2s")
         return merged_s2s

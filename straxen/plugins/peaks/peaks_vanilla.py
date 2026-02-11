@@ -49,7 +49,13 @@ class PeaksVanilla(strax.Plugin):
         peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
             "peaklet_classification"
         )
-        merged_dtype = strax.merged_dtype((peaklets_dtype, peaklet_classification_dtype))
+        # Add indicator_dtype for the merged field
+        indicator_dtype = np.dtype(
+            [(("Peaklet is merging input or peak is merged from peaklets", "merged"), bool)]
+        )
+        merged_dtype = strax.merged_dtype(
+            (peaklets_dtype, peaklet_classification_dtype, indicator_dtype)
+        )
         # Numba is very picky about alignment for structured dtypes. Ensure an aligned dtype
         # so assignments inside strax.replace_merged don't see "unaligned array(...)".
         return np.dtype(merged_dtype, align=True)
@@ -66,6 +72,14 @@ class PeaksVanilla(strax.Plugin):
 
         peaks = np.zeros(len(_peaks), dtype=self.dtype)
         strax.copy_to_buffer(_peaks, peaks, f"_copy_requested_{self.provides[0]}_fields")
+        
+        # Set merged field: True for peaks that came from merged_s2s, False for unmerged peaklets
+        # We identify merged peaks by checking if they exist in merged_s2s timewindows
+        if len(merged_s2s) > 0:
+            peaks["merged"] = strax.fully_contained_in(peaks, merged_s2s) >= 0
+        else:
+            peaks["merged"] = False
+        
         return peaks
 
     @staticmethod
