@@ -287,6 +287,10 @@ def xenonnt(
         }
     )
 
+    # Enable data_top computation for vanilla plugins (needed for tests)
+    if _vanilla:
+        st.set_config({"store_data_top": True})
+
     return st
 
 
