@@ -16,13 +16,6 @@ def test_area_fraction_top(self: PluginTestCase):
 
 @PluginTestAccumulator.register("test_sum_wf")
 def test_sum_wf(self: PluginTestCase):
-    # Skip for vanilla - data_top support requires it to be filled during peaklet creation
-    # Vanilla merged_s2s can't retroactively compute data_top values
-    import os
-
-    if os.environ.get("STRAXEN_USE_VANILLA", "false").lower() == "true":
-        self.skipTest("data_top feature not fully supported in vanilla plugins")
-
     st_alt = self.st.new_context()
     st_alt.set_config(dict(store_data_top=True))
     peaks_alt = st_alt.get_array(self.run_id, ("peaks", "peak_basics"))
@@ -33,6 +26,10 @@ def test_sum_wf(self: PluginTestCase):
     np.testing.assert_array_almost_equal(peaks_alt["area_fraction_top"], peaks["area_fraction_top"])
     np.testing.assert_array_almost_equal(
         peaks["area_fraction_top"],
+        np.sum(peaks["data_top"], axis=1) / np.sum(peaks["data"], axis=1),
+        # TODO: rather high tolerance is needed to pass the test -> possible bug?
+        decimal=4,
+    )
         np.sum(peaks["data_top"], axis=1) / np.sum(peaks["data"], axis=1),
         # TODO: rather high tolerance is needed to pass the test -> possible bug?
         decimal=4,
