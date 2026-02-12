@@ -85,9 +85,11 @@ class SetupContextNt(PluginTestCase):
         # For online context, set ML model configs to None to avoid model download issues
         # Plugins will still run but return NaN for position fields
         if context_name == "xenonnt_online":
-            cls.st.set_config({
-                "tf_model_mlp": None,
-            })
+            cls.st.set_config(
+                {
+                    "tf_model_mlp": None,
+                }
+            )
 
         # Make sure that we only write to the temp-dir we cleanup after each test
         cls.st.storage[0].readonly = True
