@@ -195,9 +195,16 @@ def xenonnt(
 
     # Choose plugin set based on _vanilla parameter
     opts = straxen.contexts.common_opts_vanilla if _vanilla else straxen.contexts.common_opts
+    
+    # Merge configs: common_config + opts.config (if any) + kwargs
+    config = straxen.contexts.common_config.copy()
+    if 'config' in opts:
+        config = {**config, **opts['config']}
+        opts = {k: v for k, v in opts.items() if k != 'config'}  # Remove config from opts
+    
     context_options = {**opts, **kwargs}
 
-    st = strax.Context(config=straxen.contexts.common_config, **context_options)
+    st = strax.Context(config=config, **context_options)
     st.register(
         [
             straxen.DAQReader,
