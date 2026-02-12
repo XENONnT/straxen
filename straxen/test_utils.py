@@ -106,10 +106,7 @@ def nt_test_context(
 
     # If using vanilla plugins, pass _vanilla parameter to context
     if use_vanilla:
-        if target_context == "xenonnt":
-            kwargs["_vanilla"] = True
-        elif target_context == "xenonnt_online":
-            kwargs["_vanilla"] = True
+        kwargs["_vanilla"] = True
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st.set_config(
