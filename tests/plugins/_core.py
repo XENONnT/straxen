@@ -64,6 +64,12 @@ class SetupContextNt(PluginTestCase):
         "event_s1_positions_cnn",
     )
 
+    # Additional plugins to exclude for vanilla context (advanced features not supported)
+    exclude_plugins_vanilla = (
+        "peak_se_score",
+        "event_se_score",
+    )
+
     @classmethod
     def setUpClass(cls) -> None:
         """Common setup for all the tests.
@@ -81,8 +87,12 @@ class SetupContextNt(PluginTestCase):
         cls.st = straxen.test_utils.nt_test_context(context_name, use_vanilla=use_vanilla)
         cls.run_id = nt_test_run_id
 
-        # Remove excluded plugins from registry (GPS and CNN only)
-        for plugin_name in cls.exclude_plugins:
+        # Remove excluded plugins from registry
+        plugins_to_exclude = cls.exclude_plugins
+        if use_vanilla:
+            plugins_to_exclude = cls.exclude_plugins + cls.exclude_plugins_vanilla
+
+        for plugin_name in plugins_to_exclude:
             cls.st._plugin_class_registry.pop(plugin_name, None)
 
         # Make sure that we only write to the temp-dir we cleanup after each test
