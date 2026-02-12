@@ -64,6 +64,14 @@ class SetupContextNt(PluginTestCase):
         "event_s1_positions_cnn",
     )
 
+    # Additional plugins to exclude for xenonnt_online context (ML models not available in CI)
+    exclude_plugins_online = (
+        "peaklet_positions_mlp",
+        "peak_positions_mlp_vanilla",
+        "event_s2_positions_mlp",
+        "event_s2_positions_mlp_vanilla",
+    )
+
     @classmethod
     def setUpClass(cls) -> None:
         """Common setup for all the tests.
@@ -77,12 +85,16 @@ class SetupContextNt(PluginTestCase):
         context_name = os.environ.get("STRAXEN_TEST_CONTEXT", "xenonnt")
         cls.st = straxen.test_utils.nt_test_context(context_name)
         cls.run_id = nt_test_run_id
-
+        
+        # Remove excluded plugins from registry
         # For online context, exclude ML-based position reconstruction plugins
         # They require model files not available in test environments
+        plugins_to_exclude = cls.exclude_plugins
         if context_name == "xenonnt_online":
-            for plugin_name in cls.exclude_plugins:
-                cls.st._plugin_class_registry.pop(plugin_name, None)
+            plugins_to_exclude = cls.exclude_plugins + cls.exclude_plugins_online
+        
+        for plugin_name in plugins_to_exclude:
+            cls.st._plugin_class_registry.pop(plugin_name, None)
 
         # Make sure that we only write to the temp-dir we cleanup after each test
         cls.st.storage[0].readonly = True
