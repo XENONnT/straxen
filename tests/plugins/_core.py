@@ -1,3 +1,4 @@
+import os
 import strax
 from unittest import TestCase
 import tempfile
@@ -63,6 +64,12 @@ class SetupContextNt(PluginTestCase):
         "event_s1_positions_cnn",
     )
 
+    # Additional plugins to exclude for vanilla context (advanced features not supported)
+    exclude_plugins_vanilla: tuple = (
+        "peak_se_score",
+        "event_se_score",
+    )
+
     @classmethod
     def setUpClass(cls) -> None:
         """Common setup for all the tests.
@@ -71,9 +78,22 @@ class SetupContextNt(PluginTestCase):
         class. Only after running all the tests, we run the cleanup.
 
         """
-        # TODO: xenonnt_online should be used here
-        cls.st = straxen.test_utils.nt_test_context("xenonnt")
+        # Context can be controlled via environment variables:
+        # - STRAXEN_TEST_CONTEXT: which context to use (default: 'xenonnt')
+        # - STRAXEN_USE_VANILLA: use vanilla plugins instead of SOM (default: false)
+        context_name = os.environ.get("STRAXEN_TEST_CONTEXT", "xenonnt")
+        use_vanilla = os.environ.get("STRAXEN_USE_VANILLA", "false").lower() == "true"
+
+        cls.st = straxen.test_utils.nt_test_context(context_name, use_vanilla=use_vanilla)
         cls.run_id = nt_test_run_id
+
+        # Remove excluded plugins from registry
+        plugins_to_exclude = cls.exclude_plugins
+        if use_vanilla:
+            plugins_to_exclude = cls.exclude_plugins + cls.exclude_plugins_vanilla
+
+        for plugin_name in plugins_to_exclude:
+            cls.st._plugin_class_registry.pop(plugin_name, None)
 
         # Make sure that we only write to the temp-dir we cleanup after each test
         cls.st.storage[0].readonly = True

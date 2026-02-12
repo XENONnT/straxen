@@ -34,13 +34,15 @@ jobs:
       fail-fast: False
       matrix:
         python-version: ["3.10", "3.11"]
-        test: ["coveralls", "pytest", "pytest_no_database"]
+        test: ["coveralls", "pytest", "pytest_no_database", "pytest_vanilla"]
         # Drop some not crucial tests for python 3.10 and 3.11
         exclude:
           - python-version: "3.11"
             test: coveralls
           - python-version: "3.11"
             test: pytest_no_database
+          - python-version: "3.11"
+            test: pytest_vanilla
 
     steps:
       # Setup and installation
@@ -56,7 +58,7 @@ jobs:
         run: sudo apt-get install -y graphviz
 
       - name: Install test tollkits
-        run: pip install pytest hypothesis coverage coveralls
+        run: pip install pytest hypothesis coverage coveralls pytest-instafail
 
       - name: Install requirements for Python 3.10
         if: matrix.python-version == '3.10'
@@ -106,11 +108,12 @@ jobs:
 
       - name: Test package
         # This is running a normal test
-        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')
+        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest' || matrix.test == 'pytest_vanilla')
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
+          STRAXEN_USE_VANILLA: ${{ matrix.test == 'pytest_vanilla' && 'true' || 'false' }}
         run: |
-          coverage run --source=straxen -m pytest --durations 0
+          coverage run --source=straxen -m pytest --instafail -vv --tb=short --durations 0
           coverage report
 
       - name: Coveralls
@@ -126,7 +129,7 @@ jobs:
           pip install -e .
 
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
-          coverage run --source=straxen -m pytest -v
+          coverage run --source=straxen -m pytest --instafail -vv --tb=short -v
 
           # Test notebooks
           coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/SuperrunsExample.ipynb
@@ -137,7 +140,7 @@ jobs:
             rm ~/.xenon_config
           fi
           bash .github/scripts/create_pre_apply_function.sh $HOME
-          coverage run --append --source=straxen -m pytest -v
+          coverage run --append --source=straxen -m pytest --instafail -vv --tb=short -v
           coveralls --service=github
 
       - name: goodbye
