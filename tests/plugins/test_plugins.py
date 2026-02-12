@@ -27,7 +27,7 @@ _test_context = straxen.test_utils.nt_test_context("xenonnt", use_vanilla=_use_v
 for _target in set(_test_context._plugin_class_registry.values()):
     # Only run one test per plugin (even if it provides multiple targets)
     _target = strax.to_str_tuple(_target.provides)[0]
-    
+
     # Skip excluded plugins
     _exclude = PluginTest.exclude_plugins
     if _use_vanilla:
