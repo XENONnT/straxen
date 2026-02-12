@@ -65,7 +65,7 @@ class SetupContextNt(PluginTestCase):
     )
 
     # Additional plugins to exclude for vanilla context (advanced features not supported)
-    exclude_plugins_vanilla = (
+    exclude_plugins_vanilla: tuple = (
         "peak_se_score",
         "event_se_score",
     )
