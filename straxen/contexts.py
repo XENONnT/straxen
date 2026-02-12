@@ -330,12 +330,13 @@ def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
     if not _from_cutax and xedocs_version != "global_ONLINE":
         warnings.warn("Don't load a context directly from straxen, use cutax instead!")
 
+    # Determine which plugin set to use based on context
     if _from_cutax and xedocs_version != "global_ONLINE":
-        context_options = {**straxen.contexts.common_opts, **kwargs}
+        vanilla = False  # cutax uses SOM plugins
     else:
-        context_options = {**straxen.contexts.common_opts_vanilla, **kwargs}
+        vanilla = True  # standard online uses vanilla plugins
 
-    st = straxen.contexts.xenonnt(**context_options)
+    st = straxen.contexts.xenonnt(_vanilla=vanilla, **kwargs)
     st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
     return st

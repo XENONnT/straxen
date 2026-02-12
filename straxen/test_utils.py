@@ -96,7 +96,7 @@ def nt_test_context(
     :param deregister: a list of plugins from the context
     :param keep_default_storage: if to True, keep the default context storage. Usually, you don't
         need this since all the data will be stored in a separate test data folder.
-    :param use_vanilla: bool, use vanilla plugins instead of SOM plugins (only for xenonnt context)
+    :param use_vanilla: bool, use vanilla plugins instead of SOM plugins
     :param kwargs: Any kwargs are passed to the target-context
     :return: a context
 
@@ -104,9 +104,12 @@ def nt_test_context(
     if not straxen.utilix_is_configured(warning_message=False):
         kwargs.setdefault("_database_init", False)
 
-    # If using vanilla plugins with xenonnt, pass _vanilla parameter
-    if use_vanilla and target_context == "xenonnt":
-        kwargs["_vanilla"] = True
+    # If using vanilla plugins, pass _vanilla parameter to context
+    if use_vanilla:
+        if target_context == "xenonnt":
+            kwargs["_vanilla"] = True
+        elif target_context == "xenonnt_online":
+            kwargs["_vanilla"] = True
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st.set_config(
