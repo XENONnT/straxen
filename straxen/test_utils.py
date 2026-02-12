@@ -83,7 +83,11 @@ def _get_fake_daq_reader():
 
 
 def nt_test_context(
-    target_context="xenonnt_online", deregister=(), keep_default_storage=False, **kwargs
+    target_context="xenonnt_online",
+    deregister=(),
+    keep_default_storage=False,
+    use_vanilla=False,
+    **kwargs,
 ) -> strax.Context:
     """Get a dummy context with full nt-like data simulated data (except aqmon) to allow testing
     plugins.
@@ -92,12 +96,17 @@ def nt_test_context(
     :param deregister: a list of plugins from the context
     :param keep_default_storage: if to True, keep the default context storage. Usually, you don't
         need this since all the data will be stored in a separate test data folder.
+    :param use_vanilla: bool, use vanilla plugins instead of SOM plugins (only for xenonnt context)
     :param kwargs: Any kwargs are passed to the target-context
     :return: a context
 
     """
     if not straxen.utilix_is_configured(warning_message=False):
         kwargs.setdefault("_database_init", False)
+
+    # If using vanilla plugins with xenonnt, pass _vanilla parameter
+    if use_vanilla and target_context == "xenonnt":
+        kwargs["_vanilla"] = True
 
     st = getattr(straxen.contexts, target_context)(**kwargs)
     st.set_config(

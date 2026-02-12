@@ -156,6 +156,7 @@ def xenonnt(
     # Testing options
     _database_init: bool = True,
     _forbid_creation_of: Optional[dict] = None,
+    _vanilla: bool = False,
     **kwargs,
 ):
     """XENONnT online processing and analysis.
@@ -181,6 +182,7 @@ def xenonnt(
     :param _database_init: bool, start the database (for testing)
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form being written (raw_records*
         is always forbidden).
+    :param _vanilla: bool, use vanilla plugins instead of SOM plugins (for testing)
     :param kwargs: dict, context options
     :return: strax.Context
 
@@ -190,7 +192,9 @@ def xenonnt(
             "Please use xenonnt_* instead of xenonnt if you want to specify xedocs_version"
         )
 
-    context_options = {**straxen.contexts.common_opts, **kwargs}
+    # Choose plugin set based on _vanilla parameter
+    opts = straxen.contexts.common_opts_vanilla if _vanilla else straxen.contexts.common_opts
+    context_options = {**opts, **kwargs}
 
     st = strax.Context(config=straxen.contexts.common_config, **context_options)
     st.register(

@@ -72,24 +72,18 @@ class SetupContextNt(PluginTestCase):
         class. Only after running all the tests, we run the cleanup.
 
         """
-        # Context can be controlled via STRAXEN_TEST_CONTEXT environment variable.
-        # Default is 'xenonnt' (SOM plugins), set to 'xenonnt_online' to test vanilla plugins.
+        # Context can be controlled via environment variables:
+        # - STRAXEN_TEST_CONTEXT: which context to use (default: 'xenonnt')
+        # - STRAXEN_USE_VANILLA: use vanilla plugins instead of SOM (default: false)
         context_name = os.environ.get("STRAXEN_TEST_CONTEXT", "xenonnt")
-        cls.st = straxen.test_utils.nt_test_context(context_name)
+        use_vanilla = os.environ.get("STRAXEN_USE_VANILLA", "false").lower() == "true"
+
+        cls.st = straxen.test_utils.nt_test_context(context_name, use_vanilla=use_vanilla)
         cls.run_id = nt_test_run_id
 
         # Remove excluded plugins from registry (GPS and CNN only)
         for plugin_name in cls.exclude_plugins:
             cls.st._plugin_class_registry.pop(plugin_name, None)
-
-        # For online context, set ML model configs to None to avoid model download issues
-        # Plugins will still run but return NaN for position fields
-        if context_name == "xenonnt_online":
-            cls.st.set_config(
-                {
-                    "tf_model_mlp": None,
-                }
-            )
 
         # Make sure that we only write to the temp-dir we cleanup after each test
         cls.st.storage[0].readonly = True
