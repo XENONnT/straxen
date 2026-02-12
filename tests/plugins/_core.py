@@ -85,14 +85,14 @@ class SetupContextNt(PluginTestCase):
         context_name = os.environ.get("STRAXEN_TEST_CONTEXT", "xenonnt")
         cls.st = straxen.test_utils.nt_test_context(context_name)
         cls.run_id = nt_test_run_id
-        
+
         # Remove excluded plugins from registry
         # For online context, exclude ML-based position reconstruction plugins
         # They require model files not available in test environments
         plugins_to_exclude = cls.exclude_plugins
         if context_name == "xenonnt_online":
             plugins_to_exclude = cls.exclude_plugins + cls.exclude_plugins_online
-        
+
         for plugin_name in plugins_to_exclude:
             cls.st._plugin_class_registry.pop(plugin_name, None)
 
