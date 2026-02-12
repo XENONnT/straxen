@@ -58,6 +58,7 @@ common_opts_vanilla: Dict[str, Any] = dict(
     check_available=("peak_basics", "event_basics"),
     store_run_fields=("name", "number", "start", "end", "livetime", "mode", "source"),
     use_per_run_defaults=False,
+    config=dict(store_data_top=True),  # Ensure vanilla contexts compute data_top
 )
 
 
@@ -286,10 +287,6 @@ def xenonnt(
             )
         }
     )
-
-    # Enable data_top computation for vanilla plugins (needed for tests)
-    if _vanilla:
-        st.set_config({"store_data_top": True})
 
     return st
 
