@@ -19,9 +19,10 @@ def test_sum_wf(self: PluginTestCase):
     # Skip for vanilla - data_top support requires it to be filled during peaklet creation
     # Vanilla merged_s2s can't retroactively compute data_top values
     import os
+
     if os.environ.get("STRAXEN_USE_VANILLA", "false").lower() == "true":
         self.skipTest("data_top feature not fully supported in vanilla plugins")
-    
+
     st_alt = self.st.new_context()
     st_alt.set_config(dict(store_data_top=True))
     peaks_alt = st_alt.get_array(self.run_id, ("peaks", "peak_basics"))
