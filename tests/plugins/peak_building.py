@@ -30,10 +30,6 @@ def test_sum_wf(self: PluginTestCase):
         # TODO: rather high tolerance is needed to pass the test -> possible bug?
         decimal=4,
     )
-        np.sum(peaks["data_top"], axis=1) / np.sum(peaks["data"], axis=1),
-        # TODO: rather high tolerance is needed to pass the test -> possible bug?
-        decimal=4,
-    )
 
 
 @PluginTestAccumulator.register("test_saturation_correction")
