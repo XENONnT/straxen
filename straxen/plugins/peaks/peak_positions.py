@@ -47,3 +47,29 @@ class PeakPositions(strax.MergeOnlyPlugin):
         for xy in ("x", "y"):
             result[xy] = peaks[f"{xy}_{algorithm}"]
         return result
+
+
+
+@export
+class PeakPositionsVanilla(PeakPositions):
+    """Merge the reconstructed algorithms of the different algorithms into a single one that can be
+    used in Event Basics.
+
+    In this vanilla version, we only use the CNF algorithm.
+
+    Select one of the plugins to provide the 'x' and 'y' to be used further down the chain. Since we
+    already have the information needed here, there is no need to wait until events to make the
+    decision.
+
+    Since the computation is trivial as it only combined the three input plugins, don't save this
+    plugins output.
+
+    """
+
+    __version__ = "0.0.1"
+
+    child_plugin = True
+
+    depends_on = (
+        "peak_positions_cnf",
+    )
