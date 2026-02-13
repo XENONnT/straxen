@@ -162,7 +162,7 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         _store_data_top = "data_top" in self.dtype_for("merged_s2s").names
         _store_data_start = "data_start" in self.dtype_for("merged_s2s").names
         n_top_pmts_if_digitize_top = self.n_top_pmts if _store_data_top else -1
-        
+
         strax.add_lone_hits(
             merged_s2s,
             lh,
