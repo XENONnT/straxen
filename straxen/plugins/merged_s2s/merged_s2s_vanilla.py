@@ -111,8 +111,11 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             return np.zeros(0, dtype=self.dtype)
 
         if "data_top" not in peaklets.dtype.names:
-            # Need to add data_top field. Check if input also has data_start.
-            _store_data_start = "data_start" in peaklets.dtype.names
+            # Need to add data_top field. Also add data_start (required by strax merge_peaks).
+            # Note: strax's numba-compiled functions can't handle missing fields,
+            # so we always include data_start even if it stays empty (zeros).
+            # This is a workaround until strax properly supports optional fields.
+            _store_data_start = True  # Always include when adding data_top
             peaklets_w_field = np.zeros(
                 len(peaklets),
                 dtype=strax.peak_dtype(
