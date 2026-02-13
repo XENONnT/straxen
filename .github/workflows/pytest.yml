@@ -28,6 +28,18 @@ jobs:
   test:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:4.4.1
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       HAVE_ACCESS_TO_SECRETS: ${{ secrets.RUNDB_API_URL }}
     strategy:
@@ -74,10 +86,6 @@ jobs:
           pip install .
           pip install tf-keras scikit-learn --upgrade
 
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.12.0
-        with:
-          mongodb-version: 4.4.1
 
       - name: patch utilix file
         # Secrets and required files
