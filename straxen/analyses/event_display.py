@@ -405,6 +405,9 @@ def _scatter_rec(
     """Convenient wrapper to show posrec of three algorithms for xenonnt."""
     if recs is None:
         recs = ("mlp", "cnf")
+        # filter them to only include those that are actually in the event
+        recs = [_r for _r in recs if f"s2_x_{_r}" in _event.dtype.names]
+
     elif len(recs) > 5:
         raise ValueError("I only got five markers/colors")
     if scatter_kwargs is None:

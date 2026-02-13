@@ -68,6 +68,7 @@ class SetupContextNt(PluginTestCase):
     exclude_plugins_vanilla: tuple = (
         "peak_se_score",
         "event_se_score",
+        "s2_recon_pos_diff" # we only compute one model
     )
 
     @classmethod
