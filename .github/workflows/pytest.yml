@@ -28,7 +28,7 @@ jobs:
   test:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
-  
+
     services:
       mongodb:
         image: mongo:4.4.1
@@ -39,7 +39,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
-  
+
     env:
       HAVE_ACCESS_TO_SECRETS: ${{ secrets.RUNDB_API_URL }}
     strategy:
