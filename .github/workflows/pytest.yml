@@ -110,8 +110,47 @@ jobs:
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
         run: |
-          coverage run --source=straxen -m pytest --durations 0
+          coverage run --source=straxen -m pytest --durations 0 -v
           coverage report
+      
+      - name: Display performance summary
+        # Show key performance metrics in the workflow log
+        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && always()
+        run: |
+          if [ -f test-results/plugin_performance.json ]; then
+            echo "📊 Plugin Performance Summary:"
+            python -c "
+          import json
+          with open('test-results/plugin_performance.json') as f:
+              data = json.load(f)
+              summary = data.get('summary', {})
+              if summary:
+                  print(f'\n{\"=\"*60}')
+                  print(f'{\"Plugin\":<30} {\"Avg Time (ms)\":<15} {\"Avg RAM (MB)\":<15}')
+                  print(f'{\"-\"*60}')
+                  sorted_plugins = sorted(summary.items(), key=lambda x: x[1]['total_time_ms'], reverse=True)
+                  for target, stats in sorted_plugins:
+                      avg_time = stats['total_time_ms'] / stats['count']
+                      avg_ram = stats['total_ram_delta_mb'] / stats['count']
+                      print(f'{target:<30} {avg_time:>10.2f}     {avg_ram:>15.2f}')
+                  print(f'{\"=\"*60}')
+                  print(f'Total: {len(summary)} plugins measured')
+              else:
+                  print('No plugin performance data collected')
+          "
+          else
+            echo "No performance data generated (no plugin tests ran)"
+          fi
+
+      - name: Upload performance results
+        # Upload performance monitoring artifacts if they exist
+        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results-py${{ matrix.python-version }}-${{ matrix.test }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Coveralls
         # Make the coverage report and upload

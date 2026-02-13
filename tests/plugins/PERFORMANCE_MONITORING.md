@@ -6,22 +6,68 @@ This document describes how to use the performance monitoring feature for straxe
 
 The performance monitoring system automatically tracks execution time and RAM usage for each plugin's `compute()` method during test runs. This helps identify performance bottlenecks and memory-intensive operations.
 
+**Behavior**:
+- **In CI/GitHub Actions**: Automatically enabled for all test runs
+- **Locally**: Opt-in via `--monitor-performance` flag or environment variable
+
+## CI/CD Integration
+
+### GitHub Actions
+
+Performance monitoring is **automatically enabled** in GitHub Actions CI runs. The system:
+
+1. **Detects CI environment** - Uses the `CI=true` environment variable
+2. **Collects metrics** - Monitors all plugin tests during the normal pytest run
+3. **Shows inline output** - Metrics appear in test logs after each test
+4. **Displays summary** - A dedicated step shows the performance summary table
+5. **Uploads artifacts** - CSV and JSON files are saved as workflow artifacts
+
+### Viewing Results in GitHub
+
+**In PR test logs**:
+1. Go to the "Checks" tab of your PR
+2. Click on the test job (e.g., "pytest_py3.10")
+3. Scroll through the test output to see per-plugin metrics like:
+   ```
+   📊 PulseProcessing (records):
+      ⏱️  Time: 1050.22 ms
+      💾 RAM Delta: +64.02 MB (peak: 377.22 MB)
+   ```
+4. Look for the "Display performance summary" step to see the aggregate table
+
+**Download artifacts**:
+1. Go to the workflow run page
+2. Scroll to the "Artifacts" section at the bottom
+3. Download `performance-results-py{version}-{test}` 
+4. Extract to get CSV/JSON files
+
+### Artifact Retention
+
+Performance artifacts are kept for **30 days** after the workflow run.
+
 ## Usage
 
-### Basic Usage
+### Local Development (Opt-In)
 
-To enable performance monitoring, add the `--monitor-performance` flag when running plugin tests:
+To enable performance monitoring locally, add the `--monitor-performance` flag:
 
 ```bash
 pytest tests/plugins/ --monitor-performance
 ```
 
-### Environment Variable
+### Disabling in CI
 
-Alternatively, set the environment variable:
+If you need to disable performance monitoring in CI (e.g., for debugging):
 
+```yaml
+# In .github/workflows/pytest.yml
+env:
+  STRAXEN_MONITOR_PERFORMANCE: "0"  # Disable monitoring
+```
+
+Or temporarily via environment variable:
 ```bash
-export STRAXEN_MONITOR_PERFORMANCE=1
+export STRAXEN_MONITOR_PERFORMANCE=0
 pytest tests/plugins/
 ```
 

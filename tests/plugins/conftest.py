@@ -60,8 +60,10 @@ def performance_collector(request):
     """Session-scoped fixture that manages the performance collector."""
     config = request.config
     
-    # Check if monitoring is enabled via CLI or environment variable
+    # Auto-enable in CI environments, or via CLI/env var
+    is_ci = os.environ.get("CI", "").lower() in ("true", "1")
     enabled = (
+        is_ci or  # Automatically enable in GitHub Actions / CI
         config.getoption("--monitor-performance") or
         os.environ.get("STRAXEN_MONITOR_PERFORMANCE", "").lower() in ("1", "true", "yes")
     )
