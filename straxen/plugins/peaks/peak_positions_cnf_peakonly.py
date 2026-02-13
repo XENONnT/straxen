@@ -15,6 +15,7 @@ Trade-offs:
 
 Use this for online DAQ where RAM is constrained. For offline analysis,
 use PeakPositionsCNF which provides better accuracy via peaklet positions.
+
 """
 
 import numpy as np
@@ -28,10 +29,10 @@ export, __all__ = strax.exporter()
 @export
 class PeakPositionsCNFPeakOnly(strax.Plugin):
     """CNF position reconstruction from peak area_per_channel (no peaklet dependencies).
-    
-    This is a memory-efficient alternative to PeakPositionsCNF that computes
-    positions after S2 merging, not before. Uses the same CNF algorithm but
-    operates on peak-level data.
+
+    This is a memory-efficient alternative to PeakPositionsCNF that computes positions after S2
+    merging, not before. Uses the same CNF algorithm but operates on peak-level data.
+
     """
 
     __version__ = "0.0.0"
@@ -88,8 +89,9 @@ class PeakPositionsCNFPeakOnly(strax.Plugin):
     @staticmethod
     def calculate_theta_diff(theta_array, avg_theta):
         """Calculate the difference between maximum and minimum angles from an array of angles.
-        
+
         Normalizes angular difference into range [0, 2π).
+
         """
         # Correction to handle circular nature of angles
         theta_array_shift = (theta_array - avg_theta[..., np.newaxis] + np.pi) % (2 * np.pi)
@@ -145,6 +147,7 @@ class PeakPositionsCNFPeakOnly(strax.Plugin):
         Returns:
             xy: Predicted x and y coordinates
             contour: Uncertainty contours
+
         """
         N_entries = flow_condition.shape[0]
         if N_entries > self.N_chunk_max:
@@ -164,6 +167,7 @@ class PeakPositionsCNFPeakOnly(strax.Plugin):
         Returns:
             xy: Predicted x and y coordinates
             contour: Uncertainty contours
+
         """
         N_entries = flow_condition.shape[0]
         if N_entries <= self.N_chunk_max:
@@ -192,9 +196,10 @@ class PeakPositionsCNFPeakOnly(strax.Plugin):
     def polygon_area(polygon):
         """Calculate and return the area of a polygon.
 
-        The input is a 3D numpy array where the first dimension represents individual polygons,
-        the second dimension represents vertices, and the third dimension represents x and y
-        coordinates of each vertex.
+        The input is a 3D numpy array where the first dimension represents individual polygons, the
+        second dimension represents vertices, and the third dimension represents x and y coordinates
+        of each vertex.
+
         """
         x = polygon[..., 0]
         y = polygon[..., 1]
@@ -205,9 +210,10 @@ class PeakPositionsCNFPeakOnly(strax.Plugin):
 
     def compute(self, peaks):
         """Compute CNF position reconstruction from peak area_per_channel.
-        
-        This operates on merged peaks, using aggregated area_per_channel data
-        rather than individual peaklet waveforms.
+
+        This operates on merged peaks, using aggregated area_per_channel data rather than individual
+        peaklet waveforms.
+
         """
         # Initialize result array
         result = np.ones(len(peaks), dtype=self.dtype)
@@ -225,7 +231,7 @@ class PeakPositionsCNFPeakOnly(strax.Plugin):
         # This uses the same approach as PeakletPositionsCNF but on peak data
         area_per_channel_top = peaks["area_per_channel"][peak_mask, : self.n_top_pmts]
         total_top_areas = np.sum(area_per_channel_top, axis=1)
-        
+
         # Create flow condition: normalized PMT pattern + log(area)
         with np.errstate(divide="ignore", invalid="ignore"):
             flow_data = np.concatenate(
