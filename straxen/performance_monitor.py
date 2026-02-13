@@ -7,8 +7,8 @@ compute() methods during testing.
 
 import time
 import tracemalloc
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from dataclasses import dataclass
 import threading
 import os
 
@@ -108,15 +108,15 @@ class PerformanceCollector:
             key = metric.target
             if key not in summary:
                 summary[key] = {
-                    "count": 0,
-                    "total_time_ms": 0,
-                    "max_time_ms": 0,
-                    "total_ram_delta_mb": 0,
-                    "max_ram_delta_mb": 0,
-                    "max_ram_peak_mb": 0,
+                    "count": 0.0,
+                    "total_time_ms": 0.0,
+                    "max_time_ms": 0.0,
+                    "total_ram_delta_mb": 0.0,
+                    "max_ram_delta_mb": 0.0,
+                    "max_ram_peak_mb": 0.0,
                 }
 
-            summary[key]["count"] += 1
+            summary[key]["count"] += 1.0
             summary[key]["total_time_ms"] += metric.execution_time_ms
             summary[key]["max_time_ms"] = max(summary[key]["max_time_ms"], metric.execution_time_ms)
             summary[key]["total_ram_delta_mb"] += metric.ram_delta_mb

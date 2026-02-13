@@ -10,8 +10,6 @@ import json
 import csv
 import os
 from pathlib import Path
-from typing import Optional
-import functools
 
 from straxen.performance_monitor import (
     PerformanceCollector,
@@ -134,11 +132,11 @@ def performance_collector(request):
     # Print summary to console
     summary = collector.get_summary()
     if summary:
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print("PLUGIN PERFORMANCE SUMMARY")
-        print(f"{'='*70}\n")
+        print(f"{'=' * 70}\n")
         print(f"{'Plugin':<30} {'Avg Time (ms)':<15} {'Avg RAM (MB)':<15}")
-        print(f"{'-'*60}")
+        print(f"{'-' * 60}")
 
         sorted_plugins = sorted(
             summary.items(),
@@ -151,9 +149,9 @@ def performance_collector(request):
             avg_ram = stats["total_ram_delta_mb"] / stats["count"]
             print(f"{target:<30} {avg_time:>10.2f}     {avg_ram:>15.2f}")
 
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         print(f"Total: {len(summary)} plugins measured")
-        print(f"{'='*70}\n")
+        print(f"{'=' * 70}\n")
 
 
 def _generate_performance_reports(collector: PerformanceCollector, output_dir: str):
@@ -200,11 +198,11 @@ def _generate_performance_reports(collector: PerformanceCollector, output_dir: s
             indent=2,
         )
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Performance reports saved:")
     print(f"  CSV:  {csv_file}")
     print(f"  JSON: {json_file}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
 
 @pytest.fixture
@@ -248,8 +246,10 @@ class PerformanceTerminalReporter:
             for metric in new_metrics:
                 print(f"  📊 {metric.plugin_name} ({metric.target}):")
                 print(f"     ⏱️  Time: {metric.execution_time_ms:.2f} ms")
-                print(
-                    f"     💾 RAM Delta: {metric.ram_delta_mb:+.2f} MB (peak: {metric.ram_peak_mb:.2f} MB)"
+                ram_info = (
+                    f"RAM Delta: {metric.ram_delta_mb:+.2f} MB "
+                    f"(peak: {metric.ram_peak_mb:.2f} MB)"
                 )
+                print(f"     💾 {ram_info}")
                 if metric.tracemalloc_peak_mb:
-                    print(f"     🔍 Tracemalloc Peak: {metric.tracemalloc_peak_mb:.2f} MB")
+                    print(f"     🔍 Tracemalloc Peak: " f"{metric.tracemalloc_peak_mb:.2f} MB")
