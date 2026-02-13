@@ -111,8 +111,8 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             return np.zeros(0, dtype=self.dtype)
 
         if "data_top" not in peaklets.dtype.names:
-            # Need to add data_top field. Check if we also need data_start.
-            _store_data_start = "data_start" in self.dtype_for("merged_s2s").names
+            # Need to add data_top field. Check if input also has data_start.
+            _store_data_start = "data_start" in peaklets.dtype.names
             peaklets_w_field = np.zeros(
                 len(peaklets),
                 dtype=strax.peak_dtype(
