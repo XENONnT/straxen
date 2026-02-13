@@ -49,7 +49,6 @@ class PeakPositions(strax.MergeOnlyPlugin):
         return result
 
 
-
 @export
 class PeakPositionsVanilla(PeakPositions):
     """Merge the reconstructed algorithms of the different algorithms into a single one that can be
@@ -70,6 +69,4 @@ class PeakPositionsVanilla(PeakPositions):
 
     child_plugin = True
 
-    depends_on = (
-        "peak_positions_cnf",
-    )
+    depends_on = ("peak_positions_cnf",)
