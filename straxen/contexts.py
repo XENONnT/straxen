@@ -16,6 +16,7 @@ common_opts: Dict[str, Any] = dict(
         straxen.Peaklets,
         straxen.PeakletClassificationSOM,
         straxen.MergedS2s,
+        straxen.PeakPositions,
         straxen.PeaksSOM,
         straxen.PeakBasicsSOM,
         straxen.PeakProximity,
