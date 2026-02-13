@@ -112,7 +112,8 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
 
         if "data_top" not in peaklets.dtype.names:
             peaklets_w_field = np.zeros(
-                len(peaklets), dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, digitize_top=True)
+                len(peaklets),
+                dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, store_data_top=True),
             )
             strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
             del peaklets
@@ -140,6 +141,8 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             max_buffer=int(self.s2_merge_max_duration // np.gcd.reduce(peaklets["dt"])),
         )
         merged_s2s["type"] = 2
+
+        strax.compute_properties(merged_s2s, n_top_channels=self.n_top_pmts)
 
         # Updated time and length of lone_hits and sort again:
         lh = np.copy(lone_hits)
