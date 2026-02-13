@@ -18,7 +18,7 @@ tests/plugins/test_plugins.py::PluginTest::test_records PASSED
   📊 PulseProcessing (records):
      ⏱️  Time: 1050.22 ms
      💾 RAM Delta: +64.02 MB (peak: 377.22 MB)
-  
+
   📊 PulseProcessing (records):
      ⏱️  Time: 1050.35 ms
      💾 RAM Delta: +64.02 MB (peak: 377.22 MB)
@@ -38,7 +38,7 @@ After all tests complete, a dedicated workflow step shows:
 📊 Plugin Performance Summary:
 
 ============================================================
-Plugin                         Avg Time (ms)   Avg RAM (MB)   
+Plugin                         Avg Time (ms)   Avg RAM (MB)
 ------------------------------------------------------------
 peaklets                          3983.22              100.32
 records                           1050.29               64.02
@@ -142,11 +142,11 @@ run: |
 
 ## 🚀 Benefits
 
-✅ **Zero overhead for developers** - Automatic in CI  
-✅ **Non-intrusive** - Doesn't slow down local development  
-✅ **Always up-to-date** - Metrics on every PR  
-✅ **Historical data** - Download artifacts for trend analysis  
-✅ **Easy comparison** - See performance changes in PRs  
+✅ **Zero overhead for developers** - Automatic in CI
+✅ **Non-intrusive** - Doesn't slow down local development
+✅ **Always up-to-date** - Metrics on every PR
+✅ **Historical data** - Download artifacts for trend analysis
+✅ **Easy comparison** - See performance changes in PRs
 
 ## 📝 Notes
 

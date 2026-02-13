@@ -38,7 +38,7 @@ Performance monitoring is **automatically enabled** in GitHub Actions CI runs. T
 **Download artifacts**:
 1. Go to the workflow run page
 2. Scroll to the "Artifacts" section at the bottom
-3. Download `performance-results-py{version}-{test}` 
+3. Download `performance-results-py{version}-{test}`
 4. Extract to get CSV/JSON files
 
 ### Artifact Retention
@@ -102,7 +102,7 @@ At the end of the test session, a summary table is displayed:
 PLUGIN PERFORMANCE SUMMARY
 ======================================================================
 
-Plugin                         Avg Time (ms)   Avg RAM (MB)   
+Plugin                         Avg Time (ms)   Avg RAM (MB)
 ------------------------------------------------------------
 peaklets                          3983.22              100.32
 records                            951.58               59.98

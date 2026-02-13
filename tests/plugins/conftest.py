@@ -1,7 +1,8 @@
 """Pytest plugin for monitoring straxen plugin performance.
 
-This module provides pytest hooks to automatically measure and report
-time and memory usage for straxen plugin tests.
+This module provides pytest hooks to automatically measure and report time and memory usage for
+straxen plugin tests.
+
 """
 
 import pytest
@@ -47,10 +48,11 @@ def pytest_configure(config):
         "markers",
         "monitor_performance: mark test to monitor plugin performance",
     )
-    
+
     # Register terminal reporter if monitoring is enabled
-    if config.getoption("--monitor-performance") or \
-       os.environ.get("STRAXEN_MONITOR_PERFORMANCE", "").lower() in ("1", "true", "yes"):
+    if config.getoption("--monitor-performance") or os.environ.get(
+        "STRAXEN_MONITOR_PERFORMANCE", ""
+    ).lower() in ("1", "true", "yes"):
         reporter = PerformanceTerminalReporter(config)
         config.pluginmanager.register(reporter, "performance_terminal_reporter")
 
@@ -59,76 +61,76 @@ def pytest_configure(config):
 def performance_collector(request):
     """Session-scoped fixture that manages the performance collector."""
     config = request.config
-    
+
     # Auto-enable in CI environments, or via CLI/env var
     is_ci = os.environ.get("CI", "").lower() in ("true", "1")
     enabled = (
-        is_ci or  # Automatically enable in GitHub Actions / CI
-        config.getoption("--monitor-performance") or
-        os.environ.get("STRAXEN_MONITOR_PERFORMANCE", "").lower() in ("1", "true", "yes")
+        is_ci  # Automatically enable in GitHub Actions / CI
+        or config.getoption("--monitor-performance")
+        or os.environ.get("STRAXEN_MONITOR_PERFORMANCE", "").lower() in ("1", "true", "yes")
     )
-    
+
     if not enabled:
         yield None
         return
-    
+
     if not HAS_PSUTIL:
         pytest.warn(
             "psutil not installed, performance monitoring will have limited functionality",
             RuntimeWarning,
         )
-    
-    use_tracemalloc = (
-        config.getoption("--monitor-tracemalloc") or
-        os.environ.get("STRAXEN_MONITOR_TRACEMALLOC", "").lower() in ("1", "true", "yes")
-    )
-    
+
+    use_tracemalloc = config.getoption("--monitor-tracemalloc") or os.environ.get(
+        "STRAXEN_MONITOR_TRACEMALLOC", ""
+    ).lower() in ("1", "true", "yes")
+
     # Initialize collector
     collector = PerformanceCollector()
     collector.reset()
     collector.enable(use_tracemalloc=use_tracemalloc)
-    
+
     # Monkey-patch strax.Plugin.do_compute to measure performance
     import strax
+
     _original_do_compute = strax.Plugin.do_compute
-    
+
     def wrapped_do_compute(self, chunk_i=None, **kwargs):
         print(f"[PERF] Wrapping do_compute for {self.__class__.__name__}")
         # Call original do_compute which internally calls compute
         result = _original_do_compute(self, chunk_i=chunk_i, **kwargs)
-        
-        # Measure after  
+
+        # Measure after
         # Actually, we need to wrap the compute call inside do_compute
         # Let's try a different approach
         return result
-    
+
     # Actually, let's wrap at a different level - the compute call within do_compute
     # Better approach: wrap the user compute method of each plugin instance
     _original_plugin_init = strax.Plugin.__init__
-    
+
     def wrapped_plugin_init(self, *args, **kwargs):
         _original_plugin_init(self, *args, **kwargs)
         # Wrap the compute method of this instance
-        if hasattr(self, 'compute') and callable(self.compute):
+        if hasattr(self, "compute") and callable(self.compute):
             original_instance_compute = self.compute
-            
+
             def wrapped_instance_compute(*args, **kwargs):
                 return measure_plugin_performance(self, original_instance_compute, *args, **kwargs)
-            
+
             self.compute = wrapped_instance_compute
-    
+
     strax.Plugin.__init__ = wrapped_plugin_init
-    
+
     yield collector
-    
+
     # Restore original methods
     strax.Plugin.__init__ = _original_plugin_init
     collector.disable()
-    
+
     # Generate reports
     output_dir = config.getoption("--performance-output-dir")
     _generate_performance_reports(collector, output_dir)
-    
+
     # Print summary to console
     summary = collector.get_summary()
     if summary:
@@ -137,18 +139,18 @@ def performance_collector(request):
         print(f"{'='*70}\n")
         print(f"{'Plugin':<30} {'Avg Time (ms)':<15} {'Avg RAM (MB)':<15}")
         print(f"{'-'*60}")
-        
+
         sorted_plugins = sorted(
             summary.items(),
-            key=lambda x: x[1]['total_time_ms'],
+            key=lambda x: x[1]["total_time_ms"],
             reverse=True,
         )
-        
+
         for target, stats in sorted_plugins:
-            avg_time = stats['total_time_ms'] / stats['count']
-            avg_ram = stats['total_ram_delta_mb'] / stats['count']
+            avg_time = stats["total_time_ms"] / stats["count"]
+            avg_ram = stats["total_ram_delta_mb"] / stats["count"]
             print(f"{target:<30} {avg_time:>10.2f}     {avg_ram:>15.2f}")
-        
+
         print(f"{'='*70}")
         print(f"Total: {len(summary)} plugins measured")
         print(f"{'='*70}\n")
@@ -157,14 +159,14 @@ def performance_collector(request):
 def _generate_performance_reports(collector: PerformanceCollector, output_dir: str):
     """Generate performance report files."""
     metrics = collector.get_metrics()
-    
+
     if not metrics:
         return
-    
+
     # Create output directory
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate CSV report
     csv_file = output_path / "plugin_performance.csv"
     with open(csv_file, "w", newline="") as f:
@@ -185,7 +187,7 @@ def _generate_performance_reports(collector: PerformanceCollector, output_dir: s
         writer.writeheader()
         for metric in metrics:
             writer.writerow(metric.to_dict())
-    
+
     # Generate JSON report
     json_file = output_path / "plugin_performance.json"
     with open(json_file, "w") as f:
@@ -197,7 +199,7 @@ def _generate_performance_reports(collector: PerformanceCollector, output_dir: s
             f,
             indent=2,
         )
-    
+
     print(f"\n{'='*70}")
     print(f"Performance reports saved:")
     print(f"  CSV:  {csv_file}")
@@ -215,38 +217,39 @@ def pytest_runtest_logreport(report):
     """Hook to display performance metrics after each test."""
     if report.when != "call":
         return
-    
+
     collector = PerformanceCollector()
     if not collector.enabled:
         return
-    
+
     # Metrics are displayed by the PerformanceTerminalReporter
     pass
 
 
 class PerformanceTerminalReporter:
     """Terminal reporter for displaying performance metrics after each test."""
-    
+
     def __init__(self, config):
         self.config = config
         self.collector = PerformanceCollector()
         self.last_metric_count = 0
-    
+
     def pytest_runtest_logfinish(self, nodeid):
         """Display metrics after each test completes."""
         if not self.collector.enabled:
             return
-        
+
         metrics = self.collector.get_metrics()
-        new_metrics = metrics[self.last_metric_count:]
+        new_metrics = metrics[self.last_metric_count :]
         self.last_metric_count = len(metrics)
-        
+
         if new_metrics:
             print()
             for metric in new_metrics:
                 print(f"  📊 {metric.plugin_name} ({metric.target}):")
                 print(f"     ⏱️  Time: {metric.execution_time_ms:.2f} ms")
-                print(f"     💾 RAM Delta: {metric.ram_delta_mb:+.2f} MB (peak: {metric.ram_peak_mb:.2f} MB)")
+                print(
+                    f"     💾 RAM Delta: {metric.ram_delta_mb:+.2f} MB (peak: {metric.ram_peak_mb:.2f} MB)"
+                )
                 if metric.tracemalloc_peak_mb:
                     print(f"     🔍 Tracemalloc Peak: {metric.tracemalloc_peak_mb:.2f} MB")
-

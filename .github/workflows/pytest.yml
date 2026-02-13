@@ -112,7 +112,7 @@ jobs:
         run: |
           coverage run --source=straxen -m pytest --durations 0 -v
           coverage report
-      
+
       - name: Display performance summary
         # Show key performance metrics in the workflow log
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest') && always()
