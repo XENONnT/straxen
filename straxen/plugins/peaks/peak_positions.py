@@ -1,7 +1,7 @@
 import numpy as np
 import strax
 import straxen
-
+from typing import Tuple
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 export, __all__ = strax.exporter()
@@ -23,7 +23,7 @@ class PeakPositions(strax.MergeOnlyPlugin):
 
     __version__ = "0.0.0"
     provides = "peak_positions"
-    depends_on = (
+    depends_on: Tuple[str, ...] = (
         "peak_positions_cnf",
         "peak_positions_mlp",
     )
@@ -69,4 +69,4 @@ class PeakPositionsVanilla(PeakPositions):
 
     child_plugin = True
 
-    depends_on = ("peak_positions_cnf",)
+    depends_on: Tuple[str, ...] = ("peak_positions_cnf",)
