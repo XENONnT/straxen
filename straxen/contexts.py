@@ -159,7 +159,7 @@ def xenonnt(
     _database_init: bool = True,
     _forbid_creation_of: Optional[dict] = None,
     _vanilla: bool = False,
-    _low_memory_positions: bool = False,
+    _peak_only_positions: bool = False,
     **kwargs,
 ):
     """XENONnT online processing and analysis.
@@ -186,7 +186,7 @@ def xenonnt(
     :param _forbid_creation_of: str/tuple, of datatypes to prevent form being written (raw_records*
         is always forbidden).
     :param _vanilla: bool, use vanilla plugins instead of SOM plugins (for testing)
-    :param _low_memory_positions: bool, use peak-only position reconstruction to reduce RAM usage by
+    :param _peak_only_positions: bool, use peak-only position reconstruction to reduce RAM usage by
         ~27 GB. Disables peaklet-level positions from PR #1482. Recommended for online DAQ where RAM
         is constrained. Trade-off: slightly less accurate positions and less effective S2 merging.
     :param kwargs: dict, context options
@@ -206,17 +206,7 @@ def xenonnt(
     
     # If low_memory_positions is enabled and we're in vanilla mode,
     # replace PeakPositionsCNFVanilla with the peak-only version
-    if _low_memory_positions and _vanilla:
-        # Unregister the standard vanilla CNF positions
-        if straxen.PeakPositionsCNFVanilla in st._plugin_class_registry.values():
-            # Find and remove it
-            keys_to_remove = [
-                k for k, v in st._plugin_class_registry.items() 
-                if v == straxen.PeakPositionsCNFVanilla
-            ]
-            for key in keys_to_remove:
-                del st._plugin_class_registry[key]
-        
+    if _peak_only_positions and _vanilla:        
         # Register the peak-only version
         st.register(straxen.PeakPositionsCNFPeakOnly)
     
@@ -348,26 +338,46 @@ def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> N
         )
 
 
-def xenonnt_online(xedocs_version="global_ONLINE", _from_cutax=False, **kwargs):
+def xenonnt_online(
+    xedocs_version: str = "global_ONLINE",
+    _from_cutax: bool = False,
+    **kwargs,
+):
     """XENONnT online context.
-    
-    For online DAQ processing, this automatically enables low-memory position reconstruction
-    to reduce RAM usage by ~27 GB. This can be disabled by passing _low_memory_positions=False.
+
+    Default behaviour:
+      - If called from cutax AND not using global_ONLINE:
+            _vanilla = False
+            _peak_only_positions = False
+      - Otherwise (standard online):
+            _vanilla = True
+            _peak_only_positions = True
+
+    User-provided values for _vanilla or _peak_only_positions override defaults.
     """
+
+    # Warn if user manually mixes non-global xedocs without cutax
     if not _from_cutax and xedocs_version != "global_ONLINE":
-        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
+        warnings.warn(
+            "Don't load a context directly from straxen, use cutax instead!"
+        )
 
-    # Determine which plugin set to use based on context
-    if _from_cutax and xedocs_version != "global_ONLINE":
-        vanilla = False  # cutax uses SOM plugins
-    else:
-        vanilla = True  # standard online uses vanilla plugins
-    
-    # Enable low-memory positions by default for online DAQ (unless explicitly disabled)
-    if '_low_memory_positions' not in kwargs and vanilla:
-        kwargs['_low_memory_positions'] = True
+    # Internal derived mode
+    _from_cutax_offline = _from_cutax and (xedocs_version != "global_ONLINE")
 
-    st = straxen.contexts.xenonnt(_vanilla=vanilla, **kwargs)
+    # Auto defaults (same logic for both knobs)
+    auto_true = not _from_cutax_offline
+
+    defaults = {
+        "_vanilla": auto_true,
+        "_peak_only_positions": auto_true,
+    }
+
+    # Respect user overrides
+    for key, value in defaults.items():
+        kwargs.setdefault(key, value)
+
+    st = straxen.contexts.xenonnt(**kwargs)
     st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
     return st
@@ -395,21 +405,3 @@ def xenonnt_led(**kwargs):
     )
     st.set_config({"coincidence_level_recorder_nv": 1})
     return st
-
-
-#!/usr/bin/env python3
-import numpy as np
-import psutil, os
-process = psutil.Process(os.getpid())
-mem_mb = lambda: process.memory_info().rss / 1e6
-print(f"NumPy: {np.__version__}")
-print(f"Initial: {mem_mb():.1f} MB")
-# Create big array WITHOUT accessing it
-dtype = [('time', 'i8'), ('data', 'f4', (200,))]
-before = mem_mb()
-arr = np.zeros(1_000_000, dtype=dtype)
-after = mem_mb()
-print(f"After np.zeros: {after - before:.1f} MB allocated")
-print(f"Array size: {arr.nbytes / 1e6:.1f} MB")
-# NumPy 1.x: Allocates ~0 MB here (lazy!)
-# NumPy 2.0: Allocates ~800 MB here (eager!)
