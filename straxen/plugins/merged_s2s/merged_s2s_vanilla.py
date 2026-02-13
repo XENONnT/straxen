@@ -111,9 +111,15 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             return np.zeros(0, dtype=self.dtype)
 
         if "data_top" not in peaklets.dtype.names:
+            # Need to add data_top field. Check if we also need data_start.
+            _store_data_start = "data_start" in self.dtype_for("merged_s2s").names
             peaklets_w_field = np.zeros(
                 len(peaklets),
-                dtype=strax.peak_dtype(n_channels=self.n_tpc_pmts, store_data_top=True),
+                dtype=strax.peak_dtype(
+                    n_channels=self.n_tpc_pmts,
+                    store_data_top=True,
+                    store_data_start=_store_data_start,
+                ),
             )
             strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
             del peaklets
@@ -152,9 +158,19 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         lh["length"] = lh["right_integration"] - lh["left_integration"]
         lh = strax.sort_by_time(lh)
 
-        # If sum_waveform_top_array is false, don't digitize the top array
-        n_top_pmts_if_digitize_top = self.n_top_pmts if "data_top" in self.dtype.names else -1
-        strax.add_lone_hits(merged_s2s, lh, self.to_pe, n_top_channels=n_top_pmts_if_digitize_top)
+        # Check which waveform fields are present in the output dtype
+        _store_data_top = "data_top" in self.dtype_for("merged_s2s").names
+        _store_data_start = "data_start" in self.dtype_for("merged_s2s").names
+        n_top_pmts_if_digitize_top = self.n_top_pmts if _store_data_top else -1
+        
+        strax.add_lone_hits(
+            merged_s2s,
+            lh,
+            self.to_pe,
+            n_top_channels=n_top_pmts_if_digitize_top,
+            store_data_top=_store_data_top,
+            store_data_start=_store_data_start,
+        )
 
         strax.compute_widths(merged_s2s)
 
