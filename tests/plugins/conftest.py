@@ -20,9 +20,10 @@ from straxen.performance_monitor import (
 
 class _PerformanceComputeWrapper:
     """Picklable wrapper for plugin compute methods.
-    
-    This class wraps plugin compute() methods to add performance monitoring.
-    It's implemented as a class to be picklable (nested functions can't be pickled).
+
+    This class wraps plugin compute() methods to add performance monitoring. It's implemented as a
+    class to be picklable (nested functions can't be pickled).
+
     """
 
     def __init__(self, plugin_instance, original_compute, collector):
