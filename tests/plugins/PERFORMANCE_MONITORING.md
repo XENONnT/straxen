@@ -4,23 +4,43 @@ This document describes how to use the performance monitoring feature for straxe
 
 ## Overview
 
-The performance monitoring system automatically tracks execution time and RAM usage for each plugin's `compute()` method during test runs. This helps identify performance bottlenecks and memory-intensive operations.
+The performance monitoring system tracks execution time and RAM usage for each plugin's `compute()` method during test runs. This helps identify performance bottlenecks and memory-intensive operations.
 
 **Behavior**:
-- **In CI/GitHub Actions**: Automatically enabled for all test runs
-- **Locally**: Opt-in via `--monitor-performance` flag or environment variable
+- **Opt-in**: Requires explicit `--monitor-performance` flag or environment variable
+- **Local and CI**: Same behavior - must be explicitly enabled
 
 ## CI/CD Integration
 
 ### GitHub Actions
 
-Performance monitoring is **automatically enabled** in GitHub Actions CI runs. The system:
+Performance monitoring can be enabled in CI by modifying the workflow file.
 
-1. **Detects CI environment** - Uses the `CI=true` environment variable
-2. **Collects metrics** - Monitors all plugin tests during the normal pytest run
-3. **Shows inline output** - Metrics appear in test logs after each test
-4. **Displays summary** - A dedicated step shows the performance summary table
-5. **Uploads artifacts** - CSV and JSON files are saved as workflow artifacts
+### Enabling in CI
+
+To enable monitoring in GitHub Actions, modify `.github/workflows/pytest.yml`:
+
+```yaml
+- name: Test package
+  env:
+    STRAXEN_MONITOR_PERFORMANCE: "1"  # Enable monitoring
+  run: |
+    pytest --durations 0 -v
+```
+
+Or add the flag directly:
+
+```yaml
+run: |
+  pytest --monitor-performance --durations 0 -v
+```
+
+The monitoring will then:
+
+1. **Collect metrics** - Monitors all plugin tests during the pytest run
+2. **Show inline output** - Metrics appear in test logs after each test
+3. **Display summary** - A summary table at the end
+4. **Upload artifacts** - CSV and JSON files saved as workflow artifacts (if configured)
 
 ### Viewing Results in GitHub
 
@@ -57,19 +77,7 @@ pytest tests/plugins/ --monitor-performance
 
 ### Disabling in CI
 
-If you need to disable performance monitoring in CI (e.g., for debugging):
-
-```yaml
-# In .github/workflows/pytest.yml
-env:
-  STRAXEN_MONITOR_PERFORMANCE: "0"  # Disable monitoring
-```
-
-Or temporarily via environment variable:
-```bash
-export STRAXEN_MONITOR_PERFORMANCE=0
-pytest tests/plugins/
-```
+Simply don't set the environment variable or flag - monitoring is off by default.
 
 ### Advanced Options
 
