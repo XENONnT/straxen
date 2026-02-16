@@ -73,6 +73,7 @@ class PerformanceCollector:
         self.metrics: List[PluginMetrics] = []
         self.enabled = False
         self.use_tracemalloc = False
+        self.baseline_memory_mb = 0.0
         self._initialized = True
 
     def enable(self, use_tracemalloc: bool = False):
@@ -82,6 +83,11 @@ class PerformanceCollector:
         if use_tracemalloc:
             if not tracemalloc.is_tracing():
                 tracemalloc.start()
+        # Record baseline memory when enabling
+        if HAS_PSUTIL:
+            import psutil
+
+            self.baseline_memory_mb = psutil.Process().memory_info().rss / (1024 * 1024)
 
     def disable(self):
         """Disable performance monitoring."""

@@ -240,8 +240,13 @@ class PerformanceTerminalReporter:
         self.collector = PerformanceCollector()
         self.last_metric_count = 0
 
-    def pytest_runtest_logfinish(self, nodeid):
-        """Display metrics after each test completes."""
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_makereport(self, item, call):
+        """Display metrics after each test call phase completes."""
+        outcome = yield  # noqa: F841
+        if call.when != "call":
+            return
+
         if not self.collector.enabled:
             return
 
@@ -250,14 +255,42 @@ class PerformanceTerminalReporter:
         self.last_metric_count = len(metrics)
 
         if new_metrics:
-            print()
+            # Aggregate metrics by plugin_name and target
+            aggregated = {}
             for metric in new_metrics:
-                print(f"  📊 {metric.plugin_name} ({metric.target}):")
-                print(f"     ⏱️  Time: {metric.execution_time_ms:.2f} ms")
-                ram_info = (
-                    f"RAM Delta: {metric.ram_delta_mb:+.2f} MB "
-                    f"(peak: {metric.ram_peak_mb:.2f} MB)"
-                )
-                print(f"     💾 {ram_info}")
+                key = (metric.plugin_name, metric.target)
+                if key not in aggregated:
+                    aggregated[key] = {
+                        "time_ms": [],
+                        "ram_delta_mb": [],
+                        "ram_peak_mb": [],
+                        "tracemalloc_peak_mb": [],
+                    }
+                aggregated[key]["time_ms"].append(metric.execution_time_ms)
+                aggregated[key]["ram_delta_mb"].append(metric.ram_delta_mb)
+                aggregated[key]["ram_peak_mb"].append(metric.ram_peak_mb)
                 if metric.tracemalloc_peak_mb:
-                    print(f"     🔍 Tracemalloc Peak: " f"{metric.tracemalloc_peak_mb:.2f} MB")
+                    aggregated[key]["tracemalloc_peak_mb"].append(metric.tracemalloc_peak_mb)
+
+            # Print aggregated results
+            print()
+            for (plugin_name, target), data in aggregated.items():
+                count = len(data["time_ms"])
+                avg_time = sum(data["time_ms"]) / count
+                max_time = max(data["time_ms"])
+                max_peak = max(data["ram_peak_mb"])
+                baseline = self.collector.baseline_memory_mb
+
+                time_str = f"{avg_time:.1f}ms"
+                if count > 1:
+                    time_str += f" (max={max_time:.1f}ms, {count}x)"
+
+                # Show peak memory relative to baseline
+                if baseline > 0:
+                    peak_above_baseline = max_peak - baseline
+                    print(
+                        f"  📊 {plugin_name} ({target}): {time_str}, "
+                        f"peak RAM +{peak_above_baseline:.1f}MB"
+                    )
+                else:
+                    print(f"  📊 {plugin_name} ({target}): {time_str}")
