@@ -18,6 +18,29 @@ from straxen.performance_monitor import (
 )
 
 
+class _PerformanceComputeWrapper:
+    """Picklable wrapper for plugin compute methods.
+    
+    This class wraps plugin compute() methods to add performance monitoring.
+    It's implemented as a class to be picklable (nested functions can't be pickled).
+    """
+
+    def __init__(self, plugin_instance, original_compute, collector):
+        self.plugin_instance = plugin_instance
+        self.original_compute = original_compute
+        self.collector = collector
+
+    def __call__(self, *args, **kwargs):
+        return measure_plugin_performance(
+            self.plugin_instance, self.original_compute, *args, **kwargs
+        )
+
+    def __reduce__(self):
+        # Return the original compute method when pickling
+        # This allows the plugin to be pickled without the wrapper
+        return (lambda: self.original_compute, ())
+
+
 def pytest_addoption(parser):
     """Add command-line options for performance monitoring."""
     parser.addoption(
@@ -60,13 +83,11 @@ def performance_collector(request):
     """Session-scoped fixture that manages the performance collector."""
     config = request.config
 
-    # Auto-enable in CI environments, or via CLI/env var
-    is_ci = os.environ.get("CI", "").lower() in ("true", "1")
-    enabled = (
-        is_ci  # Automatically enable in GitHub Actions / CI
-        or config.getoption("--monitor-performance")
-        or os.environ.get("STRAXEN_MONITOR_PERFORMANCE", "").lower() in ("1", "true", "yes")
-    )
+    # Only enable if explicitly requested via CLI or env var
+    # NOTE: Auto-enable in CI is disabled due to pickle compatibility issues
+    enabled = config.getoption("--monitor-performance") or os.environ.get(
+        "STRAXEN_MONITOR_PERFORMANCE", ""
+    ).lower() in ("1", "true", "yes")
 
     if not enabled:
         yield None
@@ -87,35 +108,16 @@ def performance_collector(request):
     collector.reset()
     collector.enable(use_tracemalloc=use_tracemalloc)
 
-    # Monkey-patch strax.Plugin.do_compute to measure performance
+    # Monkey-patch strax.Plugin.__init__ to wrap compute methods
     import strax
 
-    _original_do_compute = strax.Plugin.do_compute
-
-    def wrapped_do_compute(self, chunk_i=None, **kwargs):
-        print(f"[PERF] Wrapping do_compute for {self.__class__.__name__}")
-        # Call original do_compute which internally calls compute
-        result = _original_do_compute(self, chunk_i=chunk_i, **kwargs)
-
-        # Measure after
-        # Actually, we need to wrap the compute call inside do_compute
-        # Let's try a different approach
-        return result
-
-    # Actually, let's wrap at a different level - the compute call within do_compute
-    # Better approach: wrap the user compute method of each plugin instance
     _original_plugin_init = strax.Plugin.__init__
 
     def wrapped_plugin_init(self, *args, **kwargs):
         _original_plugin_init(self, *args, **kwargs)
-        # Wrap the compute method of this instance
+        # Wrap the compute method of this instance using a picklable wrapper
         if hasattr(self, "compute") and callable(self.compute):
-            original_instance_compute = self.compute
-
-            def wrapped_instance_compute(*args, **kwargs):
-                return measure_plugin_performance(self, original_instance_compute, *args, **kwargs)
-
-            self.compute = wrapped_instance_compute
+            self.compute = _PerformanceComputeWrapper(self, self.compute, collector)
 
     strax.Plugin.__init__ = wrapped_plugin_init
 
