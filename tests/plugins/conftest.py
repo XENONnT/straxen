@@ -18,6 +18,11 @@ from straxen.performance_monitor import (
 )
 
 
+def _restore_original_compute(original_compute):
+    """Helper function for unpickling: returns the original compute method."""
+    return original_compute
+
+
 class _PerformanceComputeWrapper:
     """Picklable wrapper for plugin compute methods.
 
@@ -39,7 +44,7 @@ class _PerformanceComputeWrapper:
     def __reduce__(self):
         # Return the original compute method when pickling
         # This allows the plugin to be pickled without the wrapper
-        return (lambda: self.original_compute, ())
+        return (_restore_original_compute, (self.original_compute,))
 
 
 def pytest_addoption(parser):
