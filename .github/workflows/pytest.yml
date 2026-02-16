@@ -116,6 +116,7 @@ jobs:
         if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
+          STRAXEN_MONITOR_PERFORMANCE: '1'  # Enable performance monitoring
         run: |
           coverage run --source=straxen -m pytest --durations 0 -v
           coverage report
