@@ -86,7 +86,13 @@ def pytest_configure(config):
 
 @pytest.fixture(scope="session", autouse=True)
 def performance_collector(request):
-    """Session-scoped fixture that manages the performance collector."""
+    """Session-scoped fixture that manages the performance collector.
+
+    Only monitors plugins when:
+    1. Monitoring is enabled (--monitor-performance or STRAXEN_MONITOR_PERFORMANCE=1)
+    2. Test is in the PluginTest class (standard tests with real data)
+
+    """
     config = request.config
 
     # Only enable if explicitly requested via CLI or env var
@@ -137,14 +143,14 @@ def performance_collector(request):
     output_dir = config.getoption("--performance-output-dir")
     _generate_performance_reports(collector, output_dir)
 
-    # Print summary to console
+    # Print summary to console (timing only, RAM is unreliable)
     summary = collector.get_summary()
     if summary:
         print(f"\n{'=' * 70}")
-        print("PLUGIN PERFORMANCE SUMMARY")
+        print("PLUGIN PERFORMANCE SUMMARY (Timing)")
         print(f"{'=' * 70}\n")
-        print(f"{'Plugin':<30} {'Avg Time (ms)':<15} {'Avg RAM (MB)':<15}")
-        print(f"{'-' * 60}")
+        print(f"{'Plugin':<40} {'Avg Time (ms)':>15} {'Executions':>12}")
+        print(f"{'-' * 70}")
 
         sorted_plugins = sorted(
             summary.items(),
@@ -154,8 +160,8 @@ def performance_collector(request):
 
         for target, stats in sorted_plugins:
             avg_time = stats["total_time_ms"] / stats["count"]
-            avg_ram = stats["total_ram_delta_mb"] / stats["count"]
-            print(f"{target:<30} {avg_time:>10.2f}     {avg_ram:>15.2f}")
+            count = stats["count"]
+            print(f"{target:<40} {avg_time:>15.2f} {count:>12}")
 
         print(f"{'=' * 70}")
         print(f"Total: {len(summary)} plugins measured")
@@ -250,6 +256,10 @@ class PerformanceTerminalReporter:
         if not self.collector.enabled:
             return
 
+        # Only report for PluginTest class (not TestEmptyRecords, etc.)
+        if not (hasattr(item, "cls") and item.cls and item.cls.__name__ == "PluginTest"):
+            return
+
         metrics = self.collector.get_metrics()
         new_metrics = metrics[self.last_metric_count :]
         self.last_metric_count = len(metrics)
@@ -262,35 +272,18 @@ class PerformanceTerminalReporter:
                 if key not in aggregated:
                     aggregated[key] = {
                         "time_ms": [],
-                        "ram_delta_mb": [],
-                        "ram_peak_mb": [],
-                        "tracemalloc_peak_mb": [],
                     }
                 aggregated[key]["time_ms"].append(metric.execution_time_ms)
-                aggregated[key]["ram_delta_mb"].append(metric.ram_delta_mb)
-                aggregated[key]["ram_peak_mb"].append(metric.ram_peak_mb)
-                if metric.tracemalloc_peak_mb:
-                    aggregated[key]["tracemalloc_peak_mb"].append(metric.tracemalloc_peak_mb)
 
-            # Print aggregated results
+            # Print aggregated results (timing only)
             print()
             for (plugin_name, target), data in aggregated.items():
                 count = len(data["time_ms"])
                 avg_time = sum(data["time_ms"]) / count
                 max_time = max(data["time_ms"])
-                max_peak = max(data["ram_peak_mb"])
-                baseline = self.collector.baseline_memory_mb
 
                 time_str = f"{avg_time:.1f}ms"
                 if count > 1:
                     time_str += f" (max={max_time:.1f}ms, {count}x)"
 
-                # Show peak memory relative to baseline
-                if baseline > 0:
-                    peak_above_baseline = max_peak - baseline
-                    print(
-                        f"  📊 {plugin_name} ({target}): {time_str}, "
-                        f"peak RAM +{peak_above_baseline:.1f}MB"
-                    )
-                else:
-                    print(f"  📊 {plugin_name} ({target}): {time_str}")
+                print(f"  📊 {plugin_name} ({target}): {time_str}")
