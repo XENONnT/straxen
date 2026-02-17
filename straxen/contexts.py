@@ -137,7 +137,7 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
 
 def xenonnt(
     output_folder: str = "./strax_data",
-    config=straxen.contexts.common_config,
+    config=common_config,
     we_are_the_daq: bool = False,
     minimum_run_number: int = 7157,
     maximum_run_number: Optional[int] = None,
@@ -350,7 +350,7 @@ def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> N
 
 def xenonnt_online(
     xedocs_version: str = "global_ONLINE",
-    config=straxen.contexts.common_config_vanilla,
+    config=common_config_vanilla,
     _from_cutax: bool = False,
     **kwargs,
 ):
