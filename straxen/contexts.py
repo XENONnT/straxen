@@ -62,7 +62,7 @@ common_opts_vanilla: Dict[str, Any] = dict(
     use_per_run_defaults=False,
 )
 
-
+# basic st.set_config options that are shared between online and offline contexts.
 common_config = dict(
     n_tpc_pmts=straxen.n_tpc_pmts,
     n_top_pmts=straxen.n_top_pmts,
@@ -97,6 +97,15 @@ common_config = dict(
     ),
 )
 
+# take common config and expand
+# let's not store specific start and top data for vanilla plugins, 
+# they consume quite a lot of RAM and are not used for the online monitor
+common_config_vanilla = {
+    **common_config, 
+    "store_data_start": False,
+    "store_data_top": False,
+}
+
 
 def find_rucio_local_path(include_rucio_local, _rucio_local_path):
     """Check the hostname to determine which rucio local path to use. Note that access to
@@ -128,6 +137,7 @@ def find_rucio_local_path(include_rucio_local, _rucio_local_path):
 
 def xenonnt(
     output_folder: str = "./strax_data",
+    config=straxen.contexts.common_config,
     we_are_the_daq: bool = False,
     minimum_run_number: int = 7157,
     maximum_run_number: Optional[int] = None,
@@ -202,14 +212,14 @@ def xenonnt(
     opts = straxen.contexts.common_opts_vanilla if _vanilla else straxen.contexts.common_opts
     context_options = {**opts, **kwargs}
 
-    st = strax.Context(config=straxen.contexts.common_config, **context_options)
-
+    st = strax.Context(config=config, **context_options)
+    
     # If low_memory_positions is enabled and we're in vanilla mode,
     # replace PeakPositionsCNFVanilla with the peak-only version
-    if _peak_only_positions and _vanilla:
+    if _peak_only_positions and _vanilla:        
         # Register the peak-only version
         st.register(straxen.PeakPositionsCNFPeakOnly)
-
+    
     st.register(
         [
             straxen.DAQReader,
@@ -340,6 +350,7 @@ def apply_xedocs_configs(context: strax.Context, db="straxen_db", **kwargs) -> N
 
 def xenonnt_online(
     xedocs_version: str = "global_ONLINE",
+    config=straxen.contexts.common_config_vanilla,
     _from_cutax: bool = False,
     **kwargs,
 ):
@@ -354,12 +365,13 @@ def xenonnt_online(
             _peak_only_positions = True
 
     User-provided values for _vanilla or _peak_only_positions override defaults.
-
     """
 
     # Warn if user manually mixes non-global xedocs without cutax
     if not _from_cutax and xedocs_version != "global_ONLINE":
-        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
+        warnings.warn(
+            "Don't load a context directly from straxen, use cutax instead!"
+        )
 
     # Internal derived mode
     _from_cutax_offline = _from_cutax and (xedocs_version != "global_ONLINE")
@@ -376,7 +388,7 @@ def xenonnt_online(
     for key, value in defaults.items():
         kwargs.setdefault(key, value)
 
-    st = straxen.contexts.xenonnt(**kwargs)
+    st = straxen.contexts.xenonnt(config=config, **kwargs)
     st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
     return st
