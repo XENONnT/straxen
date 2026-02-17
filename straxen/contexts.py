@@ -98,10 +98,10 @@ common_config = dict(
 )
 
 # take common config and expand
-# let's not store specific start and top data for vanilla plugins, 
+# let's not store specific start and top data for vanilla plugins,
 # they consume quite a lot of RAM and are not used for the online monitor
 common_config_vanilla = {
-    **common_config, 
+    **common_config,
     "store_data_start": False,
     "store_data_top": False,
 }
@@ -213,13 +213,13 @@ def xenonnt(
     context_options = {**opts, **kwargs}
 
     st = strax.Context(config=config, **context_options)
-    
+
     # If low_memory_positions is enabled and we're in vanilla mode,
     # replace PeakPositionsCNFVanilla with the peak-only version
-    if _peak_only_positions and _vanilla:        
+    if _peak_only_positions and _vanilla:
         # Register the peak-only version
         st.register(straxen.PeakPositionsCNFPeakOnly)
-    
+
     st.register(
         [
             straxen.DAQReader,
@@ -365,13 +365,12 @@ def xenonnt_online(
             _peak_only_positions = True
 
     User-provided values for _vanilla or _peak_only_positions override defaults.
+
     """
 
     # Warn if user manually mixes non-global xedocs without cutax
     if not _from_cutax and xedocs_version != "global_ONLINE":
-        warnings.warn(
-            "Don't load a context directly from straxen, use cutax instead!"
-        )
+        warnings.warn("Don't load a context directly from straxen, use cutax instead!")
 
     # Internal derived mode
     _from_cutax_offline = _from_cutax and (xedocs_version != "global_ONLINE")
