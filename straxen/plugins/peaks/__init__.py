@@ -13,6 +13,9 @@ from .peak_basics_vanilla import *
 from . import peak_positions_cnf
 from .peak_positions_cnf import *
 
+from . import peak_positions_cnf_peakonly
+from .peak_positions_cnf_peakonly import *
+
 from . import peak_positions_mlp
 from .peak_positions_mlp import *
 
