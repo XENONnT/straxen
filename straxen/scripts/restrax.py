@@ -90,6 +90,7 @@ def parse_args():
     parser.add_argument(
         "--process_per_run",
         action="store_true",
+        default=True,
         help=(
             "Run a lightweight supervisor loop and spawn a fresh restrax worker process per run. "
             "Use this to free all worker memory after each processed run."
@@ -99,8 +100,6 @@ def parse_args():
     actions.add_argument("--undying", action="store_true", help="Except any error and ignore it")
     actions.add_argument("--process", type=int, help="Handle a single run")
     args = parser.parse_args()
-    if args.process_per_run and args.process is not None:
-        raise ValueError("--process_per_run cannot be combined with --process")
     if args.input_folder != daq_core.pre_folder and args.production:
         raise ValueError(
             "Thou shall not pass, don't upload files from non production"
@@ -111,7 +110,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    if args.process_per_run:
+    if args.process_per_run and args.process is None:
         run_process_per_run_supervisor(args)
         return
 
