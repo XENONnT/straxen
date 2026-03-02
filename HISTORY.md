@@ -1,3 +1,10 @@
+3.2.8 / 2026-03-02
+-------------------
+* Save main and alt S2's CNF contour area by @dachengx in https://github.com/XENONnT/straxen/pull/1640
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.7...v3.2.8
+
+
 3.2.7 / 2026-01-16
 -------------------
 * fixed the order of the corrections in apply_s2_correction() by @caioishikawa in https://github.com/XENONnT/straxen/pull/1638
