@@ -1,6 +1,13 @@
 # mypy: disable-error-code="no-redef"
 __version__ = "3.2.7"
 
+import numpy as np
+
+# NumPy >= 2.4 removed np.in1d; keep an alias for dependencies (e.g. strax)
+# that still call it.
+if not hasattr(np, "in1d"):
+    np.in1d = np.isin
+
 from utilix import uconfig
 from .common import *
 
