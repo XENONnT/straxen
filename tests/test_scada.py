@@ -86,7 +86,7 @@ class SCInterfaceTest(unittest.TestCase):
         assert df_strax.index.dtype.type is np.int64
 
         df_etc = straxen.convert_time_zone(df, tz="Etc/GMT+0")
-        assert df_etc.index.dtype.tz is pytz.timezone("Etc/GMT+0")
+        assert str(df_etc.index.dtype.tz) == str(pytz.timezone("Etc/GMT+0"))
 
     def test_query_sc_values(self):
         """Unity test for the SCADAInterface.
@@ -106,8 +106,8 @@ class SCInterfaceTest(unittest.TestCase):
 
         # This correspond to parameter value
         # at the start = 1709682275000000000
-        assert df["SomeParameter"][0] // 1 == 1211, "First values returned is not corrrect."
-        assert np.all(np.isnan(df["SomeParameter"][1:])), "Subsequent values are not correct."
+        assert df["SomeParameter"].iloc[0] // 1 == 1211, "First values returned is not corrrect."
+        assert np.all(np.isnan(df["SomeParameter"].iloc[1:])), "Subsequent values are not correct."
 
         print("Testing forwardfill option:")
         parameters = {"SomeParameter": "XE1T.CRY_FCV104FMON.PI"}
@@ -122,11 +122,13 @@ class SCInterfaceTest(unittest.TestCase):
         # This correspond to parameter value
         # at the start = 1709682275000000000
         assert np.all(
-            np.isclose(df[:4], 3.572651)
+            np.isclose(df["SomeParameter"].iloc[:4], 3.572651)
         ), "First four values deviate from queried values."
         # This correspond to parameter value
         # at the start = 1709682275000000000
-        assert np.all(np.isclose(df[4:], 3.572651)), "Last two values deviate from queried values."
+        assert np.all(
+            np.isclose(df["SomeParameter"].iloc[4:], 3.572651)
+        ), "Last two values deviate from queried values."
         print("Testing interpolation option:")
         self.sc.get_scada_values(
             parameters,
@@ -158,7 +160,7 @@ class SCInterfaceTest(unittest.TestCase):
             query_type_lab=False,
         )
 
-        assert np.all(df_all[::2] == df), "Downsampling did not return the correct values."
+        assert np.all(df_all.iloc[::2] == df), "Downsampling did not return the correct values."
 
         df = self.sc.get_scada_values(
             parameters,
@@ -171,7 +173,7 @@ class SCInterfaceTest(unittest.TestCase):
 
         # Compare average for each second value:
         for ind, i in enumerate([0, 2, 4]):
-            is_correct = np.isclose(np.mean(df_all[i : i + 2]), df["SomeParameter"][ind])
+            is_correct = np.isclose(np.mean(df_all.iloc[i : i + 2]), df["SomeParameter"].iloc[ind])
             assert is_correct, "Averaging is incorrect."
 
         # Testing lab query type:
