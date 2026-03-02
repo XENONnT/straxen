@@ -147,17 +147,31 @@ def run_restrax(restrax, args):
 
 def _build_worker_cmd(parent: "ReStrax", args: argparse.Namespace, run_number: int) -> ty.List[str]:
     """Build CLI command for a one-run child worker."""
-    cmd = [
-        sys.executable,
-        "-m",
-        "straxen.scripts.restrax",
-        "--process",
-        str(run_number),
-        "--max_threads",
-        str(parent.max_threads),
-        "--recompress_min_chunks",
-        str(parent.recompress_min_chunks),
-    ]
+    # Prefer the console entrypoint to keep child imports aligned with the parent runtime.
+    entrypoint = shutil.which("restrax")
+    if entrypoint:
+        cmd = [
+            entrypoint,
+            "--process",
+            str(run_number),
+            "--max_threads",
+            str(parent.max_threads),
+            "--recompress_min_chunks",
+            str(parent.recompress_min_chunks),
+        ]
+    else:
+        # Fallback for environments where the entrypoint is unavailable.
+        cmd = [
+            sys.executable,
+            "-m",
+            "straxen.scripts.restrax",
+            "--process",
+            str(run_number),
+            "--max_threads",
+            str(parent.max_threads),
+            "--recompress_min_chunks",
+            str(parent.recompress_min_chunks),
+        ]
 
     if parent.production:
         cmd.append("--production")
