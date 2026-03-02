@@ -108,9 +108,7 @@ def main():
         except (KeyboardInterrupt, SystemExit):
             break
         except Exception as fatal_error:
-            restrax.log.error(
-                f"Fatal warning: ran into {fatal_error}. Trying to log error and restart ReStrax."
-            )
+            restrax.log.error(f"Fatal warning: ran into {fatal_error}. Trying to log error and restart ReStrax.")
             try:
                 restrax.log_warning(
                     f"Fatal warning: ran into {fatal_error}",
@@ -217,9 +215,7 @@ class ReStrax(daq_core.DataBases):
         self._set_logger()
         # Get from the database unless testing
         self.read_from = None if args.production else args.input_folder
-        self.write_to = (
-            self.folders["production_out"] if args.production else self.folders["test_out"]
-        )
+        self.write_to = self.folders["production_out"] if args.production else self.folders["test_out"]
         self.max_threads = args.max_threads
         self.ignore_checks = args.ignore_checks
         self.skip_compression = args.skip_compression
@@ -244,9 +240,7 @@ class ReStrax(daq_core.DataBases):
             t0 = time.time()
             self.set_restrax_busy(run_doc)
             try:
-                mem_for_doc = memory_usage(
-                    (self.handle_run, (run_doc,)), max_iterations=1, interval=60
-                )
+                mem_for_doc = memory_usage((self.handle_run, (run_doc,)), max_iterations=1, interval=60)
             except Exception as exception:
                 self.set_restrax_failed(run_doc, str(exception))
                 self.log.error(f"Ran into {exception}")
@@ -266,7 +260,7 @@ class ReStrax(daq_core.DataBases):
 
         """
         if projection is None:
-            projection = {k: 1 for k in "data number mode detectors rate".split()}
+            projection = {k: 1 for k in "data number mode detectors rate restrax bootstrax".split()}
         if self.production:
             return self._find_production_work(projection)
         return self._find_testing_work(projection)
@@ -319,9 +313,7 @@ class ReStrax(daq_core.DataBases):
             self.log.info("No new work, looking for previously failed runs")
             # Look for work which we tried before (and has a restrax field)
             query.pop("restrax")
-            query.update(
-                {"restrax.n_tries": {"$lt": self.max_tries + 1}, "restrax.state": {"$ne": "done"}}
-            )
+            query.update({"restrax.n_tries": {"$lt": self.max_tries + 1}, "restrax.state": {"$ne": "done"}})
             run_doc = self.run_coll.find_one(query, **kw)
 
         if run_doc is not None:
@@ -379,16 +371,13 @@ class ReStrax(daq_core.DataBases):
             )
 
             # Perform the $inc update to increment n_tries
-            result_inc = self.run_coll.update_one(
-                {"_id": run_doc["_id"]}, {"$inc": {"restrax.n_tries": 1}}
-            )
+            result_inc = self.run_coll.update_one({"_id": run_doc["_id"]}, {"$inc": {"restrax.n_tries": 1}})
             self.log.debug(f"Increment update result: {result_inc.raw_result}")
 
         self.log.debug(f'Fail {run_doc["number"]} with {update}')
         if run_doc.get("restrax", {}).get("n_tries", 0) >= self.max_tries:
             self.log_warning(
-                f'Failed too many times for {run_doc["number"]}! '
-                "I stop trying, manual help is needed."
+                f'Failed too many times for {run_doc["number"]}! ' "I stop trying, manual help is needed."
             )
 
     def bypass_run(self, run_doc: dict) -> None:
@@ -430,9 +419,7 @@ class ReStrax(daq_core.DataBases):
         # Split the work in files that we will compress and files that will skip compression
         compress_docs = [d for d in data_docs if not self.should_skip_compression(run_doc, d)]
         skip_docs = [d for d in data_docs if self.should_skip_compression(run_doc, d)]
-        self.log.debug(
-            f"Compressing {len(compress_docs)} docs and skipping (i.e. move) {len(skip_docs)} docs"
-        )
+        self.log.debug(f"Compressing {len(compress_docs)} docs and skipping (i.e. move) {len(skip_docs)} docs")
         assert len(compress_docs) + len(skip_docs) == len(data_docs), "one and one is three?! "
 
         self.rechunk_docs(run_doc, compress_docs)
@@ -457,9 +444,7 @@ class ReStrax(daq_core.DataBases):
         # Filter data documents that are only on this host
         if run_doc.get("data") is None:
             return []
-        data_docs = [
-            data_doc for data_doc in run_doc["data"] if data_doc.get("host") == self.hostname
-        ]
+        data_docs = [data_doc for data_doc in run_doc["data"] if data_doc.get("host") == self.hostname]
         storage_backend = strax.FileSytemBackend()
         size = lambda data_doc: sum(
             chunk.get("nbytes", 0)
@@ -537,9 +522,7 @@ class ReStrax(daq_core.DataBases):
         while sum(t.is_alive() for t in threads) > n:
             self.take_a_nap(self.nap_time_short)
 
-    def get_compressor_and_size(
-        self, run_doc: dict, data_doc: dict
-    ) -> ty.Tuple[str, ty.Optional[int]]:
+    def get_compressor_and_size(self, run_doc: dict, data_doc: dict) -> ty.Tuple[str, ty.Optional[int]]:
         """For a given data document infer the desired compressor, and target size.
 
         :param run_doc: run document
@@ -549,21 +532,16 @@ class ReStrax(daq_core.DataBases):
         # This is where we might do some fancy coding
         dtype = data_doc["type"]
         if dtype in self.raw_record_types:
-            rate = sum(
-                detector.get("avg", 100) for detector in run_doc.get("rate", {"none": {}}).values()
-            )
+            rate = sum(detector.get("avg", 100) for detector in run_doc.get("rate", {"none": {}}).values())
             _go_fast = (
-                rate > self.is_heavy_rate_mbs
-                or run_doc.get("restrax", {}).get("n_tries", 0) > self.max_tries // 2
+                rate > self.is_heavy_rate_mbs or run_doc.get("restrax", {}).get("n_tries", 0) > self.max_tries // 2
             )
             compressor = (
                 self.target_compressor.get("_raw_record_compressor_heavy", "bz2")
                 if _go_fast
                 else self.target_compressor.get("_raw_record_compressor_light", "zstd")
             )
-            self.log.debug(
-                f"Use {compressor}, we have to go fast: {_go_fast} (rate~{rate:.1f} MB/s)"
-            )
+            self.log.debug(f"Use {compressor}, we have to go fast: {_go_fast} (rate~{rate:.1f} MB/s)")
             target_size_mb = self.target_size.get("_raw_records", 5000)
         else:
             # Extract the compressor from the settings
@@ -612,9 +590,7 @@ class ReStrax(daq_core.DataBases):
         if any(fnmatch.fnmatch(data_type, delete) for delete in self.skip_compression):
             self.log.debug(f"Skip {data_type} -> matches skip_compression")
             return True
-        n_chunks = len(
-            strax.FileSytemBackend().get_metadata(data_doc["location"]).get("chunks", [])
-        )
+        n_chunks = len(strax.FileSytemBackend().get_metadata(data_doc["location"]).get("chunks", []))
         if n_chunks <= self.recompress_min_chunks and data_type not in self.raw_record_types:
             # no need to recompress data if it's only one chunk
             self.log.debug(f"Skip {data_type} -> only {n_chunks} chunks")
@@ -646,19 +622,14 @@ class ReStrax(daq_core.DataBases):
 
             # Filesize is "bonus" metadata so it may not always be there.
             # Hence the .get(filesize, True)
-            if any(
-                (chunk.get("n", 0) and not chunk.get("filesize", True))
-                for chunk in md_out["chunks"]
-            ):
+            if any((chunk.get("n", 0) and not chunk.get("filesize", True)) for chunk in md_out["chunks"]):
                 # E.g. you tried compressing >2 GB chunk using blosc
                 errors.append(f"For {dir_out}, at least one doc failed to write")
 
             if "exception" in md_out:
                 errors.append("Writing error!")
 
-            if sum(chunk["n"] for chunk in md_in["chunks"]) != sum(
-                chunk["n"] for chunk in md_out["chunks"]
-            ):
+            if sum(chunk["n"] for chunk in md_in["chunks"]) != sum(chunk["n"] for chunk in md_out["chunks"]):
                 errors.append("Rechunked data has fewer entries?!")
         if errors:
             locs = [d["location"] for d in data_docs]
@@ -676,22 +647,15 @@ class ReStrax(daq_core.DataBases):
         dir_out = self.renamed_path(dir_in)
 
         md_in = storage_backend.get_metadata(dir_in)
-        is_large_dset = (
-            sum(chunk["nbytes"] for chunk in md_in["chunks"]) > self.large_data_compare_threshold
-        )
+        is_large_dset = sum(chunk["nbytes"] for chunk in md_in["chunks"]) > self.large_data_compare_threshold
 
         self.log.info(f"Checking {dir_in} vs {dir_out}. Is large {is_large_dset}")
-        kw = dict(
-            keep_column="time" if is_large_dset else None, progress_bar=len(md_in["chunks"]) > 4
-        )
+        kw = dict(keep_column="time" if is_large_dset else None, progress_bar=len(md_in["chunks"]) > 4)
         data_in = self._get_data_from_dir(dir_in, **kw)  # type: ignore
         data_out = self._get_data_from_dir(dir_out, **kw)  # type: ignore
         errors = self._compare_data(data_in, data_out)
         if errors:
-            raise ValueError(
-                f"Data was not the same when comparing {dir_in} {dir_out}. See:\n"
-                + "\n".join(errors)
-            )
+            raise ValueError(f"Data was not the same when comparing {dir_in} {dir_out}. See:\n" + "\n".join(errors))
         self.log.debug("Compare done")
 
     @staticmethod
@@ -745,14 +709,9 @@ class ReStrax(daq_core.DataBases):
 
         data_len = sum(d["n"] for d in meta_data["chunks"])
 
-        if (
-            np.zeros(1, dtype=res_dtype).nbytes * data_len / 1e6 > self.max_compare_buffer_mb
-            or _compare_sum
-        ):
+        if np.zeros(1, dtype=res_dtype).nbytes * data_len / 1e6 > self.max_compare_buffer_mb or _compare_sum:
             if not _compare_sum:
-                self.log.info(
-                    f"Memory footprint for loading {folder} would be too large, only compare sum."
-                )
+                self.log.info(f"Memory footprint for loading {folder} would be too large, only compare sum.")
             # Larger than 5 GB, only computing total sum of fields
             _compare_sum = True
             # We might get integer overflows, but that shouldn't be much of a problem
@@ -810,9 +769,7 @@ class ReStrax(daq_core.DataBases):
             self.run_coll.update_one(
                 {
                     "number": int(run_id),
-                    "data": {
-                        "$elemMatch": {"location": data_doc["location"], "host": data_doc["host"]}
-                    },
+                    "data": {"$elemMatch": {"location": data_doc["location"], "host": data_doc["host"]}},
                 },
                 {
                     "$set": {
@@ -829,9 +786,7 @@ class ReStrax(daq_core.DataBases):
             )
         # Mark as ready for upload such that admix can take over from here
         if self.production:
-            self.run_coll.update_one(
-                {"number": int(run_id)}, {"$set": {"status": "eb_ready_to_upload"}}
-            )
+            self.run_coll.update_one({"number": int(run_id)}, {"$set": {"status": "eb_ready_to_upload"}})
         self.log.info("Rundoc updated")
 
     def remove_old_docs(self, done_data_docs: ty.List[dict]):
@@ -904,13 +859,10 @@ class ReStrax(daq_core.DataBases):
 
                 is_same = isinstance(current, type(value))
                 both_list = isinstance(current, tuple) and isinstance(value, list)
-                both_dict = isinstance(current, immutabledict.immutabledict) and isinstance(
-                    value, dict
-                )
+                both_dict = isinstance(current, immutabledict.immutabledict) and isinstance(value, dict)
                 if matches_type_hints or is_same or both_list or both_dict:
                     self.log.info(
-                        f"Update self.{field} from {current} -> {value}. User"
-                        f" {update_config.get('user', '??')}"
+                        f"Update self.{field} from {current} -> {value}. User" f" {update_config.get('user', '??')}"
                     )
                     setattr(self, field, value)
                 else:
