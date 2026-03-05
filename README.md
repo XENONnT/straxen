@@ -13,7 +13,6 @@ Streaming analysis for XENON(nT)
 
 For installation instructions and usage information, please see the [straxen documentation](https://straxen.readthedocs.io/en/latest/setup.html).
 
-
 ## Further status
 [![Python Versions](https://img.shields.io/pypi/pyversions/straxen.svg)](https://pypi.python.org/pypi/straxen)
 [![PyPI downloads](https://img.shields.io/pypi/dm/straxen.svg)](https://pypistats.org/packages/straxen)

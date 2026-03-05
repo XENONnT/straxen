@@ -64,7 +64,7 @@ jobs:
 
       - name: Install requirements for Python 3.11
         if: matrix.python-version == '3.11'
-        run: pip install git+https://github.com/XENONnT/base_environment.git --force-reinstall
+        run: pip install git+https://github.com/XENONnT/base_environment.git@el8.2026.03.1 --force-reinstall
 
       - name: Install strax and straxen
         run: |
