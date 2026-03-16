@@ -77,3 +77,6 @@ test_dict.json
 
 *.pkl
 *.pkl.gz
+
+# Performance monitoring output
+test-results/
