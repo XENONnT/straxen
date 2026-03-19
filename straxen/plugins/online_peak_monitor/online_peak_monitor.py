@@ -35,7 +35,7 @@ class OnlinePeakMonitor(strax.Plugin):
 
     area_vs_width_bounds = straxen.URLConfig(
         type=tuple,
-        default=((-2.5, 0.5), (-2.5, 0.5)),
+        default=((-2.5, 0.5), (0, 5)),
         help="Boundaries of log-log histogram of area vs width",
     )
 
