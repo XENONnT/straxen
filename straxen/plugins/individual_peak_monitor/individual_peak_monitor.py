@@ -12,9 +12,9 @@ class IndividualPeakMonitor(strax.Plugin):
     the runs- database. If the peaks are large, random max_bytes of data are selected from the
     peaks.
 
-    This plugin takes 'peak_basics' and 'peak_positions'. Although they are not strictly
-    related, they are aggregated into a single data_type in order to minimize the number of
-    documents in the online monitor.
+    This plugin takes 'peak_basics' and 'peak_positions'. Although they are not strictly related,
+    they are aggregated into a single data_type in order to minimize the number of documents in the
+    online monitor.
 
     Produces 'individual_peak_monitor' with info on the peaks and their positions.
 
