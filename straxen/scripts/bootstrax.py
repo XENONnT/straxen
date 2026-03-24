@@ -44,7 +44,6 @@ import fnmatch
 from glob import glob
 from straxen import daq_core
 from straxen.daq_core import now
-from strax import SaveWhen
 import sys
 import warnings
 
