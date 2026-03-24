@@ -69,11 +69,6 @@ straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 straxen.DAQReader.rechunk_on_load = False
 straxen.Peaklets.rechunk_on_load = False
 
-# Save when to target
-straxen.MergedS2s.save_when = SaveWhen.TARGET
-straxen.PeakletClassificationVanilla.save_when = SaveWhen.TARGET
-straxen.PeakletPositionsCNF.save_when = SaveWhen.TARGET
-
 
 parser = argparse.ArgumentParser(description="XENONnT online processing manager")
 parser.add_argument(
