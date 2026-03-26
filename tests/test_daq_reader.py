@@ -86,9 +86,7 @@ class TestDAQReader(unittest.TestCase):
             {
                 "safe_break_in_pulses": int(0.5e9),
                 "dummy_version": "test_insert_deadtime",
-                # No firmware_version tag is given for old runs.
-                # Need v9 behavior. Silently assuming:
-                # "v1495_config": {"firmware_version": 9},
+                "v1495_config": {"firmware_version": 10},
             }
         )
 
