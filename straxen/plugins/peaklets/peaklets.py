@@ -39,14 +39,48 @@ class Peaklets(strax.Plugin):
     parallel = "process"
     compressor = "zstd"
 
-    rechunk_on_load = True
+    _rechunk_on_load_default = True
     chunk_source_size_mb = 100
 
     # To reduce the number of chunks, we increase the target size
     # This would not harm memory usage, because we rechunk on load
-    chunk_target_size_mb = 2000
+    _chunk_target_size_mb_default = 2000
 
     __version__ = "1.2.2"
+
+    peaklets_rechunk_on_load = strax.Config(
+        default=_rechunk_on_load_default,
+        type=bool,
+        track=True,
+        help=(
+            "Whether Peaklets is allowed to rechunk dependencies during loading. "
+            "Tracked in lineage to separate contexts that use different chunking modes."
+        ),
+    )
+
+    peaklets_chunk_target_size_mb = strax.Config(
+        default=_chunk_target_size_mb_default,
+        type=int,
+        track=True,
+        help=(
+            "Target chunk size (MB) for Peaklets outputs when rechunking on save. "
+            "Tracked in lineage to avoid cross-context key collisions."
+        ),
+    )
+
+    @property
+    def rechunk_on_load(self):
+        cfg = getattr(self, "config", None)
+        if isinstance(cfg, dict):
+            return cfg.get("peaklets_rechunk_on_load", self._rechunk_on_load_default)
+        return self._rechunk_on_load_default
+
+    @property
+    def chunk_target_size_mb(self):
+        cfg = getattr(self, "config", None)
+        if isinstance(cfg, dict):
+            return cfg.get("peaklets_chunk_target_size_mb", self._chunk_target_size_mb_default)
+        return self._chunk_target_size_mb_default
 
     peaklet_gap_threshold = straxen.URLConfig(
         default=700, infer_type=False, help="No hits for this many ns triggers a new peak"

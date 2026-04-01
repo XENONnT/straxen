@@ -61,12 +61,10 @@ warnings.filterwarnings(
 
 # Patch for targeted (uncompressed) chunk size
 straxen.DAQReader.chunk_target_size_mb = 50
-straxen.Peaklets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
-# Don't do the rechunk on load for raw_records and peaklets
-# It's something we do for offline reprocessing
+# Don't do the rechunk on load for raw_records.
+# Peaklets chunking mode is now configured via tracked plugin settings.
 straxen.DAQReader.rechunk_on_load = False
-straxen.Peaklets.rechunk_on_load = False
 
 
 parser = argparse.ArgumentParser(description="XENONnT online processing manager")
