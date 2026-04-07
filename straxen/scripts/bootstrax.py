@@ -67,8 +67,7 @@ parser.add_argument(
     "--targets",
     nargs="*",
     default=(
-        "event_info events_nv events_mv "
-        "online_peak_monitor online_event_stream veto_proximity"
+        "event_info events_nv events_mv " "online_peak_monitor online_event_stream veto_proximity"
     ).split(),
     help="Strax data type name(s) that should be produced with live processing",
 )
