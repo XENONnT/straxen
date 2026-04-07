@@ -31,17 +31,11 @@ class OnlineEventStream(strax.Plugin):
 
     online_event_stream_max_events_per_chunk = straxen.URLConfig(
         type=int,
-        default=200,
+        default=40,
         help=(
             "Maximum number of selected events stored per chunk. "
             "Use a non-positive value to keep all selected events."
         ),
-    )
-
-    online_event_stream_top_n_channels = straxen.URLConfig(
-        type=int,
-        default=16,
-        help="Number of top channels kept for S1/S2 hit-pattern summaries.",
     )
 
     online_event_stream_max_bytes = straxen.URLConfig(
@@ -51,7 +45,7 @@ class OnlineEventStream(strax.Plugin):
     )
 
     def infer_dtype(self):
-        n_top = self.online_event_stream_top_n_channels
+        apc_dtype = self.deps["event_area_per_channel"].dtype_for("event_area_per_channel")
         dtype = strax.time_fields + [
             (("Event number", "event_number"), np.int64),
             (("S1 area [PE]", "s1_area"), np.float32),
@@ -64,17 +58,21 @@ class OnlineEventStream(strax.Plugin):
             (("S1 contributing channels", "s1_n_channels"), np.int16),
             (("S2 contributing channels", "s2_n_channels"), np.int16),
             (
-                ("S1 top channel indices by area contribution", "s1_top_channel_index"),
-                np.int16,
-                n_top,
+                ("Main S1 area per channel [PE]", "s1_area_per_channel"),
+                apc_dtype.fields["s1_area_per_channel"][0],
             ),
-            (("S1 top channel areas [PE]", "s1_top_channel_area"), np.float32, n_top),
             (
-                ("S2 top channel indices by area contribution", "s2_top_channel_index"),
-                np.int16,
-                n_top,
+                ("Main S2 area per channel [PE]", "s2_area_per_channel"),
+                apc_dtype.fields["s2_area_per_channel"][0],
             ),
-            (("S2 top channel areas [PE]", "s2_top_channel_area"), np.float32, n_top),
+            (
+                ("Alt S1 area per channel [PE]", "alt_s1_area_per_channel"),
+                apc_dtype.fields["alt_s1_area_per_channel"][0],
+            ),
+            (
+                ("Alt S2 area per channel [PE]", "alt_s2_area_per_channel"),
+                apc_dtype.fields["alt_s2_area_per_channel"][0],
+            ),
             (
                 ("Fraction of selected events retained in this chunk", "stored_fraction"),
                 np.float32,
@@ -89,29 +87,15 @@ class OnlineEventStream(strax.Plugin):
         ]
         return dtype
 
-    def compute(self, event_basics, event_area_per_channel, event_waveform):
-        if len(event_basics) != len(event_area_per_channel) or len(event_basics) != len(
-            event_waveform
-        ):
-            raise ValueError(
-                "event_basics, event_area_per_channel and event_waveform must have the same length, "
-                f"got {len(event_basics)}, {len(event_area_per_channel)}, {len(event_waveform)}"
-            )
-        if len(event_basics) and not np.array_equal(
-            event_basics["time"], event_area_per_channel["time"]
-        ):
-            raise ValueError("event_basics and event_area_per_channel are not aligned in time.")
-        if len(event_basics) and not np.array_equal(event_basics["time"], event_waveform["time"]):
-            raise ValueError("event_basics and event_waveform are not aligned in time.")
-
-        if not len(event_basics):
+    def compute(self, events):
+        if not len(events):
             return np.zeros(0, dtype=self.dtype)
 
         selection = self.online_event_stream_selection
         if selection:
-            mask = strax.parse_selection(event_basics, selection)
+            mask = strax.parse_selection(events, selection)
         else:
-            mask = np.ones(len(event_basics), dtype=np.bool_)
+            mask = np.ones(len(events), dtype=np.bool_)
 
         selected = np.flatnonzero(mask)
         if not len(selected):
@@ -135,9 +119,7 @@ class OnlineEventStream(strax.Plugin):
         result = np.zeros(len(selected), dtype=self.dtype)
         strax.set_nan_defaults(result)
 
-        selected_events = event_basics[selected]
-        selected_apc = event_area_per_channel[selected]
-        selected_wf = event_waveform[selected]
+        selected_events = events[selected]
 
         result["time"] = selected_events["time"]
         result["endtime"] = strax.endtime(selected_events)
@@ -152,37 +134,13 @@ class OnlineEventStream(strax.Plugin):
         result["s1_n_channels"] = selected_events["s1_n_channels"]
         result["s2_n_channels"] = selected_events["s2_n_channels"]
         result["stored_fraction"] = stored_fraction
-        result["s1_data"] = selected_wf["s1_data"]
-        result["s2_data"] = selected_wf["s2_data"]
-        result["alt_s1_data"] = selected_wf["alt_s1_data"]
-        result["alt_s2_data"] = selected_wf["alt_s2_data"]
-
-        for i, row in enumerate(selected_apc):
-            s1_idx, s1_area = self._top_channels(row["s1_area_per_channel"])
-            s2_idx, s2_area = self._top_channels(row["s2_area_per_channel"])
-            result["s1_top_channel_index"][i] = s1_idx
-            result["s1_top_channel_area"][i] = s1_area
-            result["s2_top_channel_index"][i] = s2_idx
-            result["s2_top_channel_area"][i] = s2_area
+        result["s1_area_per_channel"] = selected_events["s1_area_per_channel"]
+        result["s2_area_per_channel"] = selected_events["s2_area_per_channel"]
+        result["alt_s1_area_per_channel"] = selected_events["alt_s1_area_per_channel"]
+        result["alt_s2_area_per_channel"] = selected_events["alt_s2_area_per_channel"]
+        result["s1_data"] = selected_events["s1_data"]
+        result["s2_data"] = selected_events["s2_data"]
+        result["alt_s1_data"] = selected_events["alt_s1_data"]
+        result["alt_s2_data"] = selected_events["alt_s2_data"]
 
         return result
-
-    def _top_channels(self, area_per_channel):
-        n_top = self.online_event_stream_top_n_channels
-        idx = np.full(n_top, -1, dtype=np.int16)
-        values = np.zeros(n_top, dtype=np.float32)
-
-        if not len(area_per_channel):
-            return idx, values
-
-        order = np.argsort(area_per_channel)[::-1]
-        order = order[:n_top]
-        vals = area_per_channel[order]
-
-        valid = vals > 0
-        order = order[valid]
-        vals = vals[valid]
-
-        idx[: len(order)] = order.astype(np.int16, copy=False)
-        values[: len(vals)] = vals.astype(np.float32, copy=False)
-        return idx, values
