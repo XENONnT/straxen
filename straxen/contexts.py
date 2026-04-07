@@ -289,6 +289,7 @@ def xenonnt(
                     "veto_intervals",
                     "online_peak_monitor",
                     "event_basics",
+                    "online_event_stream",
                     "online_monitor_nv",
                     "online_monitor_mv",
                     "individual_peak_monitor",
