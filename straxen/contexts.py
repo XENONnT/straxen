@@ -390,9 +390,8 @@ def xenonnt_online(
     st = straxen.contexts.xenonnt(config=config, **kwargs)
     st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
-    # Ensure peaklets chunking mode is explicit and tracked in lineage.
-    # DAQ/online mode uses bootstrax-compatible chunking; cutax-offline mode
-    # keeps the offline-friendly defaults.
+    # Keep Peaklets chunking configurable per context while intentionally
+    # leaving lineage unchanged.
     peaklets_chunking_defaults = (
         dict(
             peaklets_rechunk_on_load=True,

@@ -51,20 +51,20 @@ class Peaklets(strax.Plugin):
     peaklets_rechunk_on_load = strax.Config(
         default=_rechunk_on_load_default,
         type=bool,
-        track=True,
+        track=False,
         help=(
             "Whether Peaklets is allowed to rechunk dependencies during loading. "
-            "Tracked in lineage to separate contexts that use different chunking modes."
+            "Untracked so reprocessing with different chunking remains possible."
         ),
     )
 
     peaklets_chunk_target_size_mb = strax.Config(
         default=_chunk_target_size_mb_default,
         type=int,
-        track=True,
+        track=False,
         help=(
             "Target chunk size (MB) for Peaklets outputs when rechunking on save. "
-            "Tracked in lineage to avoid cross-context key collisions."
+            "Untracked so reprocessing can tune chunking without lineage changes."
         ),
     )
 

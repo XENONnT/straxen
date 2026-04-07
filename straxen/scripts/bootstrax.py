@@ -63,7 +63,7 @@ warnings.filterwarnings(
 straxen.DAQReader.chunk_target_size_mb = 50
 straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 # Don't do the rechunk on load for raw_records.
-# Peaklets chunking mode is now configured via tracked plugin settings.
+# Peaklets chunking mode is configured via context options.
 straxen.DAQReader.rechunk_on_load = False
 
 

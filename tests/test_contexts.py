@@ -44,7 +44,7 @@ def test_xennonnt_online():
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
-def test_xenonnt_online_peaklets_chunking_lineage():
+def test_xenonnt_online_peaklets_chunking_untracked():
     st = xenonnt_online(_database_init=False)
     assert st.config["peaklets_rechunk_on_load"] is False
     assert st.config["peaklets_chunk_target_size_mb"] == strax.DEFAULT_CHUNK_SIZE_MB
@@ -60,7 +60,7 @@ def test_xenonnt_online_peaklets_chunking_lineage():
     )
     hash_rechunk = st_rechunk.key_for("0", "peaklets").lineage_hash
 
-    assert hash_default != hash_rechunk
+    assert hash_default == hash_rechunk
 
 
 @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
