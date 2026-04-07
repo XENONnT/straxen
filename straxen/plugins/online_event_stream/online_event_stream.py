@@ -9,8 +9,9 @@ export, __all__ = strax.exporter()
 class OnlineEventStream(strax.Plugin):
     """Compact event stream for website/monitoring use.
 
-    This plugin is designed for Mongo online storage and keeps only a small,
-    deterministic subset of fields from clean events in each chunk.
+    This plugin is designed for Mongo online storage and keeps only a small, deterministic subset of
+    fields from clean events in each chunk.
+
     """
 
     __version__ = "0.0.1"
@@ -89,7 +90,9 @@ class OnlineEventStream(strax.Plugin):
         return dtype
 
     def compute(self, event_basics, event_area_per_channel, event_waveform):
-        if len(event_basics) != len(event_area_per_channel) or len(event_basics) != len(event_waveform):
+        if len(event_basics) != len(event_area_per_channel) or len(event_basics) != len(
+            event_waveform
+        ):
             raise ValueError(
                 "event_basics, event_area_per_channel and event_waveform must have the same length, "
                 f"got {len(event_basics)}, {len(event_area_per_channel)}, {len(event_waveform)}"
