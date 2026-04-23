@@ -60,17 +60,6 @@ def test_event_info(self):
     assert not np.all(np.isnan(df["x"].values))
 
 
-@PluginTestAccumulator.register("test_event_info_double")
-def test_event_info_double(self):
-    """Do a dummy check on event-info that it loads."""
-    if _is_empty_data_test(self.st, self.run_id):
-        return
-    df = self.st.get_df(self.run_id, "event_info_double")
-    assert "cs2_a" in df.columns
-    assert df["cs2_a"].sum() > 0
-    assert len(df) > 0
-
-
 @PluginTestAccumulator.register("test_event_ms_naive")
 def test_event_ms_naive(self):
     """Do a dummy check on event-info that it loads."""
@@ -93,30 +82,6 @@ def test_get_livetime_sec(self):
     events = st.get_array(self.run_id, "events")
     if len(events):
         straxen.get_livetime_sec(st, self.run_id, things=events)
-
-
-@PluginTestAccumulator.register("test_event_info_double_w_double_peaks")
-def test_event_info_double_w_double_peaks(self: PluginTestCase, trigger_min_area=10):
-    """Try building event-info double with very long events."""
-    st = self.st.new_context()
-    ev = st.get_array(self.run_id, "events")
-    if not len(ev):
-        return
-    ev_time_diff = np.median(np.diff(ev["time"]))
-    # increase the event_extension such that we start merging several events
-    st.set_config(dict(event_right_extension=ev_time_diff))
-    st.get_array(self.run_id, "event_info_double")
-
-    distinct_channels = st.get_single_plugin(self.run_id, "distinct_channels")
-    events = st.get_array(self.run_id, "event_basics")
-    # Make alt == main just to test that we are able to compute that
-    # all have no distinct channels
-    events["alt_s1_index"] = events["s1_index"]
-    peaks = st.get_array(self.run_id, "peaks")
-    split_peaks = strax.split_by_containment(peaks, events)
-    for event, split_peak in zip(events, split_peaks):
-        res = distinct_channels.compute_loop(event, split_peak)
-        assert res["alt_s1_distinct_channels"] == 0
 
 
 def get_triggering_peaks(events, left_extension, right_extension):

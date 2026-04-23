@@ -818,11 +818,6 @@ def infer_target(rd: dict) -> dict:
         log.debug("diagnostic-mode")
         targets = "raw_records"
         post_process = "raw_records"
-    elif "kr83m" in mode and (len(targets) or len(post_process)):
-        # Override the first (highest level) plugin for Kr runs (could
-        # also use source field, outcome is the same)
-        if "event_info" in targets or "event_info" in post_process:
-            targets = list(targets) + ["event_info_double"]
     elif "ambe" in mode:
         # rates are very high, to ensure smooth operation let's just do this
         # based on calibrations of Apr 2023 this is the only safe working solution

@@ -6,6 +6,10 @@ xenon_secrets.py
 # Jupyter
 .ipynb_checkpoints
 
+# Claude
+.claude
+settings.json
+
 # Data (temporary?)
 *.bz2
 *.zstd

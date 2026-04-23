@@ -40,9 +40,6 @@ from .event_area_per_channel import *
 from . import event_pattern_fit
 from .event_pattern_fit import *
 
-from . import event_info_double
-from .event_info_double import *
-
 from . import event_nearest_triggering
 from .event_nearest_triggering import *
 

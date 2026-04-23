@@ -13,11 +13,11 @@ generated in a script format. Especially useful for reprocessing data
 in batch jobs.
 
 For example a user can reprocess the data of run ``012100`` using the
-following command up to ``event_info_double``.
+following command up to ``event_info``.
 
 .. code-block:: bash
 
-    straxer 012100 --target event_info_double
+    straxer 012100 --target event_info
 
 For more information on the options, please refer to the help:
 

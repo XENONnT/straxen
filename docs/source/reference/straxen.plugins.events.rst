@@ -68,14 +68,6 @@ straxen.plugins.events.event\_info module
    :undoc-members:
    :show-inheritance:
 
-straxen.plugins.events.event\_info\_double module
--------------------------------------------------
-
-.. automodule:: straxen.plugins.events.event_info_double
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 straxen.plugins.events.event\_nearest\_triggering module
 --------------------------------------------------------
 
