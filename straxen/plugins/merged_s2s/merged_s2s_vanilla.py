@@ -24,13 +24,21 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
     provides = "merged_s2s"
 
     s2_merge_max_duration = straxen.URLConfig(
-        default=50_000,
+        default=30_000,
         infer_type=False,
         help="Do not merge peaklets at all if the result would be a peak longer than this [ns]",
     )
 
     s2_merge_gap_thresholds_vanilla = straxen.URLConfig(
-        default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.0)),
+        default=((1.74, 5.02e03),
+            (2.13, 4.18e03),
+            (2.51, 3.26e03),
+            (2.9, 3.25e03),
+            (3.29, 3.04e03),
+            (3.68, 2.67e03),
+            (4.07, 2.31e03),
+            (4.46, 2.05e03),
+            (4.85, 1.89e03),),
         infer_type=False,
         help=(
             "Points to define maximum separation between peaklets to allow "
