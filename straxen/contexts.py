@@ -390,6 +390,25 @@ def xenonnt_online(
     st = straxen.contexts.xenonnt(config=config, **kwargs)
     st.apply_xedocs_configs(version=xedocs_version, **kwargs)
 
+    # Keep Peaklets chunking configurable per context while intentionally
+    # leaving lineage unchanged.
+    peaklets_chunking_defaults = (
+        dict(
+            peaklets_rechunk_on_load=True,
+            peaklets_chunk_target_size_mb=straxen.Peaklets._chunk_target_size_mb_default,
+        )
+        if _from_cutax_offline
+        else dict(
+            peaklets_rechunk_on_load=False,
+            peaklets_chunk_target_size_mb=strax.DEFAULT_CHUNK_SIZE_MB,
+        )
+    )
+    peaklets_chunking_defaults = {
+        k: v for k, v in peaklets_chunking_defaults.items() if k not in st.config
+    }
+    if peaklets_chunking_defaults:
+        st.set_config(peaklets_chunking_defaults)
+
     return st
 
 
