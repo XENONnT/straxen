@@ -59,7 +59,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
     )
 
     s2_merge_max_duration = straxen.URLConfig(
-        default=50_000,
+        default=30_000,
         type=int,
         infer_type=False,
         help="Do not merge peaklets at all if the result would be a peak longer than this [ns]",
