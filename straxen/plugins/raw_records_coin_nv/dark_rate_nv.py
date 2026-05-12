@@ -30,8 +30,8 @@ class NVDarkRateMonitoring(strax.Plugin):
 
     __version__ = '0.0.10'
     depends_on = ('raw_records_coin_nv',)
-    provides   = 'monitor_nv'
-    data_kind  = 'monitor_nv'
+    provides   = 'dark_rate_nv'
+    data_kind  = 'dark_rate_nv'
 
     dtype =  strax.time_fields + [
             (('Channel', 'channel'),np.int32),
