@@ -28,7 +28,7 @@ class NVDarkRateMonitoring(strax.Plugin):
     - the RMS of the baseline RMSs of the channel.     
     """
 
-    __version__ = '0.0.10'
+    __version__ = '0.0.11'
     depends_on = ('raw_records_coin_nv',)
     provides   = 'dark_rate_nv'
     data_kind  = 'dark_rate_nv'
