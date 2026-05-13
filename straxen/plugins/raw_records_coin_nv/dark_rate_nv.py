@@ -44,6 +44,9 @@ class NVDarkRateMonitoring(strax.Plugin):
             ]
 
     def compute(self, raw_records_coin_nv):
+
+        if len(raw_records_coin_nv) == 0:
+            return np.zeros(0, dtype=self.dtype)
         
         # Initialize the absolute run start time based on the first received chunk.
         # This value is stored as an instance attribute to persist across chunks.
