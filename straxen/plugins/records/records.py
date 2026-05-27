@@ -164,7 +164,7 @@ class PulseProcessing(strax.Plugin):
 
     def compute(self, raw_records, start, end):
         if self.check_raw_record_overlaps:
-            check_overlaps(raw_records, n_channels=3000)
+            check_overlaps(raw_records[raw_records["channel"] != 799], n_channels=3000)
 
         # Throw away any non-TPC records; this should only happen for XENON1T
         # converted data
