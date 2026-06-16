@@ -109,13 +109,13 @@ class MergedS2s(strax.OverlapWindowPlugin):
             del peaklets
             peaklets = peaklets_w_field
 
+        # make sure the peaklets are not overwritten
+        peaklets.flags.writeable = False
+
         # Max gap and area should be set by the gap thresholds
         # to avoid contradictions
         start_merge_at, end_merge_at = self.get_merge_instructions(
-            peaklets["time"],
-            strax.endtime(peaklets),
-            areas=peaklets["area"],
-            types=peaklets["type"],
+            peaklets,
             gap_thresholds=gap_thresholds,
             max_duration=self.s2_merge_max_duration,
             max_gap=max_gap,
@@ -162,14 +162,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
     @staticmethod
     @numba.njit(cache=True, nogil=True)
     def get_merge_instructions(
-        peaklet_starts,
-        peaklet_ends,
-        areas,
-        types,
+        _peaklets,
         gap_thresholds,
         max_duration,
         max_gap,
         max_area,
+        gos_threshold
     ):
         """
         Finding the group of peaklets to merge. To do this start with the
@@ -183,10 +181,17 @@ class MergedS2s(strax.OverlapWindowPlugin):
         list of the exclusive last index of peaklet to be merged
         """
 
+        peaklet_starts = _peaklets["time"]
+        peaklet_ends = strax.endtime(_peaklets)
+        areas = _peaklets["area"]
+        types = _peaklets["type"]
+
         peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
         peaklet_start_index = np.arange(len(peaklet_starts))
         peaklet_end_index = np.arange(len(peaklet_starts))
+        peaklets_last_idx = len(peaklet_starts) - 1
 
+        merge_start_idx = 0
         for gap_i in strax.stable_argsort(peaklet_gaps):
             start_idx = peaklet_start_index[gap_i]
             inclusive_end_idx = peaklet_end_index[gap_i + 1]
@@ -211,6 +216,29 @@ class MergedS2s(strax.OverlapWindowPlugin):
             if peak_duration >= max_duration:
                 continue
 
+            peaklet_left_peak_time = peaklet_starts[merge_start_idx] - this_gap
+            peaklet_left_peak_endtime = peaklet_ends[gap_i] - this_gap
+            peaklet_right_peak_time = peaklet_starts[gap_i + 1] - this_gap
+            peaklet_right_peak_endtime = peaklet_ends[-1]
+            left_area = areas[merge_start_idx : gap_i - 1]
+            right_area = areas[gap_i + 1 : peaklets_last_idx + 1]
+            gos_value = _goodness_of_split(
+                peaklet_left_peak_time,
+                peaklet_right_peak_time,
+                peaklet_left_peak_endtime,
+                peaklet_right_peak_endtime,
+                merge_start_idx,
+                peaklets_last_idx,
+                areas,
+                left_area,
+                right_area,
+            )
+
+            merge_start_idx += inclusive_end_idx + 1
+            
+            if gos_value > 0.8:
+                continue
+            
             # Merge gap in other words this means p @ gap_i and p @gap_i + 1 share the same
             # start, end and area:
             peaklet_start_index[start_idx : inclusive_end_idx + 1] = peaklet_start_index[start_idx]
@@ -226,6 +254,51 @@ class MergedS2s(strax.OverlapWindowPlugin):
         merge_start, merge_stop_exclusive = _filter_s1_starts(start_merge_at, types, end_merge_at)
 
         return merge_start, merge_stop_exclusive
+
+
+def _weighted_std(x, y):
+    """Calculate the weighted standard deviation of x with weights y."""
+    if np.sum(y) == 0:
+        return 0.0
+    mean = np.sum(x * y) / np.sum(y)
+    variance = np.sum(y * (x - mean) ** 2) / np.sum(y)
+    return np.sqrt(variance)
+
+
+def _goodness_of_split(
+                      start_time_left_peak,
+                      start_time_right_peak,
+                      endtime_left_peak,
+                      endtime_right_peak,
+                      start_idx,
+                      end_idx,
+                      areas,
+                      left_area,
+                      right_area,
+                     ):
+    """Calculate the goodness of split for a given gap index. The higher the value the better the split.
+    The goodness of split is defined as the sum of the areas of the two peaks divided by the gap size.
+    """
+        
+    weighted_std_left = _weighted_std(
+        np.linspace(start_time_left_peak, endtime_left_peak, 10),
+        left_area
+    )
+    weighted_std_right = _weighted_std(
+        np.linspace(start_time_right_peak, endtime_right_peak, 10),
+        right_area
+    )        
+
+    weighted_std_all = _weighted_std(
+        np.linspace(start_time_left_peak, endtime_right_peak, 10),
+        areas[start_idx:end_idx + 1],
+    )
+    
+    return (weighted_std_left + weighted_std_right) / weighted_std_all
+
+def _build_tmp_waveform(peaklets):
+    time = np.arange(peaklets["time"][0], strax.endtime(peaklets)[-1], peaklets["dt"][0])
+    data = peaklets["data"][0, : len(time)]
 
 
 @numba.njit(cache=True, nogil=True)
