@@ -167,7 +167,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
         max_duration,
         max_gap,
         max_area,
-        gos_threshold
+        gof_array
     ):
         """
         Finding the group of peaklets to merge. To do this start with the
@@ -189,10 +189,12 @@ class MergedS2s(strax.OverlapWindowPlugin):
         peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
         peaklet_start_index = np.arange(len(peaklet_starts))
         peaklet_end_index = np.arange(len(peaklet_starts))
-        peaklets_last_idx = len(peaklet_starts) - 1
+        split_idx_list = strax.stable_argsort(peaklet_gaps)
 
-        merge_start_idx = 0
-        for gap_i in strax.stable_argsort(peaklet_gaps):
+        # Compute GOF for each potential merge/split
+        gof_array = _gof_at_splits(_peaklets["data"], split_idx_list)
+
+        for gap_i in split_idx_list:
             start_idx = peaklet_start_index[gap_i]
             inclusive_end_idx = peaklet_end_index[gap_i + 1]
             sum_area = np.sum(areas[start_idx : inclusive_end_idx + 1])
@@ -216,27 +218,7 @@ class MergedS2s(strax.OverlapWindowPlugin):
             if peak_duration >= max_duration:
                 continue
 
-            peaklet_left_peak_time = peaklet_starts[merge_start_idx] - this_gap
-            peaklet_left_peak_endtime = peaklet_ends[gap_i] - this_gap
-            peaklet_right_peak_time = peaklet_starts[gap_i + 1] - this_gap
-            peaklet_right_peak_endtime = peaklet_ends[-1]
-            left_area = areas[merge_start_idx : gap_i - 1]
-            right_area = areas[gap_i + 1 : peaklets_last_idx + 1]
-            gos_value = _goodness_of_split(
-                peaklet_left_peak_time,
-                peaklet_right_peak_time,
-                peaklet_left_peak_endtime,
-                peaklet_right_peak_endtime,
-                merge_start_idx,
-                peaklets_last_idx,
-                areas,
-                left_area,
-                right_area,
-            )
-
-            merge_start_idx += inclusive_end_idx + 1
-            
-            if gos_value > 0.8:
+            if gof_array[gap_i] > 0.4:
                 continue
             
             # Merge gap in other words this means p @ gap_i and p @gap_i + 1 share the same
@@ -256,49 +238,40 @@ class MergedS2s(strax.OverlapWindowPlugin):
         return merge_start, merge_stop_exclusive
 
 
-def _weighted_std(x, y):
-    """Calculate the weighted standard deviation of x with weights y."""
-    if np.sum(y) == 0:
-        return 0.0
-    mean = np.sum(x * y) / np.sum(y)
-    variance = np.sum(y * (x - mean) ** 2) / np.sum(y)
-    return np.sqrt(variance)
-
-
-def _goodness_of_split(
-                      start_time_left_peak,
-                      start_time_right_peak,
-                      endtime_left_peak,
-                      endtime_right_peak,
-                      start_idx,
-                      end_idx,
-                      areas,
-                      left_area,
-                      right_area,
-                     ):
-    """Calculate the goodness of split for a given gap index. The higher the value the better the split.
-    The goodness of split is defined as the sum of the areas of the two peaks divided by the gap size.
+def weighted_var_online(waveform):
+    """Return left-to-right result of an online weighted variance computation
+    on the waveform.
     """
-        
-    weighted_std_left = _weighted_std(
-        np.linspace(start_time_left_peak, endtime_left_peak, 10),
-        left_area
-    )
-    weighted_std_right = _weighted_std(
-        np.linspace(start_time_right_peak, endtime_right_peak, 10),
-        right_area
-    )        
+    mean = sum_weights = s = 0
+    result = np.zeros(len(waveform))
+    for i, w in enumerate(waveform):
+        sum_weights += w
+        if sum_weights == 0:
+            continue
 
-    weighted_std_all = _weighted_std(
-        np.linspace(start_time_left_peak, endtime_right_peak, 10),
-        areas[start_idx:end_idx + 1],
-    )
-    
-    return (weighted_std_left + weighted_std_right) / weighted_std_all
+        mean_old = mean
+        mean = mean_old + (w / sum_weights) * (i - mean_old)
+        s += w * (i - mean_old) * (i - mean)
+        result[i] = s / sum_weights
 
-def _build_tmp_waveform(peaklets):
-    time = np.arange(peaklets["time"][0], strax.endtime(peaklets)[-1], peaklets["dt"][0])
-    data = peaklets["data"][0, : len(time)]
+    return result
+
+
+def _gof_at_splits(w, split_indices):
+    """
+    Return goodness-of-fit values only at the given split indices. The indices come
+    from the natural break split computed before
+    """
+    split_indices = np.asarray(split_indices, dtype=int)
+
+    left = weighted_var_online(w)
+    right = weighted_var_online(w[::-1])[::-1]
+
+    total_var = left[-1]
+    if total_var == 0:
+        return np.zeros(len(split_indices))
+
+    return 1 - (left[split_indices] + right[split_indices]) / total_var
 
 
 @numba.njit(cache=True, nogil=True)
