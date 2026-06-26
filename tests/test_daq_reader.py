@@ -16,6 +16,32 @@ from time import sleep
 import numpy as np
 
 
+def test_daq_reader_declares_bspmt_raw_records():
+    """DAQReader should expose a dedicated back-scatter PMT raw-record stream."""
+    assert "raw_records_bspmt" in DAQReader.provides
+    assert DAQReader.rechunk_on_save["raw_records_bspmt"] is True
+
+    channel_map = straxen.contexts.common_config["channel_map"]
+    assert "bspmt" in channel_map
+    bspmt_range = channel_map["bspmt"]
+    assert bspmt_range[0] == bspmt_range[1]
+
+    starts = [left for left, _ in channel_map.values()]
+    assert starts == sorted(starts)
+
+    records = np.zeros(1, dtype=strax.raw_record_dtype())
+    records["time"] = 0
+    records["length"] = 1
+    records["dt"] = 1
+    records["channel"] = bspmt_range[0]
+
+    result = list(straxen.split_channel_ranges(records, np.asarray(list(channel_map.values()))))
+    bspmt_index = list(channel_map).index("bspmt")
+    assert len(result[bspmt_index]) == 1
+    assert result[bspmt_index]["channel"][0] == bspmt_range[0]
+    assert all(len(result[i]) == 0 for i in range(len(result)) if i != bspmt_index)
+
+
 class DummyDAQReader(DAQReader):
     """Dummy version of DAQReader with different provides and different lineage."""
 

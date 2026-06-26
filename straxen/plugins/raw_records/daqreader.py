@@ -105,6 +105,7 @@ class DAQReader(strax.Plugin):
      - raw_records_nv: neutron veto raw_records; only stored temporary
        as the software coincidence trigger not applied yet.
      - raw_records_mv: muon veto raw_records.
+     - raw_records_bspmt: back-scatter PMT raw_records.
      - raw_records_aqmon: raw_records for the acquisition monitor (_nv
        for neutron veto).
 
@@ -117,6 +118,7 @@ class DAQReader(strax.Plugin):
         "raw_records_nv",  # nveto raw_records (will not be stored long term)
         "raw_records_aqmon_nv",
         "raw_records_aux_mv",
+        "raw_records_bspmt",  # back-scatter PMT
         "raw_records_mv",  # mveto has to be last due to lineage
     )
 
@@ -132,6 +134,7 @@ class DAQReader(strax.Plugin):
         raw_records_nv=False,
         raw_records_aqmon_nv=True,
         raw_records_aux_mv=True,
+        raw_records_bspmt=True,
         raw_records_mv=False,
     )
     chunk_target_size_mb = 500

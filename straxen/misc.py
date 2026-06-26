@@ -46,6 +46,7 @@ kind_colors = dict(
     raw_records="#ff4500",
     raw_records_aqmon="#ff4500",
     raw_records_aux_mv="#ff4500",
+    raw_records_bspmt="#ff4500",
     online_peak_monitor="deepskyblue",
     online_monitor="deepskyblue",
 )

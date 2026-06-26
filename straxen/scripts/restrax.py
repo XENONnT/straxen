@@ -274,6 +274,7 @@ class ReStrax(daq_core.DataBases):
         "raw_records_nv",
         "raw_records_mv",
         "raw_records_he",
+        "raw_records_bspmt",
         "records",
         "records_nv",
         "records_mv",

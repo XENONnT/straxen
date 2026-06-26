@@ -88,6 +88,9 @@ common_config = dict(
         he=(500, 752),  # high energy
         aqmon=(790, 807),
         aqmon_nv=(808, 815),  # nveto acquisition monitor
+        # Back-scatter PMT test channel. Final logical channel to be confirmed
+        # with the DAQ/redax config before data taking.
+        bspmt=(850, 850),
         tpc_blank=(999, 999),
         mv=(1000, 1083),
         aux_mv=(1084, 1087),  # Aux mv channel 2 empty 1 pulser and 1 GPS

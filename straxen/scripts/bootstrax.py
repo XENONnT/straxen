@@ -1965,6 +1965,7 @@ def process_run(rd, send_heartbeats=args.production):
                             "raw_records_he",
                             "raw_records_mv",
                             "raw_records_nv",
+                            "raw_records_bspmt",
                         ):
                             md = st.get_metadata(run_id, rr_type)
                             if len(md["chunks"]) and (
