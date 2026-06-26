@@ -201,6 +201,7 @@ class DummyRawRecords(strax.Plugin):
             "nv": "nveto",
             "aqmon": "aqmon",
             "aux_mv": "aux_mv",
+            "bspmt": "bspmt",
             "s_mv": "mv",
         }  # s_mv otherwise same as aux in endswith
 

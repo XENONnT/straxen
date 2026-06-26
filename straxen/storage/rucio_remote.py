@@ -108,7 +108,7 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     """Get data from remote Rucio RSE."""
 
     # datatypes we don't want to download since they're too heavy
-    heavy_types = ["raw_records", "raw_records_nv", "raw_records_he"]
+    heavy_types = ["raw_records", "raw_records_nv", "raw_records_he", "raw_records_bspmt"]
 
     # for caching RSE locations
     dset_cache: Dict[str, str] = {}
