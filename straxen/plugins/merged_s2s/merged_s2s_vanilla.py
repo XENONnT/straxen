@@ -24,8 +24,8 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         "peaklets",
         "peaklet_classification",
         "lone_hits",
-    )  
-    # add "peaklet_positions_{DEFAULT_POSREC_ALGO}" if position check is desired. 
+    )
+    # add "peaklet_positions_{DEFAULT_POSREC_ALGO}" if position check is desired.
     # Also uncomment the position check related lines in get_merge_instructions and compute
     data_kind = "merged_s2s"
     provides = "merged_s2s"
