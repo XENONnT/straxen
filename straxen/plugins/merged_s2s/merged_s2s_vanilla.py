@@ -20,7 +20,11 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
 
     __version__ = "1.0.3"
 
-    depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits") # add "peaklet_positions_{DEFAULT_POSREC_ALGO}" if position check is desired
+    depends_on: Tuple[str, ...] = (
+        "peaklets",
+        "peaklet_classification",
+        "lone_hits",
+    )  # add "peaklet_positions_{DEFAULT_POSREC_ALGO}" if position check is desired
     data_kind = "merged_s2s"
     provides = "merged_s2s"
 
@@ -103,9 +107,7 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
     )
 
     use_natural_break_gof = straxen.URLConfig(
-        default=True,
-        type=bool,
-        help="Whether to use the gof field for merging"
+        default=True, type=bool, help="Whether to use the gof field for merging"
     )
 
     peak_merge_gof_threshold = straxen.URLConfig(
@@ -171,20 +173,19 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             # so we always include data_start even if it stays empty (zeros).
             # This is a workaround until strax properly supports optional fields.
             peak_field_w_top = strax.peak_dtype(
-                    n_channels=self.n_tpc_pmts,
-                    store_data_top=True,
-                    store_data_start=True,
-                )
-            all_field_w_top = peaklets.dtype.descr + [field for field in peak_field_w_top if field[0][1] not in peaklets.dtype.names]
-            all_field_w_top = sorted(all_field_w_top, key=lambda x: x[0][1])
-            peaklets_w_field = np.zeros(
-                len(peaklets),
-                dtype=all_field_w_top
+                n_channels=self.n_tpc_pmts,
+                store_data_top=True,
+                store_data_start=True,
             )
+            all_field_w_top = peaklets.dtype.descr + [
+                field for field in peak_field_w_top if field[0][1] not in peaklets.dtype.names
+            ]
+            all_field_w_top = sorted(all_field_w_top, key=lambda x: x[0][1])
+            peaklets_w_field = np.zeros(len(peaklets), dtype=all_field_w_top)
             strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
             del peaklets
             peaklets = peaklets_w_field
-        
+
         assert "data_top" in peaklets.dtype.names
 
         # if self.use_uncertainty_weights:
@@ -335,18 +336,12 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             #     dr_avg = weighted_averaged_dr(x_sel, y_sel, weights)
             #     area_top_sum = np.sum(area_top_sel)
             #     dr_threshold_ = thresholds_interpolation(np.log10(area_top_sum), dr_thresholds)
-                
+
             #     if dr_avg > dr_threshold_:
             #         continue
 
-
             if natural_break:
-                gof = gof_at_gap(
-                    peaklets,
-                    gap_i,
-                    peaklet_start_index,
-                    peaklet_end_index
-                )
+                gof = gof_at_gap(peaklets, gap_i, peaklet_start_index, peaklet_end_index)
 
                 # high gof means that the split is good, so we do not merge
                 if gof > merge_s2_threshold(np.log10(sum_area), gof_thresholds):
@@ -444,9 +439,7 @@ def weighted_averaged_dr(x, y, weights):
 
 @numba.njit(cache=True, nogil=True)
 def total_variance(peaklets, start_idx, end_idx, time_gap, from_right_to_left=False):
-    """
-    Accumulate weighted time moments over a contiguous peaklet range.
-    """
+    """Accumulate weighted time moments over a contiguous peaklet range."""
     total_w = 0.0
     total_w_t = 0.0
     total_w_t2 = 0.0
@@ -459,7 +452,7 @@ def total_variance(peaklets, start_idx, end_idx, time_gap, from_right_to_left=Fa
     else:
         peak_range = np.arange(start_idx, end_idx + 1)
     for pi in peak_range:
-        
+
         waveform = peaklets[pi]["data"]
         length = peaklets[pi]["length"]
         dt = peaklets[pi]["dt"]
@@ -495,11 +488,11 @@ def total_variance(peaklets, start_idx, end_idx, time_gap, from_right_to_left=Fa
 
 @numba.njit(cache=True, nogil=True)
 def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
-    """
-    Compute the left-side weighted variance contribution for one split.
+    """Compute the left-side weighted variance contribution for one split.
 
-    This avoids the previous two-pass mean/variance calculation. The same
-    result can be computed directly from the combined weighted moments.
+    This avoids the previous two-pass mean/variance calculation. The same result can be computed
+    directly from the combined weighted moments.
+
     """
     time_gap = peaklets[gap_i + 1]["time"]
 
@@ -515,7 +508,7 @@ def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
         peaklet_start_idx[gap_i],
         peaklet_end_idx[gap_i + 1],
         time_gap,
-        from_right_to_left=True
+        from_right_to_left=True,
     )
 
     gof_array = np.empty(len(left_w_sum_variance), dtype=np.float64)
@@ -525,7 +518,7 @@ def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
 
     lw_max = np.max(left_norm_w)
     if lw_max > 0:
-        gof_array = gof_array * (1.0 - left_norm_w / lw_max) # low_split
+        gof_array = gof_array * (1.0 - left_norm_w / lw_max)  # low_split
     gof = np.max(gof_array)
 
     return gof
