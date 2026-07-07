@@ -285,7 +285,7 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         peaklet_ends = strax.endtime(peaklets)
         types = peaklets["type"]
         areas = peaklets["area"]
-        area_top = areas * peaklets["area_fraction_top"]
+        # area_top = areas * peaklets["area_fraction_top"]
 
         # (x, y) positions of the peaklets
         # positions = np.vstack([peaklets[f"x_{posrec_algo}"], peaklets[f"y_{posrec_algo}"]]).T
