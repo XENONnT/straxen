@@ -197,7 +197,7 @@ class SCInterfaceTest(unittest.TestCase):
         self.sc.context = st
         res = self.sc.get_scada_values(
             parameters={"test": "XE1T.CRY_PT101_PCHAMBER_AI.PI"},
-            run_id=["020000", "035000"],
+            run_id=["055000", "065000"],
             every_nth_value=500,
         )
         assert np.sum(res.test >= 0) > 35000
