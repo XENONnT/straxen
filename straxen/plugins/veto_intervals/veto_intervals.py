@@ -132,9 +132,10 @@ class VetoIntervals(strax.ExhaustPlugin):
         n_artificial = len(artificial_deadtime)
 
         if n_artificial:
-            result[vetos_seen:n_artificial]["time"] = artificial_deadtime["time"]
-            result[vetos_seen:n_artificial]["endtime"] = strax.endtime(artificial_deadtime)
-            result[vetos_seen:n_artificial]["veto_type"] = "straxen_deadtime"
+            sel = slice(vetos_seen, vetos_seen + n_artificial)
+            result[sel]["time"] = artificial_deadtime["time"]
+            result[sel]["endtime"] = strax.endtime(artificial_deadtime)
+            result[sel]["veto_type"] = "straxen_deadtime"
             vetos_seen += n_artificial
 
         result = result[:vetos_seen]
