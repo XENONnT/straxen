@@ -187,6 +187,13 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
             del peaklets
             peaklets = peaklets_w_field
+        
+        assert "data_top" in peaklets.dtype.names
+
+        # if self.use_uncertainty_weights:
+        #     name = f"position_contour_{self.default_reconstruction_algorithm}"
+        #     if name not in peaklets.dtype.names:
+        #         raise ValueError(f"{name} is not in the input peaklets dtype")
 
         assert "data_top" in peaklets.dtype.names
 
