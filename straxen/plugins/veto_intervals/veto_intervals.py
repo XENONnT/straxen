@@ -101,6 +101,12 @@ class VetoIntervals(strax.ExhaustPlugin):
                 veto_hits_stop = copy(veto_hits_start)
                 veto_hits_stop["time"] += duration_ns
 
+                # Synthesized times are not real hits, so nothing guarantees they
+                # stay inside the run; clip to the chunk (mirrors the fake-stop-at-
+                # chunk-end treatment of real vetos crossing the run end).
+                np.clip(veto_hits_start["time"], start, end, out=veto_hits_start["time"])
+                np.clip(veto_hits_stop["time"], start, end, out=veto_hits_stop["time"])
+
             veto_hits_start, veto_hits_stop = self.handle_starts_and_stops_outside_of_run(
                 veto_hits_start=veto_hits_start,
                 veto_hits_stop=veto_hits_stop,
