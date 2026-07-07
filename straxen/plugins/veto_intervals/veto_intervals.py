@@ -46,10 +46,17 @@ class VetoIntervals(strax.ExhaustPlugin):
     data_kind = "veto_intervals"
 
     v1495_config = straxen.URLConfig(
-        default="run_doc://daq_config.V1495.tpc?run_id=plugin.run_id",
+        default=(
+            "run_doc://daq_config.V1495.tpc"
+            "?run_id=plugin.run_id&default=plugin.pre_v10_v1495_config"
+        ),
         type=dict,
         help="DAQ config for the V1495 board (firmware v10+).",
     )
+
+    # Fallback for rundocs without daq_config.V1495.tpc (runs recorded before
+    # the key existed, MC, special runs): interpreted as pre-upgrade firmware.
+    pre_v10_v1495_config: dict = {"firmware_version": 9}
 
     def infer_dtype(self):
         dtype = [
