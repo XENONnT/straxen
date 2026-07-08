@@ -12,9 +12,9 @@ class IndividualPeakMonitor(strax.Plugin):
     the runs- database. If the peaks are large, random max_bytes of data are selected from the
     peaks.
 
-    This plugin takes 'peak_basics' and 'peak_positions_mlp'. Although they are not strictly
-    related, they are aggregated into a single data_type in order to minimize the number of
-    documents in the online monitor.
+    This plugin takes 'peak_basics' and 'peak_positions'. Although they are not strictly related,
+    they are aggregated into a single data_type in order to minimize the number of documents in the
+    online monitor.
 
     Produces 'individual_peak_monitor' with info on the peaks and their positions.
 
@@ -24,16 +24,16 @@ class IndividualPeakMonitor(strax.Plugin):
         default=6e6, track=True, help="Maximum amount of bytes of data for MongoDB document"
     )
 
-    depends_on = ("peak_basics", "peak_positions_mlp")
+    depends_on = ("peak_basics", "peak_positions")
     provides = "individual_peak_monitor"
     data_kind = "individual_peak_monitor"
-    __version__ = "0.0.1"
+    __version__ = "0.0.2"
 
     def infer_dtype(self):
         dtype = [
             (("Peak integral in PE", "area"), np.float32),
-            (("Reconstructed mlp peak x-position", "x_mlp"), np.float32),
-            (("Reconstructed mlp peak y-position", "y_mlp"), np.float32),
+            (("Reconstructed peak x-position", "x"), np.float32),
+            (("Reconstructed peak y-position", "y"), np.float32),
             (("Width (in ns) of the central 50% area of the peak", "range_50p_area"), np.float32),
             (("Fraction of original peaks array length that is saved", "weight"), np.float32),
         ] + strax.time_fields
@@ -53,8 +53,8 @@ class IndividualPeakMonitor(strax.Plugin):
             data = peaks
         res = np.zeros(len(data), dtype=self.dtype)
         res["time"] = data["time"]
-        res["x_mlp"] = data["x_mlp"]
-        res["y_mlp"] = data["y_mlp"]
+        res["x"] = data["x"]
+        res["y"] = data["y"]
         res["area"] = data["area"]
         res["range_50p_area"] = data["range_50p_area"]
         res["endtime"] = data["endtime"]

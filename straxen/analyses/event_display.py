@@ -183,12 +183,12 @@ def _event_display(
                 hp_opt[k] = v
 
     # S1
-    if events["s1_area"] != 0:
+    if event["s1_area"] != 0:
         if ax_s1 is not None:
             plt.sca(ax_s1)
             context.plot_peaks(
                 run_id,
-                time_range=(events["s1_time"] - s1_fuzz, events["s1_endtime"] + s1_fuzz),
+                time_range=(event["s1_time"] - s1_fuzz, event["s1_endtime"] + s1_fuzz),
                 single_figure=False,
             )
 
@@ -196,7 +196,7 @@ def _event_display(
         area = context.get_array(
             run_id,
             "peaklets",
-            time_range=(events["s1_time"], events["s1_endtime"]),
+            time_range=(event["s1_time"], event["s1_endtime"]),
             keep_columns=("area_per_channel", "time", "dt", "length"),
             progress_bar=False,
         )
@@ -215,7 +215,7 @@ def _event_display(
             plt.sca(ax_s2)
             context.plot_peaks(
                 run_id,
-                time_range=(events["s2_time"] - s2_fuzz, events["s2_endtime"] + s2_fuzz),
+                time_range=(event["s2_time"] - s2_fuzz, event["s2_endtime"] + s2_fuzz),
                 single_figure=False,
             )
 
@@ -223,7 +223,7 @@ def _event_display(
         area = context.get_array(
             run_id,
             "peaklets",
-            time_range=(events["s2_time"], events["s2_endtime"]),
+            time_range=(event["s2_time"], event["s2_endtime"]),
             keep_columns=("area_per_channel", "time", "dt", "length"),
             progress_bar=False,
         )
@@ -257,7 +257,7 @@ def _event_display(
     if ax_ev is not None:
         plt.sca(ax_ev)
         if event_time_limit is None:
-            time_range = (events["time"], events["endtime"])
+            time_range = (event["time"], event["endtime"])
         else:
             time_range = event_time_limit
 
@@ -271,7 +271,7 @@ def _event_display(
         context.plot_records_matrix(
             run_id,
             raw=records_matrix == "raw",
-            time_range=(events["time"], events["endtime"]),
+            time_range=(event["time"], event["endtime"]),
             single_figure=False,
         )
         ax_rec.tick_params(axis="x", rotation=0)
@@ -289,7 +289,7 @@ def _event_display(
         ax_ev.tick_params(axis="x", rotation=0)
     title = (
         f"Run {run_id}. Time "
-        f"{str(events['time'])[:-9]}.{str(events['time'])[-9:]}\n"
+        f"{str(event['time'])[:-9]}.{str(event['time'])[-9:]}\n"
         f"{datetime.fromtimestamp(event['time'] / 1e9, tz=pytz.utc)}"
     )
     plt.suptitle(title, y=0.95)
@@ -405,6 +405,9 @@ def _scatter_rec(
     """Convenient wrapper to show posrec of three algorithms for xenonnt."""
     if recs is None:
         recs = ("mlp", "cnf")
+        # filter them to only include those that are actually in the event
+        recs = [_r for _r in recs if f"s2_x_{_r}" in _event.dtype.names]
+
     elif len(recs) > 5:
         raise ValueError("I only got five markers/colors")
     if scatter_kwargs is None:

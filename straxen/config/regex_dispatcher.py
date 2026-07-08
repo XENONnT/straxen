@@ -24,7 +24,7 @@ def normalize(r):
 
 
 class RegexDispatcher(object):
-    """Regular Expression Dispatcher.
+    r"""Regular Expression Dispatcher.
 
     >>> f = RegexDispatcher('f')
 
