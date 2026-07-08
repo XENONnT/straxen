@@ -55,6 +55,17 @@ class SCInterfaceTest(unittest.TestCase):
                 query_type_lab=False,
             )
 
+    def test_older_than_five_years(self):
+        """The webAPI does not allow for queries older than 5 years."""
+        st = straxen.contexts.xenonnt()
+        self.sc.context = st
+        with self.assertRaises(ValueError):
+            self.sc.get_scada_values(
+                parameters={"test": "XE1T.CRY_PT101_PCHAMBER_AI.PI"},
+                run_id=["020000", "035000"],  # Older than 5 years.
+                every_nth_value=500,
+            )
+
     def test_pmt_names(self):
         """Tests different query options for pmt list."""
         pmts_dict = self.sc.find_pmt_names(pmts=12, current=True)
@@ -197,7 +208,7 @@ class SCInterfaceTest(unittest.TestCase):
         self.sc.context = st
         res = self.sc.get_scada_values(
             parameters={"test": "XE1T.CRY_PT101_PCHAMBER_AI.PI"},
-            run_id=["020000", "035000"],
+            run_id=["055000", "065000"],  # First half of SR2
             every_nth_value=500,
         )
         assert np.sum(res.test >= 0) > 35000
