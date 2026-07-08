@@ -6,14 +6,37 @@ import requests
 
 
 class SCInterfaceTest(unittest.TestCase):
-    def setUp(self):
-        self.resources_available()
+
+    @classmethod
+    def resources_available(cls):
+        """Exception to skip test if external requirements are not met.
+
+        Otherwise define Scada interface as self.sc.
+
+        """
+        if not straxen.utilix_is_configured(
+            "scada",
+            "scdata_url",
+        ):
+            raise unittest.SkipTest("Cannot test scada since we have no access to xenon secrets.")
+        try:
+            cls.sc = straxen.SCADAInterface(use_progress_bar=False)
+            cls.sc.get_new_token()
+        except requests.exceptions.SSLError:
+            raise unittest.skipTest("Cannot reach database since HTTPs certifcate expired.")
+
+        st = straxen.contexts.xenonnt()
+        cls.sc.context = st
+
+    @classmethod
+    def setUp(cls):
+        cls.resources_available()
         # Simple query test:
         # Query 5 s of data:
-        self.start = 1709682275000000000
+        cls.start = 1709682275000000000
         # Add micro-second to check if query does not fail if inquery precsion > SC precision
-        self.start += 10**6
-        self.end = self.start + 5 * straxen.units.s
+        cls.start += 10**6
+        cls.end = cls.start + 5 * straxen.units.s
 
     def test_wrong_querries(self):
         parameters = {"SomeParameter": "XE1T.CTPC.Board06.Chan011.VMon"}
@@ -214,24 +237,3 @@ class SCInterfaceTest(unittest.TestCase):
         t = np.arange(0, 100, 10)
         t_t, t_a = straxen.scada._average_scada(t / 1e9, t, 1)
         assert len(t_a) == len(t), "Scada deleted some of my 10 datapoints!"
-
-    def resources_available(self):
-        """Exception to skip test if external requirements are not met.
-
-        Otherwise define Scada interface as self.sc.
-
-        """
-        if not straxen.utilix_is_configured(
-            "scada",
-            "scdata_url",
-        ):
-            self.skipTest("Cannot test scada since we have no access to xenon secrets.)")
-
-        try:
-            self.sc = straxen.SCADAInterface(use_progress_bar=False)
-            self.sc.get_new_token()
-        except requests.exceptions.SSLError:
-            self.skipTest("Cannot reach database since HTTPs certifcate expired.")
-
-        st = straxen.contexts.xenonnt()
-        self.sc.context = st
