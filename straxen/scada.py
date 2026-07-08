@@ -251,6 +251,20 @@ class SCADAInterface:
             )
             warnings.warn(mes)
 
+        # Web API only allows queries up to 5 years ago:
+        five_years_ago = (now.astype("datetime64[M]") - np.timedelta64(60, "M")).astype(
+            "datetime64[s]"
+        )
+        five_years_ago_in_seconds_unix = five_years_ago.astype(np.int64)
+
+        _query_older_than_five_years = (start // straxen.units.s) < five_years_ago_in_seconds_unix
+        if _query_older_than_five_years:
+            mes = (
+                "The web API does not allow to query data which is older than 5 years."
+                "Please use the viewer instead."
+            )
+            raise ValueError(mes)
+
         # Chop start/end time if precision is higher then seconds level.
         start = (start // straxen.units.s) * straxen.units.s
         end = (end // straxen.units.s) * straxen.units.s

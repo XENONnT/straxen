@@ -6,14 +6,37 @@ import requests
 
 
 class SCInterfaceTest(unittest.TestCase):
-    def setUp(self):
-        self.resources_available()
+
+    @classmethod
+    def resources_available(cls):
+        """Exception to skip test if external requirements are not met.
+
+        Otherwise define Scada interface as self.sc.
+
+        """
+        if not straxen.utilix_is_configured(
+            "scada",
+            "scdata_url",
+        ):
+            raise unittest.SkipTest("Cannot test scada since we have no access to xenon secrets.")
+        try:
+            cls.sc = straxen.SCADAInterface(use_progress_bar=False)
+            cls.sc.get_new_token()
+        except requests.exceptions.SSLError:
+            raise unittest.skipTest("Cannot reach database since HTTPs certifcate expired.")
+
+        st = straxen.contexts.xenonnt()
+        cls.sc.context = st
+
+    @classmethod
+    def setUp(cls):
+        cls.resources_available()
         # Simple query test:
         # Query 5 s of data:
-        self.start = 1709682275000000000
+        cls.start = 1709682275000000000
         # Add micro-second to check if query does not fail if inquery precsion > SC precision
-        self.start += 10**6
-        self.end = self.start + 5 * straxen.units.s
+        cls.start += 10**6
+        cls.end = cls.start + 5 * straxen.units.s
 
     def test_wrong_querries(self):
         parameters = {"SomeParameter": "XE1T.CTPC.Board06.Chan011.VMon"}
@@ -55,6 +78,15 @@ class SCInterfaceTest(unittest.TestCase):
                 query_type_lab=False,
             )
 
+    def test_older_than_five_years(self):
+        """The webAPI does not allow for queries older than 5 years."""
+        with self.assertRaises(ValueError):
+            self.sc.get_scada_values(
+                parameters={"test": "XE1T.CRY_PT101_PCHAMBER_AI.PI"},
+                run_id=["020000", "035000"],  # Older than 5 years.
+                every_nth_value=500,
+            )
+
     def test_pmt_names(self):
         """Tests different query options for pmt list."""
         pmts_dict = self.sc.find_pmt_names(pmts=12, current=True)
@@ -86,7 +118,7 @@ class SCInterfaceTest(unittest.TestCase):
         assert df_strax.index.dtype.type is np.int64
 
         df_etc = straxen.convert_time_zone(df, tz="Etc/GMT+0")
-        assert df_etc.index.dtype.tz is pytz.timezone("Etc/GMT+0")
+        assert str(df_etc.index.dtype.tz) == str(pytz.timezone("Etc/GMT+0"))
 
     def test_query_sc_values(self):
         """Unity test for the SCADAInterface.
@@ -106,8 +138,8 @@ class SCInterfaceTest(unittest.TestCase):
 
         # This correspond to parameter value
         # at the start = 1709682275000000000
-        assert df["SomeParameter"][0] // 1 == 1211, "First values returned is not corrrect."
-        assert np.all(np.isnan(df["SomeParameter"][1:])), "Subsequent values are not correct."
+        assert df["SomeParameter"].iloc[0] // 1 == 1211, "First values returned is not corrrect."
+        assert np.all(np.isnan(df["SomeParameter"].iloc[1:])), "Subsequent values are not correct."
 
         print("Testing forwardfill option:")
         parameters = {"SomeParameter": "XE1T.CRY_FCV104FMON.PI"}
@@ -126,7 +158,9 @@ class SCInterfaceTest(unittest.TestCase):
         ), "First four values deviate from queried values."
         # This correspond to parameter value
         # at the start = 1709682275000000000
-        assert np.all(np.isclose(df[4:], 3.572651)), "Last two values deviate from queried values."
+        assert np.all(
+            np.isclose(df["SomeParameter"].iloc[4:], 3.572651)
+        ), "Last two values deviate from queried values."
         print("Testing interpolation option:")
         self.sc.get_scada_values(
             parameters,
@@ -158,7 +192,7 @@ class SCInterfaceTest(unittest.TestCase):
             query_type_lab=False,
         )
 
-        assert np.all(df_all[::2] == df), "Downsampling did not return the correct values."
+        assert np.all(df_all.iloc[::2] == df), "Downsampling did not return the correct values."
 
         df = self.sc.get_scada_values(
             parameters,
@@ -171,7 +205,7 @@ class SCInterfaceTest(unittest.TestCase):
 
         # Compare average for each second value:
         for ind, i in enumerate([0, 2, 4]):
-            is_correct = np.isclose(np.mean(df_all[i : i + 2]), df["SomeParameter"][ind])
+            is_correct = np.isclose(np.mean(df_all.iloc[i : i + 2]), df["SomeParameter"].iloc[ind])
             assert is_correct, "Averaging is incorrect."
 
         # Testing lab query type:
@@ -193,11 +227,9 @@ class SCInterfaceTest(unittest.TestCase):
         See also: xenon:xenon1t:slowcontrol:webservicenew
 
         """
-        st = straxen.contexts.xenonnt()
-        self.sc.context = st
         res = self.sc.get_scada_values(
             parameters={"test": "XE1T.CRY_PT101_PCHAMBER_AI.PI"},
-            run_id=["020000", "035000"],
+            run_id=["055000", "065000"],  # First half of SR2
             every_nth_value=500,
         )
         assert np.sum(res.test >= 0) > 35000
@@ -207,21 +239,3 @@ class SCInterfaceTest(unittest.TestCase):
         t = np.arange(0, 100, 10)
         t_t, t_a = straxen.scada._average_scada(t / 1e9, t, 1)
         assert len(t_a) == len(t), "Scada deleted some of my 10 datapoints!"
-
-    def resources_available(self):
-        """Exception to skip test if external requirements are not met.
-
-        Otherwise define Scada interface as self.sc.
-
-        """
-        if not straxen.utilix_is_configured(
-            "scada",
-            "scdata_url",
-        ):
-            self.skipTest("Cannot test scada since we have no access to xenon secrets.)")
-
-        try:
-            self.sc = straxen.SCADAInterface(use_progress_bar=False)
-            self.sc.get_new_token()
-        except requests.exceptions.SSLError:
-            self.skipTest("Cannot reach database since HTTPs certifcate expired.")

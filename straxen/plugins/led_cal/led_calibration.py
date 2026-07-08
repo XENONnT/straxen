@@ -184,7 +184,7 @@ class LEDCalibration(strax.Plugin):
             self.run_doc, self.default_run_comments, self.noise_run_comments
         )
 
-        mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
+        mask = np.where(np.isin(raw_records["channel"], self.channel_list))[0]
         raw_records_active_channels = raw_records[mask]
         records = get_records(
             raw_records_active_channels, self.baseline_window, self.led_cal_record_length

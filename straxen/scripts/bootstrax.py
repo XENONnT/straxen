@@ -727,7 +727,7 @@ def _remove_veto_from_t(
     for r in remove:
         targets = keep_target(targets, {f"*{r}": 0}, 1)
     if _flip:
-        targets = [t for i, t in enumerate(start) if not np.in1d(start, targets)[i]]
+        targets = [t for i, t in enumerate(start) if not np.isin(start, targets)[i]]
     return strax.to_str_tuple(targets)
 
 
