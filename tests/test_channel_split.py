@@ -8,7 +8,7 @@ def channel_split_naive(r, channel_ranges):
     """Slower but simpler implementation of straxen.split_channel_ranges."""
     results = []
     for left, right in channel_ranges:
-        results.append(r[np.in1d(r["channel"], np.arange(left, right + 1))])
+        results.append(r[np.isin(r["channel"], np.arange(left, right + 1))])
     return results
 
 

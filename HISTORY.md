@@ -1,3 +1,10 @@
+4.0.0 / 2026-07-08
+-------------------
+* Add a more lightweight processing version for online processing
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v3.2.7...v4.0.0
+
+
 3.2.8 / 2026-03-02
 -------------------
 * Save main and alt S2's CNF contour area by @dachengx in https://github.com/XENONnT/straxen/pull/1640

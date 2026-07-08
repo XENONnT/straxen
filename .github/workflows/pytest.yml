@@ -28,19 +28,33 @@ jobs:
   test:
     name: "${{ matrix.test }}_py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:4.4.1
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongo --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       HAVE_ACCESS_TO_SECRETS: ${{ secrets.RUNDB_API_URL }}
     strategy:
       fail-fast: False
       matrix:
-        python-version: ["3.10", "3.11"]
-        test: ["coveralls", "pytest", "pytest_no_database"]
-        # Drop some not crucial tests for python 3.10 and 3.11
-        exclude:
-          - python-version: "3.11"
-            test: coveralls
-          - python-version: "3.11"
-            test: pytest_no_database
+        python-version: ["3.11", "3.12"]
+        test: ["coveralls", "pytest", "pytest_no_database", "pytest_vanilla"]
+        # Drop some not crucial tests if needed
+        #exclude:
+        #  - python-version: "3.12"
+        #    test: coveralls
+        #  - python-version: "3.12"
+        #    test: pytest_no_database
+        #  - python-version: "3.12"
+        #    test: pytest_vanilla
 
     steps:
       # Setup and installation
@@ -56,15 +70,15 @@ jobs:
         run: sudo apt-get install -y graphviz
 
       - name: Install test tollkits
-        run: pip install pytest hypothesis coverage coveralls
-
-      - name: Install requirements for Python 3.10
-        if: matrix.python-version == '3.10'
-        run: pip install git+https://github.com/XENONnT/base_environment.git@el7.2025.01.3 --force-reinstall
+        run: pip install pytest hypothesis coverage coveralls pytest-instafail
 
       - name: Install requirements for Python 3.11
         if: matrix.python-version == '3.11'
-        run: pip install git+https://github.com/XENONnT/base_environment.git@el8.2026.03.1 --force-reinstall
+        run: pip install git+https://github.com/XENONnT/base_environment.git@el8.2026.02.2 --force-reinstall
+
+      - name: Install requirements for Python 3.12
+        if: matrix.python-version == '3.12'
+        run: pip install git+https://github.com/XENONnT/base_environment.git --force-reinstall
 
       - name: Install strax and straxen
         run: |
@@ -72,10 +86,6 @@ jobs:
           pip install .
           pip install tf-keras scikit-learn --upgrade
 
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.11.0
-        with:
-          mongodb-version: 4.4.1
 
       - name: patch utilix file
         # Secrets and required files
@@ -106,11 +116,12 @@ jobs:
 
       - name: Test package
         # This is running a normal test
-        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest')
+        if: (matrix.test == 'pytest_no_database' || matrix.test == 'pytest' || matrix.test == 'pytest_vanilla')
         env:
           TEST_MONGO_URI: 'mongodb://localhost:27017/'
+          STRAXEN_USE_VANILLA: ${{ matrix.test == 'pytest_vanilla' && 'true' || 'false' }}
         run: |
-          coverage run --source=straxen -m pytest --durations 0
+          coverage run --source=straxen -m pytest --instafail -vv --tb=short --durations 0
           coverage report
 
       - name: Coveralls
@@ -126,7 +137,7 @@ jobs:
           pip install -e .
 
           # Omit ./straxen/storage/rucio_remote.py since it's only tested in base_env
-          coverage run --source=straxen -m pytest -v
+          coverage run --source=straxen -m pytest --instafail -vv --tb=short -v
 
           # Test notebooks
           coverage run --append --source=straxen -m pytest -v --nbmake -n=auto notebooks/tutorials/SuperrunsExample.ipynb
@@ -137,7 +148,7 @@ jobs:
             rm ~/.xenon_config
           fi
           bash .github/scripts/create_pre_apply_function.sh $HOME
-          coverage run --append --source=straxen -m pytest -v
+          coverage run --append --source=straxen -m pytest --instafail -vv --tb=short -v
           coveralls --service=github
 
       - name: goodbye
