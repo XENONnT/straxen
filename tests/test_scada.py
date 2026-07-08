@@ -57,8 +57,6 @@ class SCInterfaceTest(unittest.TestCase):
 
     def test_older_than_five_years(self):
         """The webAPI does not allow for queries older than 5 years."""
-        st = straxen.contexts.xenonnt()
-        self.sc.context = st
         with self.assertRaises(ValueError):
             self.sc.get_scada_values(
                 parameters={"test": "XE1T.CRY_PT101_PCHAMBER_AI.PI"},
@@ -204,8 +202,6 @@ class SCInterfaceTest(unittest.TestCase):
         See also: xenon:xenon1t:slowcontrol:webservicenew
 
         """
-        st = straxen.contexts.xenonnt()
-        self.sc.context = st
         res = self.sc.get_scada_values(
             parameters={"test": "XE1T.CRY_PT101_PCHAMBER_AI.PI"},
             run_id=["055000", "065000"],  # First half of SR2
@@ -236,3 +232,6 @@ class SCInterfaceTest(unittest.TestCase):
             self.sc.get_new_token()
         except requests.exceptions.SSLError:
             self.skipTest("Cannot reach database since HTTPs certifcate expired.")
+
+        st = straxen.contexts.xenonnt()
+        self.sc.context = st
