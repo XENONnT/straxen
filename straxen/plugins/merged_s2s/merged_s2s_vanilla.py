@@ -515,4 +515,3 @@ def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
     gof = np.max(gof_array)
 
     return gof
-
