@@ -41,7 +41,7 @@ class SCInterfaceTest(unittest.TestCase):
         cls.sc.context = st
 
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         cls.resources_available()
         # Simple query test:
         # Query 5 s of data:
