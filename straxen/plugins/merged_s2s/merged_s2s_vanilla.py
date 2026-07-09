@@ -190,18 +190,6 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
 
         assert "data_top" in peaklets.dtype.names
 
-        # if self.use_uncertainty_weights:
-        #     name = f"position_contour_{self.default_reconstruction_algorithm}"
-        #     if name not in peaklets.dtype.names:
-        #         raise ValueError(f"{name} is not in the input peaklets dtype")
-
-        assert "data_top" in peaklets.dtype.names
-
-        # if self.use_uncertainty_weights:
-        #     name = f"position_contour_{self.default_reconstruction_algorithm}"
-        #     if name not in peaklets.dtype.names:
-        #         raise ValueError(f"{name} is not in the input peaklets dtype")
-
         # Max gap and area should be set by the gap thresholds
         # to avoid contradictions
         start_merge_at, end_merge_at = self.get_merge_instructions(
@@ -251,10 +239,6 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         )
         if len(merged_s2s) > 0:
             strax.compute_widths(merged_s2s)
-
-        # Set merged field to True for all merged S2s (if field exists)
-        if "merged" in merged_s2s.dtype.names:
-            merged_s2s["merged"] = True
 
         # Set merged field to True for all merged S2s (if field exists)
         if "merged" in merged_s2s.dtype.names:
