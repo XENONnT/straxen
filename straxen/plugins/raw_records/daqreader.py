@@ -135,7 +135,7 @@ class DAQReader(strax.Plugin):
         raw_records_nv=False,
         raw_records_aqmon_nv=True,
         raw_records_aux_mv=True,
-        raw_records_sc = False,
+        raw_records_sc=False,
         raw_records_mv=False,
     )
     chunk_target_size_mb = 500

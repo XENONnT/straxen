@@ -94,8 +94,8 @@ common_config = dict(
         mv_blank=(1999, 1999),
         nveto=(2000, 2119),
         nveto_blank=(2999, 2999),
-        sc = (3000, 3000),
-        sc_blank = (3999, 3999),
+        sc=(3000, 3000),
+        sc_blank=(3999, 3999),
     ),
 )
 
