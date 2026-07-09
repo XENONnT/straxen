@@ -4,6 +4,8 @@ import straxen
 import unittest
 import requests
 
+import time
+
 
 class SCInterfaceTest(unittest.TestCase):
 
@@ -21,7 +23,17 @@ class SCInterfaceTest(unittest.TestCase):
             raise unittest.SkipTest("Cannot test scada since we have no access to xenon secrets.")
         try:
             cls.sc = straxen.SCADAInterface(use_progress_bar=False)
-            cls.sc.get_new_token()
+
+            max_retries = 5
+            for try_number in range(max_retries + 1):
+                try:
+                    cls.sc.get_new_token()
+                    break
+                except requests.exceptions.ConnectTimeout:
+                    if try_number == max_retries:
+                        raise unittest.SkipTest("Connection failed after 5 attempts")
+                    time.sleep(20)
+
         except requests.exceptions.SSLError:
             raise unittest.skipTest("Cannot reach database since HTTPs certifcate expired.")
 
@@ -29,7 +41,7 @@ class SCInterfaceTest(unittest.TestCase):
         cls.sc.context = st
 
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         cls.resources_available()
         # Simple query test:
         # Query 5 s of data:
