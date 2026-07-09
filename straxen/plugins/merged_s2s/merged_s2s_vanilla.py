@@ -30,7 +30,8 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
     )
 
     s2_merge_gap_thresholds_vanilla = straxen.URLConfig(
-        default=((1.74, 5.02e03),
+        default=(
+            (1.74, 5.02e03),
             (2.13, 4.18e03),
             (2.51, 3.26e03),
             (2.9, 3.25e03),
