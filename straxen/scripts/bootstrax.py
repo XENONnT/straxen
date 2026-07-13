@@ -15,7 +15,7 @@ For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
 """
 
-__version__ = "2.0.1"
+__version__ = "3.0.0"
 
 import os
 import os.path as osp
@@ -44,11 +44,30 @@ import fnmatch
 from glob import glob
 from straxen import daq_core
 from straxen.daq_core import now
+import sys
+import warnings
 
+# Ignore MongoClient opened before fork warning
+# even if it could be a problem, it never gave issues and we remove it from the logs
+warnings.filterwarnings(
+    "ignore",
+    message="MongoClient opened before fork",
+    category=UserWarning,
+)
+
+############
+# Patches to straxen
+############
 
 # Patch for targeted (uncompressed) chunk size
+straxen.DAQReader.chunk_target_size_mb = 50
 straxen.Peaklets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
 straxen.nVETOHitlets.chunk_target_size_mb = strax.DEFAULT_CHUNK_SIZE_MB
+# Don't do the rechunk on load for raw_records and peaklets
+# It's something we do for offline reprocessing
+straxen.DAQReader.rechunk_on_load = False
+straxen.Peaklets.rechunk_on_load = False
+
 
 parser = argparse.ArgumentParser(description="XENONnT online processing manager")
 parser.add_argument(
@@ -114,7 +133,13 @@ parser.add_argument(
     "be used if some run is very valuable but some checks are failing.",
 )
 parser.add_argument("--max_messages", type=int, default=10, help="number of max mailbox messages")
-
+parser.add_argument(
+    "--processor",
+    type=str,
+    default="threaded_mailbox",
+    choices=["threaded_mailbox", "single_thread"],
+    help="Processor to use, for DAQ we use Mailbox",
+)
 
 actions = parser.add_mutually_exclusive_group()
 actions.add_argument(
@@ -277,7 +302,7 @@ remove_target_after_fails = {
 hostname = socket.getfqdn()
 
 versions = straxen.print_versions(
-    modules="strax straxen utilix daqnt numpy tensorflow numba".split(),
+    modules="strax straxen utilix daqnt numpy".split(),
     include_git=True,
     return_string=True,
 )
@@ -289,6 +314,164 @@ log = daqnt.get_daq_logger(
     level=logging.DEBUG,
     opening_message=f"I am processing with these software versions: {versions}",
 )
+
+
+# -----------------------------------------------------------------------------
+# Python logging configuration for --debug
+#
+# Bootstrax uses a DAQ logger (daqnt), but strax (including Mailbox) uses the
+# stdlib `logging` module. We want mailbox DEBUG logs without enabling a flood
+# from numba/jax/llvmlite.
+#
+# IMPORTANT: bootstrax spawns a child process for strax. daqnt log handlers are
+# not fork-safe and can crash in the child with:
+#   ValueError: I/O operation on closed file
+#
+# Strategy:
+# - Parent: do NOT attach DAQ handlers to root (avoids duplicate logs).
+#   Instead, add a simple StreamHandler so stdlib logs can show.
+# - Child: rebind the global `log` to a stdlib Stream logger (no daqnt handlers)
+#   before any logging happens.
+# -----------------------------------------------------------------------------
+
+
+def _configure_python_logging_for_debug(debug: bool) -> None:
+    """Configure stdlib logging so we can see mailbox logs in --debug.
+
+    Important:
+    - Avoid touching the root logger/handlers in the parent. bootstrax uses daqnt/loguru
+      for its own output; if we add root handlers we can easily get duplicated lines.
+    - Instead, attach a dedicated StreamHandler only to the loggers we care about
+      (strax mailbox / processors) and disable propagation for them.
+
+    """
+    if not debug:
+        return
+
+    def _ensure_stream_handler(lgr: logging.Logger) -> None:
+        # Do not add duplicates if bootstrax is reloaded or called multiple times
+        for h in lgr.handlers:
+            if isinstance(h, logging.StreamHandler) and getattr(
+                h, "_bootstrax_mailbox_handler", False
+            ):
+                return
+
+        sh = logging.StreamHandler(stream=sys.stdout)
+        sh.setLevel(logging.DEBUG)
+        sh.setFormatter(
+            logging.Formatter(
+                fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
+        # Mark so we can detect it later
+        sh._bootstrax_mailbox_handler = True  # type: ignore[attr-defined]
+        lgr.addHandler(sh)
+
+    # The logger we will use for our own mailbox heartbeat
+    hb = logging.getLogger("bootstrax.mailbox")
+    hb.setLevel(logging.DEBUG)
+    hb.propagate = False
+    _ensure_stream_handler(hb)
+
+    # Enable mailbox-related DEBUG and ensure they do NOT propagate into any
+    # other handler stacks (daqnt/loguru), to avoid double printing.
+    for name in (
+        "ThreadedMailboxProcessor",
+        "strax.mailbox",
+        "strax.processors.threaded_mailbox",
+        "strax.processors.mailbox",
+        "strax.processors",
+    ):
+        lgr = logging.getLogger(name)
+        lgr.setLevel(logging.DEBUG)
+        lgr.propagate = False
+        _ensure_stream_handler(lgr)
+
+    # Silence the spammy ones regardless
+    for name in (
+        "numba",
+        "numba.core",
+        "numba.parfors",
+        "llvmlite",
+        "jax",
+        "jaxlib",
+    ):
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
+def _rebind_global_log_to_stream(logger_name: str) -> None:
+    """Replace global `log` (daqnt logger) by a fork-safe stdlib logger."""
+    global log
+    new_log = logging.getLogger(logger_name)
+    new_log.propagate = False
+    new_log.handlers = []
+    new_log.setLevel(logging.DEBUG if args.debug else logging.INFO)
+
+    sh = logging.StreamHandler(stream=sys.stdout)
+    sh.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    sh.setFormatter(
+        logging.Formatter(
+            fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    new_log.addHandler(sh)
+
+    log = new_log
+
+
+def _configure_child_logging_for_debug(debug: bool) -> None:
+    """Called inside the multiprocessing child before any logging happens."""
+    # Always rebind: daqnt handlers are not fork-safe.
+    _rebind_global_log_to_stream(f"{log_name}.child")
+
+    root = logging.getLogger()
+
+    # In the child, we *do* control the stdlib logging stack.
+    # Start from a clean slate to avoid inherited handlers and duplicate output.
+    root.handlers = []
+
+    sh = logging.StreamHandler(stream=sys.stdout)
+    sh.setLevel(logging.DEBUG if debug else logging.INFO)
+    sh.setFormatter(
+        logging.Formatter(
+            fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    # Mark so we can detect it later
+    sh._bootstrax_mailbox_handler = True  # type: ignore[attr-defined]
+    root.addHandler(sh)
+
+    root.setLevel(logging.DEBUG if debug else logging.INFO)
+
+    if debug:
+        for name in (
+            "ThreadedMailboxProcessor",
+            "strax.mailbox",
+            "strax.processors.threaded_mailbox",
+            "strax.processors.mailbox",
+            "strax.processors",
+        ):
+            lgr = logging.getLogger(name)
+            lgr.setLevel(logging.DEBUG)
+            lgr.propagate = False
+
+        for name in (
+            "numba",
+            "numba.core",
+            "numba.parfors",
+            "llvmlite",
+            "jax",
+            "jaxlib",
+        ):
+            logging.getLogger(name).setLevel(logging.WARNING)
+
+
+# Configure parent-side stdlib logging (mailbox debug) if requested
+_configure_python_logging_for_debug(args.debug)
+
 
 # Set the output folder
 output_folder = daq_core.pre_folder if args.production else test_data_folder
@@ -349,6 +532,7 @@ def new_context(
         context.storage = [context.storage[0], strax.DataDirectory(output_folder)]
         context.storage[0].readonly = True
         context.storage[0].local_only = True
+
     return context
 
 
@@ -448,7 +632,14 @@ def loop():
         set_state("busy")
         if eb_can_process():
             # Process new runs
-            rd = consider_run({"bootstrax.state": None}, test_counter=new_runs_seen)
+            rd = consider_run(
+                {
+                    "bootstrax.state": None,
+                    # there is not a tags.name called "hold-processing"
+                    "tags.name": {"$ne": "hold-processing"},
+                },
+                test_counter=new_runs_seen,
+            )
             if rd is not None:
                 new_runs_seen += 1
                 process_run(rd)
@@ -536,7 +727,7 @@ def _remove_veto_from_t(
     for r in remove:
         targets = keep_target(targets, {f"*{r}": 0}, 1)
     if _flip:
-        targets = [t for i, t in enumerate(start) if not np.in1d(start, targets)[i]]
+        targets = [t for i, t in enumerate(start) if not np.isin(start, targets)[i]]
     return strax.to_str_tuple(targets)
 
 
@@ -1322,8 +1513,13 @@ def run_strax(
     daq_overlap_chunk_duration,
     post_processing,
     records_compressor,
+    processor,
     debug=False,
 ):
+    # In a multiprocessing child we must NOT use daqnt/loguru handlers.
+    # Rebind global `log` to a fork-safe stdlib logger and configure root handlers.
+    _configure_child_logging_for_debug(debug)
+
     # Check mongo connection
     ping_dbs()
     # Clear the swap memory used by npshmmex
@@ -1331,9 +1527,6 @@ def run_strax(
     # double check by forcefully clearing shm
     clear_shm()
 
-    if debug:
-        logging.basicConfig(force=True)
-        logging.getLogger().setLevel(logging.DEBUG)
     try:
         log.info(f"Starting strax to make {run_id} with input dir {input_dir}")
 
@@ -1348,15 +1541,157 @@ def run_strax(
             max_messages=max_messages,
             timeout=timeout,
         )
+        # Ensure strax mailbox debug logging stays enabled after context creation
+        if debug:
+            logging.getLogger("strax.mailbox").setLevel(logging.DEBUG)
+            logging.getLogger("strax.processors.threaded_mailbox").setLevel(logging.DEBUG)
 
         for t in ("raw_records", "records", "records_nv", "hitlets_nv"):
             # Set the (raw)records processor to the inferred one
             st._plugin_class_registry[t].compressor = records_compressor
 
+        # Patch the actual registered plugin classes
+        # Processes for CNF/SOM, threads for light tail
+        for k, mode in [
+            ("peaklet_positions_cnf", True),
+            ("peaklet_classification", True),
+            ("peaks", True),
+            ("peak_basics", True),
+            ("peaklets", "process"),
+            ("lone_hits", "process"),
+        ]:
+            if k in st._plugin_class_registry:
+                st._plugin_class_registry[k].parallel = mode
+                log.info(f"Patched {k}.parallel -> {mode}")
+            else:
+                log.warning(f"Cannot patch {k}: not in registry")
+
+        import weakref
+
+        _BOOTSTRAX_MAILBOXES = weakref.WeakSet()
+
+        def _bootstrax_patch_mailbox_registry() -> None:
+            """Patch `strax.Mailbox.__init__` once to register created mailboxes."""
+            if getattr(strax.Mailbox, "_bootstrax_registry_patched", False):
+                return
+
+            _orig_init = strax.Mailbox.__init__
+
+            def _init_and_register(self, *args, **kwargs):
+                _orig_init(self, *args, **kwargs)
+                try:
+                    _BOOTSTRAX_MAILBOXES.add(self)
+                except Exception:
+                    pass
+
+            strax.Mailbox.__init__ = _init_and_register  # type: ignore[assignment]
+            strax.Mailbox._bootstrax_registry_patched = True  # type: ignore[attr-defined]
+
+        def _bootstrax_mailbox_len(m) -> ty.Optional[int]:
+            """Best-effort mailbox queue length across strax versions."""
+            for attr in ("_mailbox", "_queue", "_buffer", "_messages", "_items"):
+                if hasattr(m, attr):
+                    try:
+                        return len(getattr(m, attr))
+                    except Exception:
+                        pass
+            return None
+
+        def _bootstrax_mailbox_snapshot(m) -> ty.Optional[ty.Tuple[float, str]]:
+            """Return (fill_fraction, human_string) or None if not measurable."""
+            name = getattr(m, "name", "?")
+            maxm = getattr(m, "max_messages", None)
+            q = _bootstrax_mailbox_len(m)
+            if q is None or not isinstance(maxm, int) or maxm <= 0:
+                return None
+
+            fill = q / maxm
+            tag = " FULL" if q >= maxm else ""
+
+            # Include threads status (short)
+            threads = getattr(m, "_threads", None)
+            tinfo = ""
+            if threads:
+                try:
+                    alive = [t.name for t in threads if t.is_alive()]
+                    dead = [t.name for t in threads if not t.is_alive()]
+                    if alive or dead:
+                        tinfo = f" thr(+{len(alive)}/-{len(dead)})"
+                except Exception:
+                    pass
+
+            return fill, f"{name}={q}/{maxm}{tag}{tinfo}"
+
+        def _bootstrax_start_mailbox_heartbeat(
+            logger: logging.Logger,
+            interval_s: float = 5.0,
+            only_interesting: bool = False,
+            top_n: int = 10,
+            near_full_frac: float = 0.80,
+        ) -> None:
+            """Start a daemon thread that periodically logs mailbox pressure.
+
+            Prints one compact line, prioritizing the most filled mailboxes.
+
+            """
+            _bootstrax_patch_mailbox_registry()
+
+            if getattr(_bootstrax_start_mailbox_heartbeat, "_started", False):
+                return
+
+            stop_evt = threading.Event()
+
+            def _worker():
+                while not stop_evt.is_set():
+                    try:
+                        mbs = list(_BOOTSTRAX_MAILBOXES)
+                        if not mbs:
+                            stop_evt.wait(interval_s)
+                            continue
+
+                        rows: ty.List[ty.Tuple[float, str]] = []
+                        for m in mbs:
+                            snap = _bootstrax_mailbox_snapshot(m)
+                            if snap is None:
+                                continue
+                            fill, s = snap
+
+                            if only_interesting:
+                                # Only show non-empty and near-full/full mailboxes
+                                # (this is what matters for backpressure)
+                                # Show anything >= near_full_frac OR FULL.
+                                # FULL is encoded by q/max == 1.0 or higher.
+                                if fill <= 0:
+                                    continue
+                                if fill < near_full_frac and fill < 1.0:
+                                    continue
+
+                            rows.append((fill, s))
+
+                        if rows:
+                            rows.sort(key=lambda x: x[0], reverse=True)
+                            msg = "MB: " + " | ".join([s for _, s in rows[:top_n]])
+                            logger.debug(msg)
+                    except Exception:
+                        # Never crash the child on debug helpers
+                        pass
+
+                    stop_evt.wait(interval_s)
+
+            t = threading.Thread(target=_worker, name="mailbox-heartbeat", daemon=True)
+            t.start()
+            _bootstrax_start_mailbox_heartbeat._started = True  # type: ignore[attr-defined]
+
         # Make a function for running strax, call the function to process the run
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
             """Run strax."""
+
+            if debug:
+                hb = logging.getLogger("bootstrax.mailbox")
+                hb.propagate = False
+                _bootstrax_start_mailbox_heartbeat(hb, interval_s=5.0)
+
             strax_config = dict(
                 daq_input_dir=input_dir,
                 daq_compressor=compressor,
@@ -1366,10 +1701,18 @@ def run_strax(
                 daq_overlap_chunk_duration=daq_overlap_chunk_duration,
                 readout_threads=readout_threads,
                 check_raw_record_overlaps=True,
+                processor=processor,
             )
             log.info(f"Making {run_id}-{targets}")
             log.debug(f"With {strax_config}, n-cores {cores}")
-            st.make(run_id, targets, allow_multiple=True, config=strax_config, max_workers=cores)
+            st.make(
+                run_id,
+                targets,
+                allow_multiple=True,
+                config=strax_config,
+                max_workers=cores,
+                processor=processor,
+            )
 
             if len(post_processing):
                 for post_target in post_processing:
@@ -1388,6 +1731,7 @@ def run_strax(
                             config=strax_config,
                             progress_bar=True,
                             max_workers=cores,
+                            processor=processor,
                         )
                     else:
                         log.info(f"Not making {post_target}, it is already stored")
@@ -1544,6 +1888,7 @@ def process_run(rd, send_heartbeats=args.production):
         run_strax_config.update(infer_target(rd))
         run_strax_config.update(infer_mode(rd))
         run_strax_config["debug"] = args.debug
+        run_strax_config["processor"] = args.processor
         strax_proc = multiprocessing.Process(target=run_strax, kwargs=run_strax_config)
 
         t0 = now()

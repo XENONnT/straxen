@@ -12,11 +12,14 @@ export, __all__ = strax.exporter()
 class PeakletClassificationVanilla(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
 
-    __version__ = "3.0.4"
+    __version__ = "3.0.5"
 
     depends_on = "peaklets"
     provides: Union[str, tuple] = "peaklet_classification"
-    dtype = strax.peak_interval_dtype + [("type", np.int8, "Classification of the peak(let)")]
+    dtype = strax.peak_interval_dtype + [
+        ("type", np.int8, "Classification of the peak(let)"),
+        ("merged", bool, "Peaklet is merging input or peak is merged from peaklets"),
+    ]
 
     s1_risetime_area_parameters = straxen.URLConfig(
         default=(50, 80, 12),
@@ -104,5 +107,8 @@ class PeakletClassificationVanilla(strax.Plugin):
         peaklets_classification["dt"] = peaklets["dt"]
         peaklets_classification["length"] = peaklets["length"]
         peaklets_classification["channel"] = -1
+        # Set merged field if it exists in dtype (vanilla context)
+        if "merged" in self.dtype.names:
+            peaklets_classification["merged"] = False  # Peaklets are not merged yet
 
         return peaklets_classification

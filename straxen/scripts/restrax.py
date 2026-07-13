@@ -17,6 +17,9 @@ __version__ = "0.3.1"
 import argparse
 import logging
 import os
+import shlex
+import subprocess
+import sys
 import typing
 
 import immutabledict
@@ -84,6 +87,15 @@ def parse_args():
         action="store_true",
         help="Stop recompression and just rename folders. Use with care!",
     )
+    parser.add_argument(
+        "--process_per_run",
+        action="store_true",
+        default=True,
+        help=(
+            "Run a lightweight supervisor loop and spawn a fresh restrax worker process per run. "
+            "Use this to free all worker memory after each processed run."
+        ),
+    )
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument("--undying", action="store_true", help="Except any error and ignore it")
     actions.add_argument("--process", type=int, help="Handle a single run")
@@ -98,6 +110,10 @@ def parse_args():
 
 def main():
     args = parse_args()
+    if args.process_per_run and args.process is None:
+        run_process_per_run_supervisor(args)
+        return
+
     restrax = ReStrax(args=args)
 
     while True:
@@ -129,6 +145,106 @@ def main():
 def run_restrax(restrax, args):
     """Run the infinite loop of ReStrax."""
     restrax.infinite_loop(close=bool(args.process))
+
+
+def _build_worker_cmd(parent: "ReStrax", args: argparse.Namespace, run_number: int) -> ty.List[str]:
+    """Build CLI command for a one-run child worker."""
+    # Prefer the console entrypoint to keep child imports aligned with the parent runtime.
+    entrypoint = shutil.which("restrax")
+    if entrypoint:
+        cmd = [
+            entrypoint,
+            "--process",
+            str(run_number),
+            "--max_threads",
+            str(parent.max_threads),
+            "--recompress_min_chunks",
+            str(parent.recompress_min_chunks),
+        ]
+    else:
+        # Fallback for environments where the entrypoint is unavailable.
+        cmd = [
+            sys.executable,
+            "-m",
+            "straxen.scripts.restrax",
+            "--process",
+            str(run_number),
+            "--max_threads",
+            str(parent.max_threads),
+            "--recompress_min_chunks",
+            str(parent.recompress_min_chunks),
+        ]
+
+    if parent.production:
+        cmd.append("--production")
+    else:
+        cmd.extend(["--input_folder", args.input_folder])
+
+    if parent.ignore_checks:
+        cmd.append("--ignore_checks")
+    if parent.deep_compare:
+        cmd.append("--deep_compare")
+    if parent.bypass_mode:
+        cmd.append("--bypass_mode")
+
+    if parent.skip_compression is not None:
+        cmd.append("--skip_compression")
+        cmd.extend(strax.to_str_tuple(parent.skip_compression))
+
+    # Parent handles retry policy, do not pass --undying / --process_per_run.
+    return cmd
+
+
+def run_process_per_run_supervisor(args: argparse.Namespace) -> None:
+    """Run restrax in supervisor mode, spawning one process per run."""
+    parent = ReStrax(args=args)
+
+    while True:
+        try:
+            parent.overwrite_settings()
+            run_doc = parent.find_work(projection={"number": 1})
+            parent.log.info("Start")
+
+            if run_doc is None:
+                parent.log.info("No work to do, sleep")
+                parent.take_a_nap()
+                continue
+
+            run_number = run_doc["number"]
+            cmd = _build_worker_cmd(parent, args, run_number)
+            parent.log.info(
+                f"Launching one-run child for {run_number}: "
+                f"{' '.join(shlex.quote(part) for part in cmd)}"
+            )
+
+            child = subprocess.run(cmd, check=False)
+            if child.returncode == 0:
+                parent.log.info(f"Child worker finished {run_number}")
+                continue
+
+            raise RuntimeError(
+                f"Child worker failed for run {run_number} with exit code {child.returncode}"
+            )
+        except (KeyboardInterrupt, SystemExit):
+            break
+        except Exception as fatal_error:
+            parent.log.error(
+                f"Fatal warning: ran into {fatal_error}. "
+                "Trying to log error and restart ReStrax."
+            )
+            try:
+                parent.log_warning(
+                    f"Fatal warning: ran into {fatal_error}",
+                    priority="error",
+                )
+            except Exception as warning_error:
+                parent.error(f"Fatal warning: could not log {warning_error}")
+
+            if not args.undying:
+                raise
+
+            parent.log.warning("Restarting main loop after 60 seconds due to fatal error.")
+            time.sleep(60)
 
 
 class ReStrax(daq_core.DataBases):
@@ -266,7 +382,7 @@ class ReStrax(daq_core.DataBases):
 
         """
         if projection is None:
-            projection = {k: 1 for k in "data number mode detectors rate".split()}
+            projection = {k: 1 for k in "data number mode detectors rate restrax bootstrax".split()}
         if self.production:
             return self._find_production_work(projection)
         return self._find_testing_work(projection)
@@ -850,7 +966,7 @@ class ReStrax(daq_core.DataBases):
 
     def _set_logger(self) -> None:
         versions = straxen.print_versions(
-            modules="strax straxen utilix daqnt numpy tensorflow numba".split(),
+            modules="strax straxen utilix daqnt numpy".split(),
             include_git=True,
             return_string=True,
         )

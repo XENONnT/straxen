@@ -184,7 +184,7 @@ class LEDCalibration(strax.Plugin):
             self.run_doc, self.default_run_comments, self.noise_run_comments
         )
 
-        mask = np.where(np.in1d(raw_records["channel"], self.channel_list))[0]
+        mask = np.where(np.isin(raw_records["channel"], self.channel_list))[0]
         raw_records_active_channels = raw_records[mask]
         records = get_records(
             raw_records_active_channels, self.baseline_window, self.led_cal_record_length
@@ -246,7 +246,7 @@ def is_the_led_on(run_doc, default_run_comments, noise_run_comments):
     # Check if run_doc is a list with a dictionary
     if isinstance(run_doc, list) and isinstance(run_doc[0], dict):
         # Extract the dictionary
-        doc = run_doc[0]
+        doc = run_doc[-1]
 
         # Check if the required keys are present
         required_keys = {"user", "date", "comment"}

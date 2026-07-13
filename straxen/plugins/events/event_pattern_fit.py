@@ -227,7 +227,7 @@ class EventPatternFit(strax.Plugin):
 
         # Getting gain model to get dead PMTs
         self.dead_PMTs = np.where(self.to_pe == 0)[0]
-        self.pmtbool = ~np.in1d(np.arange(0, self.n_tpc_pmts), self.dead_PMTs)
+        self.pmtbool = ~np.isin(np.arange(0, self.n_tpc_pmts), self.dead_PMTs)
         self.pmtbool_top = self.pmtbool[: self.n_top_pmts]
         self.pmtbool_bottom = self.pmtbool[self.n_top_pmts : self.n_tpc_pmts]
 
