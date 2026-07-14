@@ -22,12 +22,11 @@ class SCInterfaceTest(unittest.TestCase):
         ):
             raise unittest.SkipTest("Cannot test scada since we have no access to xenon secrets.")
         try:
-            cls.sc = straxen.SCADAInterface(use_progress_bar=False)
 
             max_retries = 5
             for try_number in range(max_retries + 1):
                 try:
-                    cls.sc.get_new_token()
+                    cls.sc = straxen.SCADAInterface(use_progress_bar=False)
                     break
                 except requests.exceptions.ConnectTimeout:
                     if try_number == max_retries:
