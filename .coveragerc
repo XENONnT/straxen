@@ -5,6 +5,7 @@ omit =
     straxen/entry_points.py
     straxen/daq_core.py
     straxen/scripts/*.py
+    straxen/notebooks/*
 
 # Regexes for lines to exclude from consideration
 exclude_lines =
