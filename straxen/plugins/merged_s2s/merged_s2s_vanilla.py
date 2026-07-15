@@ -154,8 +154,6 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         if self.merge_without_s1:
             peaklets = peaklets[peaklets["type"] != 1]
 
-        print(peaklets.dtype.names)
-
         if len(peaklets) <= 1:
             return np.zeros(0, dtype=self.dtype)
 
