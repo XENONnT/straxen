@@ -430,10 +430,8 @@ def weighted_averaged_dr(x, y, weights):
 
 @numba.njit(cache=True, nogil=True)
 def total_variance(peaklets, start_idx, end_idx, time_gap, from_right_to_left=False):
-    """
-    Takes each set of peaklets and computes its momentums and outputs 
-    weighted variance array, the total variance and the weights array.
-    """
+    """Takes each set of peaklets and computes its momentums and outputs weighted variance array,
+    the total variance and the weights array."""
     total_w = 0.0
     total_w_t = 0.0
     total_w_t2 = 0.0
@@ -484,17 +482,17 @@ def total_variance(peaklets, start_idx, end_idx, time_gap, from_right_to_left=Fa
 def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
     """Compute the goodness of fit at a given gap between peaklets.
 
-        The goodness of fit is defined as 
+    The goodness of fit is defined as
 
-        gof := 1 - (left_w_sum_variance + right_w_sum_variance) / merged_w_sum_variance
+    gof := 1 - (left_w_sum_variance + right_w_sum_variance) / merged_w_sum_variance
 
-        where left_w_sum_variance is the weighted variance of the peaklets to the left of the
-        gap and right_w_sum_variance is its right counter-part. merged_w_sum_variance is
-        total variance.
+    where left_w_sum_variance is the weighted variance of the peaklets to the left of the
+    gap and right_w_sum_variance is its right counter-part. merged_w_sum_variance is
+    total variance.
 
-        Before taking the maximum value of the gof curve we multiply a term that depends ont the
-        weights to penalize the gof curve for low weights. This is done simply to reproduce what
-        the splitter does in peaklets plugin.
+    Before taking the maximum value of the gof curve we multiply a term that depends ont the
+    weights to penalize the gof curve for low weights. This is done simply to reproduce what
+    the splitter does in peaklets plugin.
 
     """
     time_gap = peaklets[gap_i + 1]["time"]
