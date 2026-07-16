@@ -199,9 +199,9 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             dr_thresholds=self.dr_thresholds,
             gof_thresholds=s2_gof_thresholds,
             posrec_algo=self.default_reconstruction_algorithm,
-            sparse_xy=True,
+            sparse_xy=False,
             natural_break=True,
-            uncertainty_weights=True,
+            uncertainty_weights=False,
         )
 
         merged_s2s = strax.merge_peaks(
@@ -332,10 +332,10 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             #         continue
 
             if natural_break:
-                gof = gof_at_gap(peaklets, gap_i, peaklet_start_index, peaklet_end_index)
+                max_gof = gof_at_gap(peaklets, gap_i, peaklet_start_index, peaklet_end_index)
 
                 # high gof means that the split is good, so we do not merge
-                if gof > merge_s2_threshold(np.log10(sum_area), gof_thresholds):
+                if max_gof > merge_s2_threshold(np.log10(sum_area), gof_thresholds):
                     continue
 
             # Merge gap in other words this means p @ gap_i and p @gap_i + 1 share the same
@@ -430,7 +430,10 @@ def weighted_averaged_dr(x, y, weights):
 
 @numba.njit(cache=True, nogil=True)
 def total_variance(peaklets, start_idx, end_idx, time_gap, from_right_to_left=False):
-    """Accumulate weighted time moments over a contiguous peaklet range."""
+    """
+    Takes each set of peaklets and computes its momentums and outputs 
+    weighted variance array, the total variance and the weights array.
+    """
     total_w = 0.0
     total_w_t = 0.0
     total_w_t2 = 0.0
@@ -479,10 +482,19 @@ def total_variance(peaklets, start_idx, end_idx, time_gap, from_right_to_left=Fa
 
 @numba.njit(cache=True, nogil=True)
 def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
-    """Compute the left-side weighted variance contribution for one split.
+    """Compute the goodness of fit at a given gap between peaklets.
 
-    This avoids the previous two-pass mean/variance calculation. The same result can be computed
-    directly from the combined weighted moments.
+        The goodness of fit is defined as 
+
+        gof := 1 - (left_w_sum_variance + right_w_sum_variance) / merged_w_sum_variance
+
+        where left_w_sum_variance is the weighted variance of the peaklets to the left of the
+        gap and right_w_sum_variance is its right counter-part. merged_w_sum_variance is
+        total variance.
+
+        Before taking the maximum value of the gof curve we multiply a term that depends ont the
+        weights to penalize the gof curve for low weights. This is done simply to reproduce what
+        the splitter does in peaklets plugin.
 
     """
     time_gap = peaklets[gap_i + 1]["time"]
@@ -510,6 +522,6 @@ def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
     lw_max = np.max(left_norm_w)
     if lw_max > 0:
         gof_array = gof_array * (1.0 - left_norm_w / lw_max)  # low_split
-    gof = np.max(gof_array)
+    max_gof = np.max(gof_array)
 
-    return gof
+    return max_gof
