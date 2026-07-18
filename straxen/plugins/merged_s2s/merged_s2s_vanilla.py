@@ -37,7 +37,17 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
     )
 
     s2_merge_gap_thresholds_vanilla = straxen.URLConfig(
-        default=((1.7, 2.65e4), (4.0, 2.6e3), (5.0, 0.0)),
+        default=(
+            (1.84, 2.84e04),
+            (2.18, 2.40e04),
+            (2.51, 1.96e04),
+            (2.84, 1.80e04),
+            (3.18, 1.68e04),
+            (3.51, 1.86e04),
+            (3.84, 1.98e04),
+            (4.18, 1.66e04),
+            (4.51, 1.21e04),
+        ),
         infer_type=False,
         help=(
             "Points to define maximum separation between peaklets to allow "
@@ -90,12 +100,12 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         ),
     )
 
-    rm_sparse_xy = straxen.URLConfig(
-        default=True, type=bool, help="Remove peaklets that are too far away in (x, y)"
+    rm_sparse_xy_vanilla = straxen.URLConfig(
+        default=False, type=bool, help="Remove peaklets that are too far away in (x, y)"
     )
 
-    use_uncertainty_weights = straxen.URLConfig(
-        default=True, type=bool, help="Use uncertainty from probabilistic posrec to derive weights"
+    use_uncertainty_weights_vanilla = straxen.URLConfig(
+        default=False, type=bool, help="Use uncertainty from probabilistic posrec to derive weights"
     )
 
     default_reconstruction_algorithm = straxen.URLConfig(
@@ -113,7 +123,7 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
     )
 
     peak_merge_gof_threshold = straxen.URLConfig(
-        default=(None, ((2.5, 1.0), (5.625, 0.4))),  # The same as in peaklet plugin
+        default=((2.5, 1.0), (5.625, 0.4)),  # The same as in peaklet plugin
         infer_type=False,
         help=(
             "Natural breaks goodness of fit/split threshold to split "
@@ -157,11 +167,14 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         if len(peaklets) <= 1:
             return np.zeros(0, dtype=self.dtype)
 
+        if self.use_uncertainty_weights_vanilla:
+            name = f"position_contour_{self.default_reconstruction_algorithm}"
+            if name not in peaklets.dtype.names:
+                raise ValueError(f"{name} is not in the input peaklets dtype")
+
         gap_thresholds = self.s2_merge_gap_thresholds_vanilla
         max_gap = gap_thresholds[0][1]
         max_area = 10 ** gap_thresholds[-1][0]
-
-        s2_gof_thresholds = self.peak_merge_gof_threshold[1]
 
         if max_gap < 0:
             # Do not merge at all
@@ -197,11 +210,11 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             max_gap=max_gap,
             max_area=max_area,
             dr_thresholds=self.dr_thresholds,
-            gof_thresholds=s2_gof_thresholds,
+            gof_thresholds=self.peak_merge_gof_threshold,
             posrec_algo=self.default_reconstruction_algorithm,
-            sparse_xy=False,
-            natural_break=True,
-            uncertainty_weights=False,
+            sparse_xy=self.rm_sparse_xy_vanilla,
+            natural_break=self.use_natural_break_gof,
+            uncertainty_weights=self.use_uncertainty_weights_vanilla,
         )
 
         merged_s2s = strax.merge_peaks(
@@ -277,12 +290,12 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         peaklet_ends = strax.endtime(peaklets)
         types = peaklets["type"]
         areas = peaklets["area"]
-        # area_top = areas * peaklets["area_fraction_top"]
-
-        # (x, y) positions of the peaklets
-        # positions = np.vstack([peaklets[f"x_{posrec_algo}"], peaklets[f"y_{posrec_algo}"]]).T
-        # if uncertainty_weights:
-        #     contour_area = peaklets[f"position_contour_area_{posrec_algo}"]
+        if sparse_xy:
+            area_top = areas * peaklets["area_fraction_top"]
+            # (x, y) positions of the peaklets
+            positions = np.vstack([peaklets[f"x_{posrec_algo}"], peaklets[f"y_{posrec_algo}"]]).T
+            if uncertainty_weights:
+                contour_area = peaklets[f"position_contour_area_{posrec_algo}"]
 
         peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
         peaklet_start_index = np.arange(len(peaklet_starts))
@@ -299,9 +312,11 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
 
             if this_gap > max_gap:
                 break
+
             if sum_area > max_area:
                 # For very large S2s, we assume that natural breaks is taking care
                 continue
+
             if (sum_area > 0) and (
                 this_gap > merge_s2_threshold(np.log10(sum_area), gap_thresholds)
             ):
@@ -312,24 +327,24 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             if peak_duration >= max_duration:
                 continue
 
-            # merging = slice(start_idx, inclusive_end_idx + 1)
-            # if sparse_xy:
-            #     x_sel = positions[merging, 0]
-            #     y_sel = positions[merging, 1]
-            #     area_top_sel = area_top[merging]
+            merging = slice(start_idx, inclusive_end_idx + 1)
+            if sparse_xy:
+                x_sel = positions[merging, 0]
+                y_sel = positions[merging, 1]
+                area_top_sel = area_top[merging]
 
-            #     if uncertainty_weights:
-            #         contour_sel = contour_area[merging]
-            #         weights = 1.0 / contour_sel
-            #     else:
-            #         weights = area_top_sel
+                if uncertainty_weights:
+                    contour_sel = contour_area[merging]
+                    weights = 1.0 / contour_sel
+                else:
+                    weights = area_top_sel
 
-            #     dr_avg = weighted_averaged_dr(x_sel, y_sel, weights)
-            #     area_top_sum = np.sum(area_top_sel)
-            #     dr_threshold_ = thresholds_interpolation(np.log10(area_top_sum), dr_thresholds)
+                dr_avg = weighted_averaged_dr(x_sel, y_sel, weights)
+                area_top_sum = np.sum(area_top_sel)
+                dr_threshold_ = thresholds_interpolation(np.log10(area_top_sum), dr_thresholds)
 
-            #     if dr_avg > dr_threshold_:
-            #         continue
+                if dr_avg > dr_threshold_:
+                    continue
 
             if natural_break:
                 max_gof = gof_at_gap(peaklets, gap_i, peaklet_start_index, peaklet_end_index)
@@ -520,6 +535,7 @@ def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
     lw_max = np.max(left_norm_w)
     if lw_max > 0:
         gof_array = gof_array * (1.0 - left_norm_w / lw_max)  # low_split
+
     max_gof = np.max(gof_array)
 
     return max_gof
