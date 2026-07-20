@@ -269,9 +269,9 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         dr_thresholds,
         gof_thresholds,
         posrec_algo,
-        sparse_xy=True,
-        natural_break=True,
-        uncertainty_weights=True,
+        sparse_xy,
+        natural_break,
+        uncertainty_weights,
         sort_kind="mergesort",
     ):
         """
