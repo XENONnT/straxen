@@ -18,7 +18,7 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.1.0"
+    __version__ = "1.1.1"
 
     depends_on: Tuple[str, ...] = (
         "peaklets",
