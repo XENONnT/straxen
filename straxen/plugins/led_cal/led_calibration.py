@@ -179,7 +179,6 @@ class LEDCalibration(strax.Plugin):
         This is used for the different ligh levels. As default value all the PMTs are considered.
 
         """
-
         self.is_led_on = is_the_led_on(
             self.run_doc, self.default_run_comments, self.noise_run_comments
         )
@@ -274,7 +273,6 @@ def get_records(raw_records, baseline_window, led_cal_record_length):
     Subtract the pulse float(data) from baseline.
 
     """
-
     record_length_padded = np.shape(raw_records.dtype["data"])[0]
 
     _dtype = strax.interval_dtype + [

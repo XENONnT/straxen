@@ -125,8 +125,10 @@ class PlotPeakLikeData:
         return area, curve
 
     def _set_single_valued_dimensions(self, peak):
-        """Extracts information from peaks. Defines a list of single valued dimensions which will be
-        extracted for the plot in _get_peak_data.
+        """Extracts information from peaks.
+
+        Defines a list of single valued dimensions which will be extracted for the plot in
+        _get_peak_data.
 
         Defines holovies vdim Dimensions for a proper hover-tool display. Looks up unit describition
         in _vdim_labels which have to be specified by the user.
@@ -161,8 +163,9 @@ class PlotPeakLikeData:
         raise NotImplementedError()
 
     def get_peak_data(self, peak, relative_start=0):
-        """Function which extracts base peaks information as a dictionary. Can be further customized
-        in sub-classes if needed.
+        """Function which extracts base peaks information as a dictionary.
+
+        Can be further customized in sub-classes if needed.
 
         :param peak: Peaks to be plotted.
         :param relative_start: t0 from which on the peaks should be plotted.
@@ -174,8 +177,9 @@ class PlotPeakLikeData:
         return self._get_peak_data(peak, relative_start=relative_start)
 
     def _get_peak_data(self, peak, relative_start=0):
-        """Function which extracts base peaks information as a dictionary. Extracts all information
-        which are stored as single valued parameters.
+        """Function which extracts base peaks information as a dictionary.
+
+        Extracts all information which are stored as single valued parameters.
 
         :param peaks: Peaks to be plotted.
         :param relative_start: t0 from which on the peaks should be plotted.
