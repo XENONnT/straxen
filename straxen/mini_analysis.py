@@ -6,11 +6,9 @@ import strax
 from strax.context import select_docs
 import straxen
 
-
 export, __all__ = strax.exporter()
 
-ma_doc = (
-    """
+ma_doc = """
 This is a straxen mini-analysis.
 The method takes run_id as its only positional argument,
 and additional arguments through keywords only.
@@ -20,9 +18,7 @@ Unless you specify this through data_kind = array keyword arguments,
 this data will be loaded automatically.
 
 The function takes the same selection arguments as context.get_array:
-"""
-    + select_docs
-)
+""" + select_docs
 
 _hv_bokeh_initialized = False
 
@@ -73,7 +69,7 @@ def mini_analysis(
             kwargs["time_range"] = context.to_absolute_time_range(
                 run_id,
                 targets=requires,
-                **{k: kwargs.get(k) for k in ("time_range seconds_range time_within".split())},
+                **{k: kwargs.get(k) for k in "time_range seconds_range time_within".split()},
             )
             kwargs.setdefault("time_selection", default_time_selection)
             kwargs.setdefault("selection", None)

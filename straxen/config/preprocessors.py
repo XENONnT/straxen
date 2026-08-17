@@ -5,7 +5,6 @@ from .url_config import URLConfig
 @URLConfig.preprocessor
 def sort_url_kwargs(url: str):
     """Reorders queries for urlconfigs to avoid hashing issues."""
-
     if isinstance(url, str) and URLConfig.SCHEME_SEP in url:
         return URLConfig.format_url_kwargs(url)
     return url
