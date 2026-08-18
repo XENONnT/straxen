@@ -8,6 +8,7 @@ import straxen
 import numpy as np
 import numba
 
+from straxen.plugins.defaults import DEFAULT_POSREC_ALGO
 
 export, __all__ = strax.exporter()
 
@@ -17,9 +18,15 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
     """Merge together peaklets if peak finding favours that they would form a single peak
     instead."""
 
-    __version__ = "1.1.0"
+    __version__ = "1.1.1"
 
-    depends_on: Tuple[str, ...] = ("peaklets", "peaklet_classification", "lone_hits")
+    depends_on: Tuple[str, ...] = (
+        "peaklets",
+        "peaklet_classification",
+        "lone_hits",
+    )
+    # add "peaklet_positions_{DEFAULT_POSREC_ALGO}" if position check is desired.
+    # Also uncomment the position check related lines in get_merge_instructions and compute
     data_kind = "merged_s2s"
     provides = "merged_s2s"
 
@@ -77,12 +84,60 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         default=5, type=int, track=False, help="Factor of the window size for the merged_s2s plugin"
     )
 
+    s2_merge_dr_thresholds = straxen.URLConfig(
+        default=(
+            (1.51, 1.40e01),
+            (1.84, 1.83e01),
+            (2.18, 1.97e01),
+            (2.51, 1.24e01),
+            (2.84, 5.75e00),
+        ),
+        type=tuple,
+        help=(
+            "Points to define maximum weighted mean deviation of "
+            "the peaklets from the main cluster [cm]\n"
+            "The format is ((log10(area_top), dr), (..., ...), (..., ...))"
+        ),
+    )
+
+    rm_sparse_xy_vanilla = straxen.URLConfig(
+        default=False, type=bool, help="Remove peaklets that are too far away in (x, y)"
+    )
+
+    use_uncertainty_weights_vanilla = straxen.URLConfig(
+        default=False, type=bool, help="Use uncertainty from probabilistic posrec to derive weights"
+    )
+
+    default_reconstruction_algorithm = straxen.URLConfig(
+        default=DEFAULT_POSREC_ALGO, help="default reconstruction algorithm that provides (x,y)"
+    )
+
+    merge_lone_hits = straxen.URLConfig(
+        default=True,
+        type=bool,
+        help="Merge lone hits into merged S2s",
+    )
+
+    use_natural_break_gof = straxen.URLConfig(
+        default=True, type=bool, help="Whether to use the gof field for merging"
+    )
+
+    peak_merge_gof_threshold = straxen.URLConfig(
+        default=((2.5, 1.0), (5.625, 0.4)),  # The same as in peaklet plugin
+        infer_type=False,
+        help=(
+            "Natural breaks goodness of fit/split threshold to split "
+            "a peak. Specify as tuples of (log10(area), threshold)."
+        ),
+    )
+
     indicator_dtype = np.dtype(
         [(("Peaklet is merging input or peak is merged from peaklets", "merged"), bool)]
     )
 
     def setup(self):
         self.to_pe = self.gain_model
+        self.dr_thresholds = np.array(self.s2_merge_dr_thresholds).T
 
     def infer_dtype(self):
         peaklet_classification_dtype = self.deps["peaklet_classification"].dtype_for(
@@ -112,6 +167,11 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         if len(peaklets) <= 1:
             return np.zeros(0, dtype=self.dtype)
 
+        if self.use_uncertainty_weights_vanilla:
+            name = f"position_contour_{self.default_reconstruction_algorithm}"
+            if name not in peaklets.dtype.names:
+                raise ValueError(f"{name} is not in the input peaklets dtype")
+
         gap_thresholds = self.s2_merge_gap_thresholds_vanilla
         max_gap = gap_thresholds[0][1]
         max_area = 10 ** gap_thresholds[-1][0]
@@ -120,38 +180,42 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             # Do not merge at all
             return np.zeros(0, dtype=self.dtype)
 
-        if "data_top" not in peaklets.dtype.names:
+        if "data_top" not in peaklets.dtype.names or "data_start" not in peaklets.dtype.names:
             # Need to add data_top field. Also add data_start (required by strax merge_peaks).
             # Note: strax's numba-compiled functions can't handle missing fields,
             # so we always include data_start even if it stays empty (zeros).
             # This is a workaround until strax properly supports optional fields.
-            _store_data_start = True  # Always include when adding data_top
-            peaklets_w_field = np.zeros(
-                len(peaklets),
-                dtype=strax.peak_dtype(
-                    n_channels=self.n_tpc_pmts,
-                    store_data_top=True,
-                    store_data_start=_store_data_start,
-                ),
+            peak_field_w_top = strax.peak_dtype(
+                n_channels=self.n_tpc_pmts,
+                store_data_top=True,
+                store_data_start=True,
             )
+            all_field_w_top = peaklets.dtype.descr + [
+                field for field in peak_field_w_top if field[0][1] not in peaklets.dtype.names
+            ]
+            all_field_w_top = sorted(all_field_w_top, key=lambda x: x[0][1])
+            peaklets_w_field = np.zeros(len(peaklets), dtype=all_field_w_top)
             strax.copy_to_buffer(peaklets, peaklets_w_field, "_add_data_top_field")
             del peaklets
             peaklets = peaklets_w_field
 
+        assert "data_top" in peaklets.dtype.names
+
         # Max gap and area should be set by the gap thresholds
         # to avoid contradictions
         start_merge_at, end_merge_at = self.get_merge_instructions(
-            peaklets["time"],
-            strax.endtime(peaklets),
-            areas=peaklets["area"],
-            types=peaklets["type"],
+            peaklets,
             gap_thresholds=gap_thresholds,
             max_duration=self.s2_merge_max_duration,
             max_gap=max_gap,
             max_area=max_area,
+            dr_thresholds=self.dr_thresholds,
+            gof_thresholds=self.peak_merge_gof_threshold,
+            posrec_algo=self.default_reconstruction_algorithm,
+            sparse_xy=self.rm_sparse_xy_vanilla,
+            natural_break=self.use_natural_break_gof,
+            uncertainty_weights=self.use_uncertainty_weights_vanilla,
         )
-
-        assert "data_top" in peaklets.dtype.names
 
         merged_s2s = strax.merge_peaks(
             peaklets,
@@ -196,16 +260,18 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         return merged_s2s
 
     @staticmethod
-    @numba.njit(cache=True, nogil=True)
     def get_merge_instructions(
-        peaklet_starts,
-        peaklet_ends,
-        areas,
-        types,
+        peaklets,
         gap_thresholds,
         max_duration,
         max_gap,
         max_area,
+        dr_thresholds,
+        gof_thresholds,
+        posrec_algo,
+        sparse_xy,
+        natural_break,
+        uncertainty_weights,
         sort_kind="mergesort",
     ):
         """
@@ -219,6 +285,17 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         :return: list of the first index of peaklet to be merged and
         list of the exclusive last index of peaklet to be merged
         """
+
+        peaklet_starts = peaklets["time"]
+        peaklet_ends = strax.endtime(peaklets)
+        types = peaklets["type"]
+        areas = peaklets["area"]
+        if sparse_xy:
+            area_top = areas * peaklets["area_fraction_top"]
+            # (x, y) positions of the peaklets
+            positions = np.vstack([peaklets[f"x_{posrec_algo}"], peaklets[f"y_{posrec_algo}"]]).T
+            if uncertainty_weights:
+                contour_area = peaklets[f"position_contour_area_{posrec_algo}"]
 
         peaklet_gaps = peaklet_starts[1:] - peaklet_ends[:-1]
         peaklet_start_index = np.arange(len(peaklet_starts))
@@ -235,9 +312,11 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
 
             if this_gap > max_gap:
                 break
+
             if sum_area > max_area:
                 # For very large S2s, we assume that natural breaks is taking care
                 continue
+
             if (sum_area > 0) and (
                 this_gap > merge_s2_threshold(np.log10(sum_area), gap_thresholds)
             ):
@@ -247,6 +326,32 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
             peak_duration = peaklet_ends[inclusive_end_idx] - peaklet_starts[start_idx]
             if peak_duration >= max_duration:
                 continue
+
+            merging = slice(start_idx, inclusive_end_idx + 1)
+            if sparse_xy:
+                x_sel = positions[merging, 0]
+                y_sel = positions[merging, 1]
+                area_top_sel = area_top[merging]
+
+                if uncertainty_weights:
+                    contour_sel = contour_area[merging]
+                    weights = 1.0 / contour_sel
+                else:
+                    weights = area_top_sel
+
+                dr_avg = weighted_averaged_dr(x_sel, y_sel, weights)
+                area_top_sum = np.sum(area_top_sel)
+                dr_threshold_ = thresholds_interpolation(np.log10(area_top_sum), dr_thresholds)
+
+                if dr_avg > dr_threshold_:
+                    continue
+
+            if natural_break:
+                max_gof = gof_at_gap(peaklets, gap_i, peaklet_start_index, peaklet_end_index)
+
+                # high gof means that the split is good, so we do not merge
+                if max_gof > merge_s2_threshold(np.log10(sum_area), gof_thresholds):
+                    continue
 
             # Merge gap in other words this means p @ gap_i and p @gap_i + 1 share the same
             # start, end and area:
@@ -281,21 +386,21 @@ def _filter_s1_starts(start_merge_at, types, end_merge_at):
 
 
 @numba.njit(cache=True, nogil=True)
-def merge_s2_threshold(log_area, gap_thresholds):
+def merge_s2_threshold(log_area, thresholds):
     """Return gap threshold for log_area of the merged S2 with linear interpolation given the points
-    in gap_thresholds.
+    in gap_thresholds and gof_thresholds.
 
     :param log_area: Log 10 area of the merged S2
     :param gap_thresholds: tuple (n, 2) of fix points for interpolation.
 
     """
-    for i, (a1, g1) in enumerate(gap_thresholds):
+    for i, (a1, g1) in enumerate(thresholds):
         if log_area < a1:
             if i == 0:
                 return g1
-            a0, g0 = gap_thresholds[i - 1]
+            a0, g0 = thresholds[i - 1]
             return (log_area - a0) * (g1 - g0) / (a1 - a0) + g0
-    return gap_thresholds[-1][1]
+    return thresholds[-1][1]
 
 
 def drop_data_top_field(peaklets, goal_dtype, _name_function="_drop_data_top_field"):
@@ -304,3 +409,133 @@ def drop_data_top_field(peaklets, goal_dtype, _name_function="_drop_data_top_fie
     strax.copy_to_buffer(peaklets, peaklets_without_top_field, _name_function)
     del peaklets
     return peaklets_without_top_field
+
+
+@numba.njit(cache=True)
+def thresholds_interpolation(log_area, thresholds):
+    """Return threshold for log_area of the merged S2 with linear interpolation given the points in
+    thresholds.
+
+    :param log_area: Log 10 area of the merged S2
+    :param thresholds: tuple (n, 2) of fix points for interpolation.
+
+    """
+    if log_area < thresholds[0, 0]:
+        return thresholds[1, 0]
+    if log_area > thresholds[0, -1]:
+        return thresholds[1, -1]
+    return np.interp(log_area, thresholds[0], thresholds[1])
+
+
+@numba.njit(cache=True, nogil=True)
+def weighted_averaged_dr(x, y, weights):
+    """Weighted average deviation from weighted average (x, y)"""
+    mask = weights > 0
+    mask &= ~np.isnan(x)
+    mask &= ~np.isnan(y)
+    # do not merge any S2 looks weird
+    if not np.all(mask):
+        return np.nan
+    x_avg = np.average(x[mask], weights=weights[mask])
+    y_avg = np.average(y[mask], weights=weights[mask])
+    dr = np.sqrt((x - x_avg) ** 2 + (y - y_avg) ** 2)
+    dr_avg = np.average(dr[mask], weights=weights[mask])
+    return dr_avg
+
+
+@numba.njit(cache=True, nogil=True)
+def total_variance(peaklets, start_idx, end_idx, time_gap, from_right_to_left=False):
+    """Takes each set of peaklets and computes its momentums and outputs weighted variance array,
+    the total variance and the weights array."""
+    total_w = 0.0
+    total_w_t = 0.0
+    total_w_t2 = 0.0
+
+    cum_w_var_out = []
+    _w = []
+
+    if from_right_to_left:
+        peak_range = np.arange(start_idx, end_idx + 1)[::-1]
+    else:
+        peak_range = np.arange(start_idx, end_idx + 1)
+    for pi in peak_range:
+
+        waveform = peaklets[pi]["data"]
+        length = peaklets[pi]["length"]
+        dt = peaklets[pi]["dt"]
+        t0 = peaklets[pi]["time"]
+
+        if from_right_to_left:
+            loop_range = np.arange(length)[::-1]
+        else:
+            loop_range = np.arange(length)
+        for i in loop_range:
+            charge = waveform[i]
+
+            if charge <= 0.0:
+                charge = 0.0
+
+            t = (t0 - time_gap) + dt * (i + 0.5)
+            w = charge
+            _w.append(w / dt)
+            total_w += w
+            total_w_t += w * t
+            total_w_t2 += w * t * t
+
+            if total_w <= 0.0:
+                total_w_var = 0.0
+            else:
+                total_w_var = total_w_t2 - (total_w_t * total_w_t) / total_w
+
+            cum_w_var_out.append(total_w_var)
+        total_w_var = cum_w_var_out[-1] if len(cum_w_var_out) > 0 else 0.0
+
+    return np.array(cum_w_var_out), total_w_var, np.array(_w)
+
+
+@numba.njit(cache=True, nogil=True)
+def gof_at_gap(peaklets, gap_i, peaklet_start_idx, peaklet_end_idx):
+    """Compute the goodness of fit at a given gap between peaklets.
+
+    The goodness of fit is defined as
+
+    gof := 1 - (left_w_sum_variance + right_w_sum_variance) / merged_w_sum_variance
+
+    where left_w_sum_variance is the weighted variance of the peaklets to the left of the
+    gap and right_w_sum_variance is its right counter-part. merged_w_sum_variance is
+    total variance.
+
+    Before taking the maximum value of the gof curve we multiply a term that depends ont the
+    weights to penalize the gof curve for low weights. This is done simply to reproduce what
+    the splitter does in peaklets plugin.
+
+    """
+    time_gap = peaklets[gap_i + 1]["time"]
+
+    left_w_sum_variance, merged_w_sum_variance, left_norm_w = total_variance(
+        peaklets,
+        peaklet_start_idx[gap_i],
+        peaklet_end_idx[gap_i + 1],
+        time_gap,
+    )
+
+    right_w_sum_variance, ___, __ = total_variance(
+        peaklets,
+        peaklet_start_idx[gap_i],
+        peaklet_end_idx[gap_i + 1],
+        time_gap,
+        from_right_to_left=True,
+    )
+
+    gof_array = np.empty(len(left_w_sum_variance), dtype=np.float64)
+    right_rev = right_w_sum_variance[::-1]
+    for i in range(len(left_w_sum_variance)):
+        gof_array[i] = 1.0 - (left_w_sum_variance[i] + right_rev[i]) / merged_w_sum_variance
+
+    lw_max = np.max(left_norm_w)
+    if lw_max > 0:
+        gof_array = gof_array * (1.0 - left_norm_w / lw_max)  # low_split
+
+    max_gof = np.max(gof_array)
+
+    return max_gof
