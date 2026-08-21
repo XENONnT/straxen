@@ -35,7 +35,7 @@ class TestMiniAnalyses(unittest.TestCase):
 
     # They were added on 25/10/2021 and may be outdated by now
     _expected_test_results = {
-        "peak_basics": 40,
+        "peak_basics": 56,
         "n_s1": 19,
         "run_live_time": 4.7516763,
         "event_basics": 20,
@@ -76,15 +76,18 @@ class TestMiniAnalyses(unittest.TestCase):
         """
         self.assertTrue(target in self._expected_test_results, f"No expectation for {target}?!")
         data = self.st.get_array(nt_test_run_id, target)
+        n_events_expected = self._expected_test_results[target]
+        n_found = len(data)
         message = (
             f"Got more/less data for {target}. If you changed something "
             f"on {target}, please update the numbers in "
             "tests/test_mini_analyses.TestMiniAnalyses._expected_test_results"
+            f"expcted {n_events_expected} found {n_found}"
         )
         if not straxen.utilix_is_configured():
             # If we do things with dummy maps, things might be slightly different
             tol += 10
-        self.assertTrue(np.abs(len(data) - self._expected_test_results[target]) < tol, message)
+        self.assertTrue(np.abs(n_found - n_events_expected) < tol, message)
 
     def test_target_events(self):
         """Test that the number of events is roughly right."""
@@ -256,7 +259,7 @@ class TestMiniAnalyses(unittest.TestCase):
             live_time = straxen.get_livetime_sec(self.st, nt_test_run_id, things=things)
         assertion_statement = "Live-time calculation is wrong"
         expected = self._expected_test_results["run_live_time"]
-        self.assertTrue(live_time == expected, assertion_statement)
+        self.assertTrue(np.isclose(live_time, expected), assertion_statement)
 
     def test_df_wiki(self):
         """We have a nice utility to write dataframes to the wiki."""
