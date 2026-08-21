@@ -43,7 +43,7 @@ class Events(strax.OverlapWindowPlugin):
     )
 
     trigger_min_area = straxen.URLConfig(
-        default=120,
+        default=240,
         type=(int, float),
         help="Peaks must have more area (PE) than this to cause events",
     )
@@ -55,14 +55,14 @@ class Events(strax.OverlapWindowPlugin):
     )
 
     trigger_max_proximity = straxen.URLConfig(
-        default=1.5e-3,
+        default=1.5e-2,
         type=(int, float),
         help="Peaks must have less proximity score to cause events",
     )
 
     # TODO: extand the padding to cover all multiple scattering
     left_event_extension = straxen.URLConfig(
-        default=int(0.25e6),
+        default=int(0.1e6),
         type=(int, float),
         help=(
             "Extend events this many ns to the left from each "
@@ -72,7 +72,7 @@ class Events(strax.OverlapWindowPlugin):
     )
 
     right_event_extension = straxen.URLConfig(
-        default=int(0.25e6),
+        default=int(0.1e6),
         type=(int, float),
         help="Extend events this many ns to the right from each triggering peak.",
     )
