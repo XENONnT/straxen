@@ -1,6 +1,5 @@
 import os.path
 from typing import List, Optional
-
 from unittest import TestCase, skipIf
 import numpy as np
 import strax
@@ -194,6 +193,7 @@ class TestAqmonProcessing(TestCase):
         # get a thousand warnings that some config is not used, make
         # sure to mark all configs as "free options".
         st.set_context_config({"free_options": list(st.config.keys())})
+        st.set_config({"v1495_config": {"firmware_version": 9}})
         st._plugin_class_registry = {}
 
         self.TOTAL_DEADTIME: List = []
