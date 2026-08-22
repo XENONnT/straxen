@@ -3,6 +3,7 @@
 xenon_secrets.py
 .xenon_config
 
+
 # Jupyter
 .ipynb_checkpoints
 
@@ -77,3 +78,4 @@ test_dict.json
 
 *.pkl
 *.pkl.gz
+*.DS_Store
