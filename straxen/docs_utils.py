@@ -1,40 +1,22 @@
-from m2r import convert
+import re
 
 from .misc import kind_colors
 
-header = """
-Release notes
-==============
-
-"""
+header = "# Release notes\n\n"
 
 
 def convert_release_notes(notes, target, pull_url):
-    """Convert the release notes to an RST page with links to PRs."""
-    with open(notes, "r") as f:
+    """Write the release notes as Markdown with links to PRs."""
+    with open(notes, "r", encoding="utf-8") as f:
         notes = f.read()
-    rst = convert(notes)
-    with_ref = ""
-    for line in rst.split("\n"):
-        # Get URL for PR
-        if "#" in line:
-            pr_number = line.split("#")[1]
-            while len(pr_number):
-                try:
-                    pr_number = int(pr_number)
-                    break
-                except ValueError:
-                    # Too many tailing characters to be an int
-                    pr_number = pr_number[:-1]
-            if pr_number:
-                line = line.replace(
-                    f"#{pr_number}",
-                    f"`#{pr_number} <{pull_url}/{pr_number}>`_",
-                )
-        with_ref += line + "\n"
 
-    with open(target, "w") as f:
-        f.write(header + with_ref)
+    def link_pull_request(match):
+        number = match.group(1)
+        return f"[#{number}]({pull_url}/{number})"
+
+    notes = re.sub(r"(?<![\w/\[])#(\d+)", link_pull_request, notes)
+    with open(target, "w", encoding="utf-8") as f:
+        f.write(header + notes)
 
 
 def add_spaces(x):
