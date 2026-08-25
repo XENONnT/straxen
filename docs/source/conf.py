@@ -48,6 +48,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
+    "myst_parser",
     "nbsphinx",
 ]
 
@@ -68,10 +69,6 @@ templates_path = ["_templates"]
 # You can specify multiple suffix as a list of string:
 #
 source_suffix = [".rst", ".md"]
-
-source_parsers = {
-    ".md": "recommonmark.parser.CommonMarkParser",
-}
 
 # The master toctree document.
 master_doc = "index"
@@ -205,7 +202,7 @@ def setup(app):
 
     this_dir = os.path.dirname(os.path.realpath(__file__))
     notes = os.path.join(this_dir, "..", "..", "HISTORY.md")
-    target = os.path.join(this_dir, "reference", "release_notes.rst")
+    target = os.path.join(this_dir, "reference", "release_notes.md")
     pull_url = "https://github.com/XENONnT/straxen/pull"
 
     convert_release_notes(notes, target, pull_url)
