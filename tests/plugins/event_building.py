@@ -188,7 +188,6 @@ def _is_empty_data_test(st, run_id):
 def test_alternative_s2_areas(self: PluginTestCase, trigger_min_area=10):
     """Test if the extracted S2 peaks in an event are the largest peaks in the event time range if
     both force_main_before_alt and force_alt_s2_in_max_drift_time are True."""
-
     # Initialize plugin and config options
     st = self.st.new_context()
     st.set_config({"force_main_before_alt": True, "force_alt_s2_in_max_drift_time": True})

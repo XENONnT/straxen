@@ -478,7 +478,6 @@ class TestURLConfig(unittest.TestCase):
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_superruns_safeguard(self):
         """Test that the superruns safeguard works as expected."""
-
         # test all configs can be checked
         st = self.st.new_context()
         for data_type in st._plugin_class_registry:
@@ -514,7 +513,6 @@ class TestURLConfig(unittest.TestCase):
     @unittest.skipIf(not straxen.utilix_is_configured(), "No db access, cannot test!")
     def test_global_version_safeguard(self):
         """Test that the global_version safeguard works as expected."""
-
         # test all configs can be checked
         st = self.st.new_context()
         st.set_context_config({"xedocs_version": "global_OFFLINE"})

@@ -108,8 +108,9 @@ common_config_vanilla = {
 
 
 def find_rucio_local_path(include_rucio_local, _rucio_local_path):
-    """Check the hostname to determine which rucio local path to use. Note that access to
-    /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node.
+    """Check the hostname to determine which rucio local path to use.
+
+    Note that access to /dali/lgrandi/rucio/ is possible only if you are on dali compute node or login node.
 
     :param include_rucio_local: add the rucio local storage frontend. This is only needed if one
         wants to do a fuzzy search in the data the runs database is out of sync with rucio
