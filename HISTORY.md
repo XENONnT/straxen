@@ -1,3 +1,10 @@
+4.1.0 / 2026-09-02
+-------------------
+* Updated S2 Merging, peaklet classification and event building. Added new channel for the backscatter PMT and NV Darkcount plugin
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v4.0.0...v4.1.0
+
+
 4.0.0 / 2026-07-08
 -------------------
 * Add a more lightweight processing version for online processing

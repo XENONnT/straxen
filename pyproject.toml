@@ -1,6 +1,6 @@
 [project]
 name = "straxen"
-version = "4.0.0"
+version = "4.1.0"
 description = "Streaming analysis for XENON"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
