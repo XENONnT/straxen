@@ -12,7 +12,7 @@ export, __all__ = strax.exporter()
 class PeakletClassificationVanilla(strax.Plugin):
     """Classify peaklets as unknown, S1, or S2."""
 
-    __version__ = "3.0.5"
+    __version__ = "3.0.6"
 
     depends_on = "peaklets"
     provides: Union[str, tuple] = "peaklet_classification"
@@ -45,8 +45,9 @@ class PeakletClassificationVanilla(strax.Plugin):
         ),
     )
 
-    s1_max_rise_time_post100 = straxen.URLConfig(
-        default=200, type=(int, float), help="Maximum S1 rise time for > 100 PE [ns]"
+    # Change hard-coded 200 ns threshold for large S1
+    s1_max_rise_time_post_threshold = straxen.URLConfig(
+        default=120, type=(int, float), help="Maximum S1 rise time for > (threshold) PE [ns]"
     )
 
     s1_min_coincidence = straxen.URLConfig(
@@ -55,6 +56,36 @@ class PeakletClassificationVanilla(strax.Plugin):
 
     s2_min_pmts = straxen.URLConfig(
         default=4, type=int, help="Minimum number of PMTs contributing to an S2"
+    )
+
+    s2_min_area = straxen.URLConfig(
+        default=10,
+        type=(int, float),
+        help="Minimum peaklet area necessary to make an S2 [PE]",
+    )
+
+    s2_tight_coincidence_min = straxen.URLConfig(
+        default=3,
+        type=int,
+        help="Minimum tight coincidence for the low area S2 selection",
+    )
+
+    s2_low_area_tight_coincidence_threshold = straxen.URLConfig(
+        default=20,
+        type=(int, float),
+        help="Minimum area for S2s with tight coincidence below the threshold [PE]",
+    )
+
+    s2_min_aft = straxen.URLConfig(
+        default=0.5,
+        type=(int, float),
+        help="Minimum area fraction top necessary to make an S2",
+    )
+
+    s1_small_area_threshold = straxen.URLConfig(
+        default=250,
+        type=(int, float),
+        help="Maximum area for the small S1 classification region [PE]",
     )
 
     @staticmethod
@@ -77,11 +108,13 @@ class PeakletClassificationVanilla(strax.Plugin):
         rise_time = -peaklets["area_decile_from_midpoint"][:, 1]
         n_channels = (peaklets["area_per_channel"] > 0).sum(axis=1)
 
-        is_large_s1 = peaklets["area"] >= 100
-        is_large_s1 &= rise_time <= self.s1_max_rise_time_post100
+        # S1 Classification
+
+        is_large_s1 = peaklets["area"] >= self.s1_small_area_threshold
+        is_large_s1 &= rise_time <= self.s1_max_rise_time_post_threshold
         is_large_s1 &= peaklets["tight_coincidence"] >= self.s1_min_coincidence
 
-        is_small_s1 = peaklets["area"] < 100
+        is_small_s1 = peaklets["area"] < self.s1_small_area_threshold
         is_small_s1 &= rise_time < self.upper_rise_time_area_boundary(
             peaklets["area"],
             *self.s1_risetime_area_parameters,
@@ -95,10 +128,30 @@ class PeakletClassificationVanilla(strax.Plugin):
 
         is_small_s1 &= peaklets["tight_coincidence"] >= self.s1_min_coincidence
 
-        ptype[is_large_s1 | is_small_s1] = 1
+        is_s1 = is_large_s1 | is_small_s1  # save some comp time
+        ptype[is_s1] = 1
+
+        # S2 Classification
 
         is_s2 = n_channels >= self.s2_min_pmts
-        is_s2[is_large_s1 | is_small_s1] = False
+
+        is_s2 &= peaklets["area"] >= self.s2_min_area  # Minimum area
+        is_s2 &= peaklets["area_fraction_top"] > self.s2_min_aft  # Minimum AFT
+        is_s2 &= rise_time > self.upper_rise_time_area_boundary(
+            peaklets["area"], *self.s1_risetime_area_parameters
+        )
+
+        # Tight coincidence requirement:
+        #   TC > threshold -> accepted
+        #   TC =  threslhod but area >= threshold  -> accepted
+        is_s2_tight_coincidence = peaklets["tight_coincidence"] >= self.s2_tight_coincidence_min
+        is_s2_low_tight_coincidence = (
+            peaklets["tight_coincidence"] < self.s2_tight_coincidence_min
+        ) & (peaklets["area"] >= self.s2_low_area_tight_coincidence_threshold)
+
+        is_s2 &= is_s2_tight_coincidence | is_s2_low_tight_coincidence
+
+        is_s2[is_s1] = False
         ptype[is_s2] = 2
 
         peaklets_classification = np.zeros(len(peaklets), dtype=self.dtype)
