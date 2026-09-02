@@ -77,3 +77,6 @@ test_dict.json
 
 *.pkl
 *.pkl.gz
+
+
+*.DS_Store

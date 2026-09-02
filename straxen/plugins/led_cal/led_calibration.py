@@ -61,7 +61,7 @@ class LEDCalibration(strax.Plugin):
     parallel = "process"
     rechunk_on_save = False
 
-    run_doc = straxen.URLConfig(
+    run_doc_comments = straxen.URLConfig(
         default="run_doc://comments?run_id=plugin.run_id",
         infer_type=False,
         help=(
@@ -181,7 +181,7 @@ class LEDCalibration(strax.Plugin):
         """
 
         self.is_led_on = is_the_led_on(
-            self.run_doc, self.default_run_comments, self.noise_run_comments
+            self.run_doc_comments, self.default_run_comments, self.noise_run_comments
         )
 
         mask = np.where(np.isin(raw_records["channel"], self.channel_list))[0]
@@ -235,7 +235,7 @@ class LEDCalibration(strax.Plugin):
         return temp
 
 
-def is_the_led_on(run_doc, default_run_comments, noise_run_comments):
+def is_the_led_on(run_doc_comments, default_run_comments, noise_run_comments):
     """Utilizing the run database metadata to determine whether the run ID corresponds to LED on or
     LED off runs.
 
@@ -243,10 +243,10 @@ def is_the_led_on(run_doc, default_run_comments, noise_run_comments):
     'SPE_calibration_step0' in the comment.
 
     """
-    # Check if run_doc is a list with a dictionary
-    if isinstance(run_doc, list) and isinstance(run_doc[0], dict):
+    # Check if run_doc_comments is a list with a dictionary
+    if isinstance(run_doc_comments, list) and isinstance(run_doc_comments[0], dict):
         # Extract the dictionary
-        doc = run_doc[-1]
+        doc = run_doc_comments[-1]
 
         # Check if the required keys are present
         required_keys = {"user", "date", "comment"}
