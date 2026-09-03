@@ -1,3 +1,10 @@
+4.1.1 / 2026-09-03
+-------------------
+* Update veto proximity and intervals for new channel occupancy on the aquisition monitor (see https://github.com/XENONnT/straxen/pull/1576)
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v4.1.0...v4.1.1
+
+
 4.1.0 / 2026-09-02
 -------------------
 * Updated S2 Merging, peaklet classification and event building. Added new channel for the backscatter PMT and NV Darkcount plugin
