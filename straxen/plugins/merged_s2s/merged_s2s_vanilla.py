@@ -274,18 +274,17 @@ class MergedS2sVanilla(strax.OverlapWindowPlugin):
         uncertainty_weights,
         sort_kind="mergesort",
     ):
-        """
-        Finding the group of peaklets to merge. To do this start with the
-        smallest gaps and keep merging until the new, merged S2 has such a
-        large area or gap to adjacent peaks that merging is not required
-        anymore.
-        see https://github.com/XENONnT/straxen/pull/548
-        and https://github.com/XENONnT/straxen/pull/568
+        """Finding the group of peaklets to merge.
 
-        :return: list of the first index of peaklet to be merged and
-        list of the exclusive last index of peaklet to be merged
-        """
+        To do this start with the smallest gaps and keep merging until the new, merged S2 has such a
+        large area or gap to adjacent peaks that merging is not required anymore. see
+        https://github.com/XENONnT/straxen/pull/548
+         and https://github.com/XENONnT/straxen/pull/568
 
+        :return: list of the first index of peaklet to be merged and list of the exclusive last
+            index of peaklet to be merged
+
+        """
         peaklet_starts = peaklets["time"]
         peaklet_ends = strax.endtime(peaklets)
         types = peaklets["type"]
