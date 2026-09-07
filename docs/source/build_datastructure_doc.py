@@ -1,8 +1,7 @@
 """Create datastructure documentation page.
 
-This will add a page with various svg graphs and html tables
-describing the datastructure: dependencies, columns provided,
-and configuration options that apply to each plugins.
+This will add a page with various svg graphs and html tables describing the datastructure:
+dependencies, columns provided, and configuration options that apply to each plugins.
 
 For extra credit, the SVGs are clickable.
 

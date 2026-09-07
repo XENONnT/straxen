@@ -180,9 +180,9 @@ def open_resource(file_name: str, fmt="text"):
 
 @export
 def get_resource(x: str, fmt="text", readable=False):
-    """
-    Get the resource from an online source to be opened here. We will
-        sequentially try the following:
+    """Get the resource from an online source to be opened here.
+
+        We will sequentially try the following:
             1. Load if from memory if we asked for it before;
             2. load it from a file if the path exists;
             3. (preferred option) Load it from our database
@@ -196,6 +196,7 @@ def get_resource(x: str, fmt="text", readable=False):
     :param fmt: str, format of the resource x
     :return: the opened resource file x opened according to the
         specified format
+
     """
     # 1. load from memory
     cached_name = _cache_name(x, fmt)
@@ -235,7 +236,6 @@ def resource_from_url(html: str, fmt="text"):
     :return: The file opened as specified per it's format
 
     """
-
     if "://" not in html:
         raise ValueError("Can only open urls!")
 
@@ -360,7 +360,8 @@ def check_loading_allowed(
     :param target: list of targets requested by the user
     :param max_in_disallowed: the max number of targets that are in the disallowed list
     :param disallowed: list of targets that are not allowed to be loaded simultaneously by the user
-    :return: data :raise: RuntimeError if more than max_in_disallowed targets are requested
+    :return: data
+    :raise: RuntimeError if more than max_in_disallowed targets are requested
 
     """
     n_targets_in_disallowed = sum([t in disallowed for t in strax.to_str_tuple(target)])
@@ -433,8 +434,9 @@ def remap_channels(
         return _data
 
     def remap_single_entry(_data, _array_entry):
-        """Remap the data of a array field (_entry) in the data. For example, remap
-        saturated_channel (which is of length n_pmts) where the entries of the PMT_old will be
+        """Remap the data of a array field (_entry) in the data.
+
+        For example, remap saturated_channel (which is of length n_pmts) where the entries of the PMT_old will be
         replaced by the entries of PMT_new and vise versa.
 
         :param _data: reshuffle the _data according to for _entry according to the map of channels
@@ -458,8 +460,9 @@ def remap_channels(
         return _data
 
     def convert_channel_like(channel_data, n_chs=n_tpc_pmts):
-        """Look for entries in the data of n_chs length. If found, assume it should be remapped
-        according to the map.
+        """Look for entries in the data of n_chs length.
+
+        If found, assume it should be remapped according to the map.
 
         :param channel_data: data to be converted according to the map of channels to be remapped.
             This data is checked for any entries (dtype names) that have a length equal to the n_chs
@@ -468,7 +471,6 @@ def remap_channels(
         :return: correctly mapped data
 
         """
-
         if not len(channel_data):
             return channel_data
         # Create a buffer to overright

@@ -118,7 +118,6 @@ class SCADAInterface:
             parameters.
 
         """
-
         if not filling_kwargs:
             filling_kwargs = {}
 
@@ -289,13 +288,12 @@ class SCADAInterface:
         :param end: End time in ns unix time
         :param parameter_key: Key to identify queried parameter in the DataFrame
         :param parameter_name: Parameter name in Scada/historian database
-        :param fill_gaps: Decides how to fill gaps in which no data was recorded.
-            Only needed for query_type_lab=False.
-            Can be either None, `'interpolation'` or `'forwardfill'`.
-            None keeps the gaps (default), `'interpolation'` uses `pandas.interpolate`,
-            and `'forwardfill'` uses `pandas.ffill`.
-            See https://pandas.pydata.org/docs/ for more information. You can change
-            the filling options of the methods with the `filling_kwargs`.
+        :param fill_gaps: Decides how to fill gaps in which no data was recorded. Only needed for
+            query_type_lab=False. Can be either None, `'interpolation'` or `'forwardfill'`. None
+            keeps the gaps (default), `'interpolation'` uses `pandas.interpolate`, and
+            `'forwardfill'` uses `pandas.ffill`. See https://pandas.pydata.org/docs/ for more
+            information. You can change the filling options of the methods with the
+            `filling_kwargs`.
         :param filling_kwargs: Keyword arguments forwarded to pandas.ffill or pandas.interpolate.
         :param every_nth_value: Defines over how many values we compute the average or the nthed
             sample in case we down sample the data.
@@ -400,8 +398,10 @@ class SCADAInterface:
         seconds_interval,
         result_dataframe,
     ):
-        """The SCADA API cannot handle query ranges lasting longer than one year. So in case the
-        user specifies a longer time range we have to chunk the time requests in steps of years.
+        """The SCADA API cannot handle query ranges lasting longer than one year.
+
+        So in case the user specifies a longer time range we have to chunk the time requests in
+        steps of years.
 
         Updates the resulting dataframe in place.
 
