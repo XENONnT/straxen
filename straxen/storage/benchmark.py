@@ -1,7 +1,8 @@
 """I/O Benchmarking Harness for straxen.
 
-Measures, profiles, and compares data access performance across storage tiers
-(POSIX disk, XRootD streaming, memory, and local fsspec).
+Measures, profiles, and compares data access performance across storage tiers (POSIX disk, XRootD
+streaming, memory, and local fsspec).
+
 """
 
 from dataclasses import asdict, dataclass, field
@@ -150,6 +151,7 @@ class SyntheticDataGenerator:
                 data["x"] = np.random.uniform(-60, 60, size=n)
                 data["y"] = np.random.uniform(-60, 60, size=n)
                 data["z"] = np.random.uniform(-140, 0, size=n)
+
         else:
             fields = strax.time_fields + [("data", np.float32)]
             dtype = np.dtype(fields)

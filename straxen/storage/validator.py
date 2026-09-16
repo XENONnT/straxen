@@ -1,7 +1,8 @@
 """Environment and Runtime Diagnostic Validator for straxen and XRootD streaming.
 
-Validates software dependencies, system CLI tools, SciToken / WLCG authentication,
-cluster filesystem mount points, and remote XRootD redirector connectivity.
+Validates software dependencies, system CLI tools, SciToken / WLCG authentication, cluster
+filesystem mount points, and remote XRootD redirector connectivity.
+
 """
 
 import base64
@@ -66,9 +67,7 @@ class ValidationReport:
     """Aggregated environment diagnostic report."""
 
     checks: List[CheckResult] = field(default_factory=list)
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     hostname: str = field(default_factory=socket.getfqdn)
     platform_info: Dict[str, Any] = field(
         default_factory=lambda: {
@@ -309,8 +308,7 @@ class EnvironmentValidator:
                     name="auth:scitoken",
                     status="WARN",
                     message=(
-                        "No SciToken / WLCG Bearer Token discovered; "
-                        "unauthenticated access only"
+                        "No SciToken / WLCG Bearer Token discovered; " "unauthenticated access only"
                     ),
                     details={"source": token_info.source},
                 )
@@ -405,9 +403,7 @@ class EnvironmentValidator:
 
         return results
 
-    def check_cluster_mounts(
-        self, paths: Optional[List[str]] = None
-    ) -> List[CheckResult]:
+    def check_cluster_mounts(self, paths: Optional[List[str]] = None) -> List[CheckResult]:
         """Verify accessibility of Midway and cluster storage paths."""
         results: List[CheckResult] = []
         target_paths = paths or self.cluster_paths

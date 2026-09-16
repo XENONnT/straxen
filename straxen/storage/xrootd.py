@@ -48,9 +48,8 @@ __all__.extend(
 
 @export
 def is_endpoint_failure(exc: Optional[Exception]) -> bool:
-    """Determine whether an exception indicates an endpoint outage or auth failure
-    rather than missing data.
-    """
+    """Determine whether an exception indicates an endpoint outage or auth failure rather than
+    missing data."""
     if exc is None:
         return False
     if isinstance(exc, FileNotFoundError):
@@ -91,18 +90,13 @@ def normalize_redirector_url(url: str) -> str:
 
 
 @export
-def parse_redirector_list(
-    redirectors: Union[str, List[str], Tuple[str, ...], None]
-) -> List[str]:
+def parse_redirector_list(redirectors: Union[str, List[str], Tuple[str, ...], None]) -> List[str]:
     """Parse a list, tuple, or comma/space-delimited string into normalized redirector URLs."""
     if redirectors is None:
         return []
     if isinstance(redirectors, str):
         raw_items = [
-            item.strip()
-            for part in redirectors.split(",")
-            for item in part.split()
-            if item.strip()
+            item.strip() for part in redirectors.split(",") for item in part.split() if item.strip()
         ]
     else:
         raw_items = [str(r).strip() for r in redirectors if str(r).strip()]
@@ -174,9 +168,7 @@ class RedirectorPool:
         norm = normalize_redirector_url(redirector)
         self._failure_counts[norm] = self._failure_counts.get(norm, 0) + 1
         self._last_failure_time[norm] = time.time()
-        log.warning(
-            f"Redirector {norm} failed (count: {self._failure_counts[norm]}): {error}"
-        )
+        log.warning(f"Redirector {norm} failed (count: {self._failure_counts[norm]}): {error}")
         if norm == self.active_redirector and len(self.raw_redirectors) > 1:
             candidates = [r for r in self.raw_redirectors if r != norm]
             if candidates:
@@ -230,9 +222,8 @@ class RedirectorPool:
         new_parsed = urlsplit(norm_new)
 
         new_scheme = new_parsed.scheme or old_parsed.scheme or "root"
-        new_netloc = (
-            new_parsed.netloc
-            or (new_parsed.path.strip("/") if not new_parsed.scheme else "")
+        new_netloc = new_parsed.netloc or (
+            new_parsed.path.strip("/") if not new_parsed.scheme else ""
         )
 
         # If it is a file:// URL without netloc
@@ -244,7 +235,7 @@ class RedirectorPool:
                     matched_old = r_norm
                     break
             if matched_old:
-                rel = url[len(matched_old):].lstrip("/")
+                rel = url[len(matched_old) :].lstrip("/")
                 return f"{norm_new.rstrip('/')}/{rel}"
             return url
 
@@ -310,6 +301,7 @@ def discover_scitoken(
     :param sync_environ: If True and a token is discovered, exports BEARER_TOKEN_FILE
         or BEARER_TOKEN to os.environ for underlying C++ XRootD clients.
     :return: SciTokenInfo object describing discovered token and origin.
+
     """
     token_info: Optional[SciTokenInfo] = None
 
@@ -332,11 +324,7 @@ def discover_scitoken(
             )
 
     # 2. Environment variables (WLCG precedence: BEARER_TOKEN before BEARER_TOKEN_FILE)
-    if (
-        token_info is None
-        and "BEARER_TOKEN" in os.environ
-        and os.environ["BEARER_TOKEN"].strip()
-    ):
+    if token_info is None and "BEARER_TOKEN" in os.environ and os.environ["BEARER_TOKEN"].strip():
         token_info = SciTokenInfo(
             token=os.environ["BEARER_TOKEN"].strip(),
             source="env:BEARER_TOKEN",
@@ -348,11 +336,7 @@ def discover_scitoken(
                 token_file=os.path.abspath(bt_file),
                 source="env:BEARER_TOKEN_FILE",
             )
-    if (
-        token_info is None
-        and "SCITOKEN" in os.environ
-        and os.environ["SCITOKEN"].strip()
-    ):
+    if token_info is None and "SCITOKEN" in os.environ and os.environ["SCITOKEN"].strip():
         token_info = SciTokenInfo(
             token=os.environ["SCITOKEN"].strip(),
             source="env:SCITOKEN",
@@ -472,8 +456,9 @@ def discover_scitoken(
 class XRootDBackend(strax.StorageBackend):
     """Storage backend streaming chunks directly over root:// using fsspec and fsspec-xrootd.
 
-    Supports both standard Strax hierarchical directory layouts and Rucio deterministic
-    two-level MD5 hashing layouts with automated multi-redirector failover.
+    Supports both standard Strax hierarchical directory layouts and Rucio deterministic two-level
+    MD5 hashing layouts with automated multi-redirector failover.
+
     """
 
     def __init__(
@@ -523,8 +508,9 @@ class XRootDBackend(strax.StorageBackend):
     def _get_metadata(self, backend_key: Union[strax.DataKey, str], **kwargs) -> dict:
         """Retrieve and parse JSON metadata from remote or local storage.
 
-        Supports standard Strax candidate files, Rucio deterministic hashing paths,
-        and multi-redirector failover.
+        Supports standard Strax candidate files, Rucio deterministic hashing paths, and multi-
+        redirector failover.
+
         """
         key_str = str(backend_key)
         if self.cache_metadata and key_str in self._metadata_cache:
@@ -560,17 +546,13 @@ class XRootDBackend(strax.StorageBackend):
                 if "-" in folder_name:
                     try:
                         prefix = folder_name.split("-", maxsplit=1)[1]
-                        candidates.append(
-                            f"{clean_path}/{strax.RUN_METADATA_PATTERN % prefix}"
-                        )
+                        candidates.append(f"{clean_path}/{strax.RUN_METADATA_PATTERN % prefix}")
                     except IndexError:
                         pass
                 candidates.append(f"{clean_path}/metadata.json")
 
         redirectors = (
-            self.redirector_pool.get_candidates()
-            if self.redirector_pool is not None
-            else [None]
+            self.redirector_pool.get_candidates() if self.redirector_pool is not None else [None]
         )
 
         last_error = None
@@ -638,9 +620,7 @@ class XRootDBackend(strax.StorageBackend):
             primary_chunk_file = f"{key_str.rstrip('/')}/{chunk_fn}"
 
         redirectors = (
-            self.redirector_pool.get_candidates()
-            if self.redirector_pool is not None
-            else [None]
+            self.redirector_pool.get_candidates() if self.redirector_pool is not None else [None]
         )
 
         last_error = None
@@ -665,11 +645,7 @@ class XRootDBackend(strax.StorageBackend):
                 ConnectionError,
             ) as e:
                 last_error = e
-                if (
-                    self.redirector_pool is not None
-                    and red is not None
-                    and is_endpoint_failure(e)
-                ):
+                if self.redirector_pool is not None and red is not None and is_endpoint_failure(e):
                     self.redirector_pool.mark_failure(red, e)
                 continue
 
@@ -693,8 +669,9 @@ class XRootDBackend(strax.StorageBackend):
 class XRootDFrontend(strax.StorageFrontend):
     """Storage frontend resolving data keys to remote root:// URIs for streaming.
 
-    Supports dynamic utilix configuration, SciToken discovery, Rucio deterministic
-    two-level hashing, and multi-redirector failover.
+    Supports dynamic utilix configuration, SciToken discovery, Rucio deterministic two-level
+    hashing, and multi-redirector failover.
+
     """
 
     storage_type = strax.StorageType.REMOTE
@@ -894,8 +871,9 @@ class XRootDFrontend(strax.StorageFrontend):
     ) -> str:
         """Build authoritative remote physical file URL for the given key.
 
-        Enforces the mandatory double slash '//' convention for root:// endpoints.
-        Supports both standard Strax directory layouts and Rucio deterministic naming.
+        Enforces the mandatory double slash '//' convention for root:// endpoints. Supports both
+        standard Strax directory layouts and Rucio deterministic naming.
+
         """
         target_redirector = redirector or self.redirector_pool.active_redirector
         sub = self.subpath.strip("/")
@@ -943,9 +921,7 @@ class XRootDFrontend(strax.StorageFrontend):
         # Start probing using the currently active redirector.
         # Backend.get_metadata() internally iterates through all candidates in the shared
         # RedirectorPool upon failure, avoiding redundant outer O(n^2) retries.
-        initial_backend_key = self.build_url(
-            key, redirector=self.redirector_pool.active_redirector
-        )
+        initial_backend_key = self.build_url(key, redirector=self.redirector_pool.active_redirector)
         try:
             backend.get_metadata(initial_backend_key)
             effective_red = self.redirector_pool.active_redirector
@@ -965,9 +941,7 @@ class XRootDFrontend(strax.StorageFrontend):
                 try:
                     backend.get_metadata(temp_backend_key)
                     effective_red = self.redirector_pool.active_redirector
-                    effective_backend_key = (
-                        f"{self.build_url(key, redirector=effective_red)}_temp"
-                    )
+                    effective_backend_key = f"{self.build_url(key, redirector=effective_red)}_temp"
                     self.redirector_url = effective_red
                     return backend.__class__.__name__, effective_backend_key
                 except (

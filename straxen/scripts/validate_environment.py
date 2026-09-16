@@ -5,6 +5,7 @@ Usage:
     straxen_validate_environment --skip-network --skip-mounts
     straxen_validate_environment --output report.json
     straxen_validate_environment --strict
+
 """
 
 import argparse

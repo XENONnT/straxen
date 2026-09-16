@@ -3,6 +3,7 @@
 Usage:
     straxen_benchmark_io --backends posix memory --targets records --n-chunks 5
     straxen_benchmark_io --backends posix xrootd --workers 1 2 --output res.json
+
 """
 
 import argparse

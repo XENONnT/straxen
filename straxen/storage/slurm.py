@@ -1,7 +1,8 @@
 """SLURM Benchmark Matrix Runner for Midway and cluster environments.
 
-Automates multi-dimensional storage I/O benchmarking across storage tiers
-(POSIX, XRootD, memory, scratch), data targets, workloads, and worker counts.
+Automates multi-dimensional storage I/O benchmarking across storage tiers (POSIX, XRootD, memory,
+scratch), data targets, workloads, and worker counts.
+
 """
 
 from dataclasses import dataclass, field
@@ -137,9 +138,7 @@ class MatrixReport:
         with open(filepath, "w") as f:
             json.dump(self.to_dict(), f, indent=2)
 
-    def compute_speedups(
-        self, baseline_backend: str = "posix"
-    ) -> List[Dict[str, Any]]:
+    def compute_speedups(self, baseline_backend: str = "posix") -> List[Dict[str, Any]]:
         """Calculate throughput speedup ratios relative to a baseline storage tier."""
         speedups: List[Dict[str, Any]] = []
 
@@ -326,13 +325,12 @@ class SlurmMatrixRunner:
         self.matrix = matrix or BenchmarkMatrix()
         self.slurm_config = slurm_config or SlurmConfig()
 
-    def generate_scripts(
-        self, output_dir: Optional[str] = None
-    ) -> Dict[str, str]:
+    def generate_scripts(self, output_dir: Optional[str] = None) -> Dict[str, str]:
         """Generate manifest, job array script, and helper submission scripts.
 
         :param output_dir: Destination directory for generated artifacts.
         :return: Dictionary containing paths to generated files.
+
         """
         out_dir = os.path.abspath(output_dir or self.slurm_config.output_dir)
         logs_dir = os.path.join(out_dir, "logs")
@@ -351,8 +349,10 @@ class SlurmMatrixRunner:
 
         sc = self.slurm_config
         qos_line = f"#SBATCH --qos={sc.qos}\n" if sc.qos else ""
-        mem_line = f"#SBATCH --mem={sc.mem}\n" if sc.mem else (
-            f"#SBATCH --mem-per-cpu={sc.mem_per_cpu}\n" if sc.mem_per_cpu else ""
+        mem_line = (
+            f"#SBATCH --mem={sc.mem}\n"
+            if sc.mem
+            else (f"#SBATCH --mem-per-cpu={sc.mem_per_cpu}\n" if sc.mem_per_cpu else "")
         )
 
         extra_lines = ""
@@ -436,14 +436,13 @@ python -m straxen.scripts.benchmark_slurm collect --results-dir "$RESULTS"
             "n_tasks": str(n_tasks),
         }
 
-    def submit(
-        self, output_dir: Optional[str] = None, dry_run: bool = True
-    ) -> Dict[str, Any]:
+    def submit(self, output_dir: Optional[str] = None, dry_run: bool = True) -> Dict[str, Any]:
         """Generate scripts and submit to SLURM (or simulate via dry_run).
 
         :param output_dir: Target output directory.
         :param dry_run: If True, generate scripts without invoking sbatch.
         :return: Dictionary with submission metadata and Job ID.
+
         """
         paths = self.generate_scripts(output_dir)
         cmd = ["sbatch", paths["array_script"]]
@@ -486,15 +485,14 @@ python -m straxen.scripts.benchmark_slurm collect --results-dir "$RESULTS"
             }
 
     @staticmethod
-    def execute_task(
-        manifest_path: str, task_id: int, output_dir: str
-    ) -> str:
+    def execute_task(manifest_path: str, task_id: int, output_dir: str) -> str:
         """Execute a single task definition from the manifest.
 
         :param manifest_path: Path to matrix_manifest.json.
         :param task_id: Zero-indexed task ID to execute.
         :param output_dir: Output directory to write result_<task_id>.json.
         :return: Path to generated result file.
+
         """
         with open(manifest_path, "r") as f:
             manifest = json.load(f)
@@ -534,9 +532,7 @@ python -m straxen.scripts.benchmark_slurm collect --results-dir "$RESULTS"
         return out_file
 
     @staticmethod
-    def collect_results(
-        results_dir: str, manifest_path: Optional[str] = None
-    ) -> MatrixReport:
+    def collect_results(results_dir: str, manifest_path: Optional[str] = None) -> MatrixReport:
         """Scan directory for result_*.json and aggregate into MatrixReport."""
         results: List[Dict[str, Any]] = []
 

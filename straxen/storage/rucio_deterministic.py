@@ -11,16 +11,15 @@ def rucio_deterministic_path(did: str, algorithm: str = "hash") -> str:
     """Convert a Rucio DID ('scope:filename') to relative path using Rucio deterministic convention.
 
     By default, uses Rucio's standard two-level MD5 directory hierarchy:
-        <scope>/<md5[0:2]>/<md5[2:4]>/<filename>
+    <scope>/<md5[0:2]>/<md5[2:4]>/<filename>
 
     :param did: Rucio Data Identifier in format 'scope:filename'.
     :param algorithm: Hashing algorithm ('hash' or 'md5' for standard Rucio convention).
     :return: Relative path string (e.g. 'xnt_012345/a1/b2/records-5vbh5o52-000000').
+
     """
     if ":" not in did:
-        raise ValueError(
-            f"Invalid Rucio DID '{did}'. Expected 'scope:filename' format."
-        )
+        raise ValueError(f"Invalid Rucio DID '{did}'. Expected 'scope:filename' format.")
     scope, filename = did.split(":", 1)
 
     if algorithm in ("hash", "md5"):
@@ -47,8 +46,9 @@ def key_to_rucio_dids(
 
     :param key: strax.DataKey instance or key string.
     :param scope_prefix: Scope prefix string (default 'xnt_').
-    :return: Tuple of (dataset_did, metadata_did), e.g.
-        ('xnt_012345:records-5vbh5o52', 'xnt_012345:records-5vbh5o52-metadata.json')
+    :return: Tuple of (dataset_did, metadata_did), e.g. ('xnt_012345:records-5vbh5o52',
+        'xnt_012345:records-5vbh5o52-metadata.json')
+
     """
     if isinstance(key, strax.DataKey):
         run_id = str(key.run_id)
@@ -74,9 +74,7 @@ def key_to_rucio_dids(
             data_type = parts[1]
             lineage_hash = "-".join(parts[2:])
         else:
-            raise ValueError(
-                f"Cannot parse key '{key}' into run_id, data_type, and lineage_hash."
-            )
+            raise ValueError(f"Cannot parse key '{key}' into run_id, data_type, and lineage_hash.")
 
     scope = f"{scope_prefix}{run_id}" if scope_prefix else run_id
     dataset_name = f"{data_type}-{lineage_hash}"
@@ -93,6 +91,7 @@ def chunk_to_rucio_did(scope: str, chunk_filename: str) -> str:
     :param scope: Rucio scope string (e.g. 'xnt_012345').
     :param chunk_filename: Chunk filename (e.g. 'records-5vbh5o52-000000').
     :return: Rucio DID string (e.g. 'xnt_012345:records-5vbh5o52-000000').
+
     """
     return f"{scope}:{chunk_filename}"
 
@@ -102,6 +101,7 @@ def did_from_backend_key(backend_key: str) -> Optional[str]:
     """Extract Rucio DID from backend_key if present.
 
     Inspects the final path segment of a URL or file path for ':' indicating 'scope:name'.
+
     """
     parsed = urlsplit(backend_key)
     path = parsed.path.rstrip("/")

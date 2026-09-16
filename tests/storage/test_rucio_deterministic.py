@@ -29,9 +29,7 @@ class TestRucioDeterministic(unittest.TestCase):
         self.dtype = "records"
         self.plugin_name = straxen.storage.benchmark.get_synthetic_plugin_name(self.dtype)
         self.lineage = {self.dtype: (self.plugin_name, "0.0.0", {})}
-        self.key = strax.DataKey(
-            run_id=self.run_id, data_type=self.dtype, lineage=self.lineage
-        )
+        self.key = strax.DataKey(run_id=self.run_id, data_type=self.dtype, lineage=self.lineage)
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -58,9 +56,7 @@ class TestRucioDeterministic(unittest.TestCase):
 
     def test_key_to_rucio_dids(self):
         dataset_did, metadata_did = key_to_rucio_dids(self.key, scope_prefix="xnt_")
-        self.assertEqual(
-            dataset_did, f"xnt_{self.run_id}:{self.dtype}-{self.key.lineage_hash}"
-        )
+        self.assertEqual(dataset_did, f"xnt_{self.run_id}:{self.dtype}-{self.key.lineage_hash}")
         self.assertEqual(
             metadata_did,
             f"xnt_{self.run_id}:{self.dtype}-{self.key.lineage_hash}-metadata.json",
@@ -167,6 +163,7 @@ class TestRucioDeterministic(unittest.TestCase):
         rel_md_path = rucio_deterministic_path(metadata_did)
 
         import fsspec
+
         fs, _ = fsspec.core.url_to_fs(dest_url)
         self.assertTrue(fs.exists(f"rucio_test/{rel_md_path}"))
 
@@ -254,6 +251,7 @@ class TestRucioDeterministic(unittest.TestCase):
 
         # Also copy metadata and chunk 1 to node2, but DELETE chunk 1 on node1
         import fsspec
+
         fs, _ = fsspec.core.url_to_fs(origin1)
         md_bytes = fs.cat(f"node1/{rel_md}")
         md_dict = json.loads(md_bytes.decode("utf-8"))

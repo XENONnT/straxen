@@ -5,6 +5,7 @@ Modes:
   submit:   Build and submit job array to SLURM (supports --dry-run).
   run-task: Worker executor invoked by SLURM array task.
   collect:  Harvest worker task JSON outputs into summary report and plots.
+
 """
 
 import argparse

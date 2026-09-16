@@ -53,9 +53,7 @@ class TestXRootD(unittest.TestCase):
             pass
 
     def _write_chunk_and_metadata(self, compressor="zstd", metadata_type="modern"):
-        target_folder = (
-            f"{self.full_folder}_temp" if metadata_type == "temp" else self.full_folder
-        )
+        target_folder = f"{self.full_folder}_temp" if metadata_type == "temp" else self.full_folder
         self.fs.makedirs(target_folder, exist_ok=True)
         chunk_fn = f"{self.data_type}-{self.key.lineage_hash}-000000"
         chunk_path = f"{target_folder}/{chunk_fn}"
@@ -287,14 +285,13 @@ class TestXRootD(unittest.TestCase):
             _xrootd_subpath=self.subpath.lstrip("/"),
             _database_init=False,
         )
-        xrootd_frontends = [
-            sf for sf in st.storage if isinstance(sf, straxen.XRootDFrontend)
-        ]
+        xrootd_frontends = [sf for sf in st.storage if isinstance(sf, straxen.XRootDFrontend)]
         self.assertEqual(len(xrootd_frontends), 1)
         self.assertEqual(xrootd_frontends[0].redirector_url, "memory://")
 
     def test_missing_fsspec_raises(self):
         import unittest.mock
+
         with unittest.mock.patch("straxen.storage.xrootd.HAVE_FSSPEC", False):
             with self.assertRaises(ImportError):
                 straxen.XRootDBackend()
@@ -362,9 +359,7 @@ class TestXRootD(unittest.TestCase):
         import unittest.mock
 
         # Test BEARER_TOKEN alone
-        with unittest.mock.patch.dict(
-            os.environ, {"BEARER_TOKEN": "bearer_jwt_123"}, clear=True
-        ):
+        with unittest.mock.patch.dict(os.environ, {"BEARER_TOKEN": "bearer_jwt_123"}, clear=True):
             info = straxen.discover_scitoken(sync_environ=False)
             self.assertEqual(info.source, "env:BEARER_TOKEN")
             self.assertEqual(info.token, "bearer_jwt_123")
@@ -376,9 +371,7 @@ class TestXRootD(unittest.TestCase):
 
         try:
             # When only BEARER_TOKEN_FILE exists
-            with unittest.mock.patch.dict(
-                os.environ, {"BEARER_TOKEN_FILE": tf_path}, clear=True
-            ):
+            with unittest.mock.patch.dict(os.environ, {"BEARER_TOKEN_FILE": tf_path}, clear=True):
                 info = straxen.discover_scitoken(sync_environ=False)
                 self.assertEqual(info.source, "env:BEARER_TOKEN_FILE")
                 self.assertEqual(info.token_file, tf_path)
@@ -465,10 +458,12 @@ class TestXRootD(unittest.TestCase):
             return orig_getsize(path)
 
         mock_file = unittest.mock.mock_open(read_data="tmp_wlcg_token\n")
-        with unittest.mock.patch.dict(os.environ, {}, clear=True), \
-             unittest.mock.patch("os.path.isfile", side_effect=mock_isfile), \
-             unittest.mock.patch("os.path.getsize", side_effect=mock_getsize), \
-             unittest.mock.patch("builtins.open", mock_file):
+        with (
+            unittest.mock.patch.dict(os.environ, {}, clear=True),
+            unittest.mock.patch("os.path.isfile", side_effect=mock_isfile),
+            unittest.mock.patch("os.path.getsize", side_effect=mock_getsize),
+            unittest.mock.patch("builtins.open", mock_file),
+        ):
             info = straxen.discover_scitoken(sync_environ=False)
             self.assertEqual(info.source, "wlcg:tmp")
             self.assertEqual(info.read_token(), "tmp_wlcg_token")
@@ -530,9 +525,7 @@ class TestXRootD(unittest.TestCase):
             _xrootd_token="context_bearer_token",
             _database_init=False,
         )
-        xrootd_frontends = [
-            sf for sf in st.storage if isinstance(sf, straxen.XRootDFrontend)
-        ]
+        xrootd_frontends = [sf for sf in st.storage if isinstance(sf, straxen.XRootDFrontend)]
         self.assertEqual(len(xrootd_frontends), 1)
         fe = xrootd_frontends[0]
         self.assertEqual(fe.token_info.token, "context_bearer_token")
@@ -560,6 +553,7 @@ class TestXRootD(unittest.TestCase):
 
     def test_scitoken_explicit_overrides_stale_env(self):
         import unittest.mock
+
         with unittest.mock.patch.dict(
             os.environ,
             {"BEARER_TOKEN": "stale_token", "BEARER_TOKEN_FILE": "/path/to/stale"},
