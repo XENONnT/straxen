@@ -188,7 +188,7 @@ class SyntheticDataGenerator:
         n_items_per_chunk = max(1, target_bytes // itemsize)
 
         plugin_name = get_synthetic_plugin_name(target_type)
-        lineage = {target_type: (plugin_name, "0.0.0", {})}
+        lineage: Dict[str, Any] = {target_type: (plugin_name, "0.0.0", {})}
         key = strax.DataKey(run_id=run_id, data_type=target_type, lineage=lineage)
 
         fs, base_path = fsspec.core.url_to_fs(destination_url)
@@ -399,7 +399,7 @@ class IOBenchmarkHarness:
 
         class DynamicBenchmarkPlugin(strax.Plugin):
             provides = target_type
-            depends_on = tuple()
+            depends_on: tuple = tuple()
             data_kind = target_type
             __version__ = "0.0.0"
 

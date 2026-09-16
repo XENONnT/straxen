@@ -15,7 +15,7 @@ except ImportError:
 
 class DummyPlugin(strax.Plugin):
     provides = "test_data"
-    depends_on = tuple()
+    depends_on: tuple = tuple()
     data_kind = "test_data"
     dtype = strax.time_fields
 

@@ -193,7 +193,7 @@ class TestRucioDeterministic(unittest.TestCase):
 
         class RecordsPlugin(strax.Plugin):
             provides = self.dtype
-            depends_on = tuple()
+            depends_on: tuple = tuple()
             data_kind = self.dtype
             __version__ = "0.0.0"
 

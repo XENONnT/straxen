@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
 import strax
 
@@ -551,9 +551,11 @@ class XRootDBackend(strax.StorageBackend):
                         pass
                 candidates.append(f"{clean_path}/metadata.json")
 
-        redirectors = (
-            self.redirector_pool.get_candidates() if self.redirector_pool is not None else [None]
-        )
+        redirectors: Sequence[Optional[str]]
+        if self.redirector_pool is not None:
+            redirectors = self.redirector_pool.get_candidates()
+        else:
+            redirectors = [None]
 
         last_error = None
         for red in redirectors:
@@ -619,9 +621,11 @@ class XRootDBackend(strax.StorageBackend):
         else:
             primary_chunk_file = f"{key_str.rstrip('/')}/{chunk_fn}"
 
-        redirectors = (
-            self.redirector_pool.get_candidates() if self.redirector_pool is not None else [None]
-        )
+        redirectors: Sequence[Optional[str]]
+        if self.redirector_pool is not None:
+            redirectors = self.redirector_pool.get_candidates()
+        else:
+            redirectors = [None]
 
         last_error = None
         for red in redirectors:
