@@ -1,0 +1,98 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%help
+    Production Apptainer / Singularity container for XENONnT straxen with
+    native XRootD streaming, WLCG SciTokens, and Grid CA certificates.
+
+    Usage:
+        apptainer run straxen_xrootd.sif
+        apptainer exec straxen_xrootd.sif python -m straxen.scripts.validate_environment
+
+%labels
+    Author XENON Collaboration
+    Version 1.0.0
+    Description XENONnT straxen container with XRootD streaming & SciToken support
+
+%post
+    set -e
+
+    # 1. Base system updates & repository setup
+    dnf -y update
+    dnf -y install epel-release dnf-plugins-core
+    dnf config-manager --set-enabled crb
+
+    # 2. Enable Open Science Grid (OSG) 23 repository
+    dnf -y install https://repo.opensciencegrid.org/osg/23-main/osg-23-main-el9-release-latest.rpm
+
+    # 3. Install core system utilities, development tools, and grid certificates
+    dnf -y install \
+        ca-certificates \
+        osg-ca-certs \
+        git \
+        wget \
+        curl \
+        which \
+        gcc \
+        gcc-c++ \
+        make \
+        cmake \
+        python3.11 \
+        python3.11-pip \
+        python3.11-devel
+
+    # 4. Install XRootD client libraries and tools
+    dnf -y install \
+        xrootd-client \
+        xrootd-client-devel \
+        xrootd-client-libs
+
+    dnf clean all
+    rm -rf /var/cache/dnf
+
+    # 5. Set python3.11 as default python
+    alternatives --install /usr/bin/python python /usr/bin/python3.11 1
+    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+    alternatives --install /usr/bin/pip pip /usr/bin/pip3.11 1
+    alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.11 1
+
+    pip install --no-cache-dir --upgrade pip setuptools wheel
+
+    # 6. Install XRootD Python bindings and fsspec
+    pip install --no-cache-dir \
+        xrootd \
+        fsspec \
+        fsspec-xrootd
+
+    # 7. Install strax and straxen with scientific stack
+    pip install --no-cache-dir \
+        numpy \
+        scipy \
+        pandas \
+        numba \
+        matplotlib \
+        utilix \
+        strax \
+        git+https://github.com/XENONnT/straxen.git@master#egg=straxen[xrootd]
+
+%environment
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+
+    # XRootD client timeouts and connection tuning
+    export XRD_LOGLEVEL="Warning"
+    export XRD_CONNECTIONWINDOW=30
+    export XRD_STREAMTIMEOUT=60
+    export XRD_REQUESTTIMEOUT=60
+    export XRD_DATASERVERTTL=300
+
+    # Grid CA certificate paths
+    export X509_CERT_DIR=/etc/grid-security/certificates
+
+%runscript
+    exec python -m straxen.scripts.validate_environment "$@"
+
+%test
+    # Verification test during container build
+    python -c "import fsspec, strax, straxen; print('Straxen version:', straxen.__version__)"
+    python -m straxen.scripts.validate_environment --skip-network --skip-mounts
