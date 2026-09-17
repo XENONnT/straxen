@@ -598,3 +598,175 @@ class TestXRootD(unittest.TestCase):
         self.assertIsInstance(frontend.xrootd_kwargs.get("timeout"), int)
         self.assertEqual(frontend.backends[0].xrootd_kwargs.get("timeout"), 60)
         self.assertIsInstance(frontend.backends[0].xrootd_kwargs.get("timeout"), int)
+
+    def test_metadata_endpoint_failure_early_breakout(self):
+        """Verify that an endpoint failure on candidate 1 breaks out early to failover without
+        wasting time on candidate 2 of the dead endpoint."""
+        import unittest.mock
+
+        self._write_chunk_and_metadata()
+        pool = straxen.RedirectorPool(["memory://dead_host", "memory://"])
+        backend = straxen.XRootDBackend(redirector_pool=pool)
+
+        url = f"memory://dead_host{self.full_folder}"
+        attempted_urls = []
+
+        orig_url_to_fs = fsspec.core.url_to_fs
+
+        def mock_url_to_fs(cand_url, **kwargs):
+            attempted_urls.append(cand_url)
+            if "dead_host" in cand_url:
+                raise ConnectionError("Endpoint connection refused")
+            return orig_url_to_fs(cand_url, **kwargs)
+
+        with unittest.mock.patch("fsspec.core.url_to_fs", side_effect=mock_url_to_fs):
+            md = backend.get_metadata(url)
+            self.assertEqual(md["run_id"], self.run_id)
+
+        # On dead_host, exactly 1 candidate should have been attempted before early breakout
+        dead_host_attempts = [u for u in attempted_urls if "dead_host" in u]
+        self.assertEqual(len(dead_host_attempts), 1)
+
+        # dead_host should be recorded as failed in pool
+        self.assertGreater(pool._failure_counts.get("memory://dead_host", 0), 0)
+        # memory:// was promoted as active
+        self.assertEqual(pool.active_redirector, "memory://")
+
+    def test_temp_data_type_name_not_mangled(self):
+        """Verify that a data_type containing '_temp' as a substring is not mangled."""
+        temp_dt = "temperature_readings"
+        temp_key = strax.DataKey(
+            run_id="050000",
+            data_type=temp_dt,
+            lineage={temp_dt: ["TempPlugin", "0.0.0", {}]},
+        )
+        folder = f"/processed/{temp_key}_temp"
+        self.fs.makedirs(folder, exist_ok=True)
+        prefix = f"{temp_dt}-{temp_key.lineage_hash}"
+        md_fn = strax.RUN_METADATA_PATTERN % prefix
+        with self.fs.open(f"{folder}/{md_fn}", "wb") as f:
+            f.write(json.dumps({"run_id": "050000", "data_type": temp_dt}).encode("utf-8"))
+
+        backend = straxen.XRootDBackend()
+        md = backend.get_metadata(f"memory://{folder}")
+        self.assertEqual(md["data_type"], temp_dt)
+
+    def test_metadata_cache_lru_eviction_boundary(self):
+        """Verify that when metadata cache exceeds max_cache_size, the least recently used entry is
+        evicted."""
+        backend = straxen.XRootDBackend(cache_metadata=True, max_cache_size=3)
+        for i in range(1, 5):
+            folder = f"/processed/run_{i}-records-12345"
+            self.fs.makedirs(folder, exist_ok=True)
+            with self.fs.open(f"{folder}/metadata.json", "wb") as f:
+                f.write(json.dumps({"run_id": f"00000{i}"}).encode("utf-8"))
+
+        # Load runs 1, 2, 3
+        backend.get_metadata("memory:///processed/run_1-records-12345")
+        backend.get_metadata("memory:///processed/run_2-records-12345")
+        backend.get_metadata("memory:///processed/run_3-records-12345")
+        self.assertEqual(len(backend._metadata_cache), 3)
+
+        # Access run 1 to make run 2 the oldest (least recently used)
+        backend.get_metadata("memory:///processed/run_1-records-12345")
+
+        # Load run 4 (triggers eviction of run 2)
+        backend.get_metadata("memory:///processed/run_4-records-12345")
+        self.assertEqual(len(backend._metadata_cache), 3)
+        self.assertNotIn("memory:///processed/run_2-records-12345", backend._metadata_cache)
+        self.assertIn("memory:///processed/run_1-records-12345", backend._metadata_cache)
+        self.assertIn("memory:///processed/run_3-records-12345", backend._metadata_cache)
+        self.assertIn("memory:///processed/run_4-records-12345", backend._metadata_cache)
+
+    def test_scitoken_discovery_condor(self):
+        """Verify SciToken discovery from HTCondor scratch and job directories."""
+        import tempfile
+        import unittest.mock
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tokens_dir = os.path.join(tmp_dir, ".condor", "tokens.d")
+            os.makedirs(tokens_dir, exist_ok=True)
+            token_file = os.path.join(tokens_dir, "condor_scitoken")
+            with open(token_file, "w") as f:
+                f.write("htcondor_bearer_token\n")
+
+            # Test _CONDOR_JOB_IWD
+            with unittest.mock.patch.dict(os.environ, {"_CONDOR_JOB_IWD": tmp_dir}, clear=True):
+                info = straxen.discover_scitoken(sync_environ=False)
+                self.assertEqual(info.source, "condor:_CONDOR_JOB_IWD")
+                self.assertEqual(info.read_token(), "htcondor_bearer_token")
+
+            condor_scratch_env = {"_CONDOR_SCRATCH_DIR": tmp_dir}
+            with unittest.mock.patch.dict(os.environ, condor_scratch_env, clear=True):
+                info = straxen.discover_scitoken(sync_environ=False)
+                self.assertEqual(info.source, "condor:_CONDOR_SCRATCH_DIR")
+                self.assertEqual(info.read_token(), "htcondor_bearer_token")
+
+    def test_redirector_cooldown_window(self):
+        """Verify that a failed redirector enters cooldown and is restored after cooldown
+        expires."""
+        import unittest.mock
+
+        pool = straxen.RedirectorPool(
+            ["root://r1.uchicago.edu", "root://r2.uchicago.edu"],
+            cooldown_seconds=10.0,
+        )
+        current_time = 100.0
+        with unittest.mock.patch("time.time", side_effect=lambda: current_time):
+            pool.mark_failure("root://r1.uchicago.edu", Exception("offline"))
+
+            # At t=105 (within cooldown window of 10s):
+            current_time = 105.0
+            candidates = pool.get_candidates()
+            # r2 is healthy, r1 is in cooldown appended to the end
+            self.assertEqual(candidates[0], "root://r2.uchicago.edu")
+            self.assertEqual(candidates[1], "root://r1.uchicago.edu")
+
+            # At t=115 (cooldown expired):
+            current_time = 115.0
+            candidates_after = pool.get_candidates()
+            # Both are available, active redirector (r2) remains first
+            self.assertEqual(candidates_after, ["root://r2.uchicago.edu", "root://r1.uchicago.edu"])
+
+    def test_redirector_round_robin_rotation(self):
+        """Verify cyclic rotation across candidates under round-robin routing policy."""
+        pool = straxen.RedirectorPool(
+            ["root://r1.org", "root://r2.org", "root://r3.org"],
+            failover_policy="round_robin",
+        )
+        c1 = pool.get_candidates()
+        self.assertEqual(c1[0], "root://r1.org")
+        c2 = pool.get_candidates()
+        self.assertEqual(c2[0], "root://r2.org")
+        c3 = pool.get_candidates()
+        self.assertEqual(c3[0], "root://r3.org")
+        c4 = pool.get_candidates()
+        self.assertEqual(c4[0], "root://r1.org")
+
+    def test_redirector_pool_thread_safety(self):
+        """Verify concurrent access and mutation of RedirectorPool across threads."""
+        import concurrent.futures
+
+        pool = straxen.RedirectorPool(
+            ["root://r1.org", "root://r2.org", "root://r3.org"],
+            failover_policy="round_robin",
+        )
+
+        def worker(idx):
+            for _ in range(50):
+                if idx % 3 == 0:
+                    pool.mark_failure("root://r1.org", Exception("error"))
+                elif idx % 3 == 1:
+                    pool.mark_success("root://r2.org")
+                else:
+                    _ = pool.get_candidates()
+                    _ = pool.active_redirector
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(worker, i) for i in range(16)]
+            for f in concurrent.futures.as_completed(futures):
+                f.result()
+
+        # Pool state should remain valid and consistent
+        self.assertIn(pool.active_redirector, pool.redirectors)
+        self.assertEqual(len(pool.get_candidates()), 3)

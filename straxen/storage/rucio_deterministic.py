@@ -44,10 +44,18 @@ def key_to_rucio_dids(
 ) -> Tuple[str, str]:
     """Convert a strax.DataKey or key string into (dataset_did, metadata_did).
 
-    :param key: strax.DataKey instance or key string.
+    Note on String Keys:
+        When a string key is provided, it must either be a scoped DID ('scope:name')
+        or follow the strax.DataKey string format '<run_id>-<data_type>-<lineage_hash>'.
+        The string is split on hyphens, requiring data_type names to be underscore-separated
+        (e.g. 'raw_records', 'event_info') rather than hyphenated. Passing a strax.DataKey
+        instance directly avoids string parsing entirely.
+
+    :param key: strax.DataKey instance or formatted key string.
     :param scope_prefix: Scope prefix string (default 'xnt_').
     :return: Tuple of (dataset_did, metadata_did), e.g. ('xnt_012345:records-5vbh5o52',
         'xnt_012345:records-5vbh5o52-metadata.json')
+    :raises ValueError: If a string key cannot be parsed into run_id, data_type, and lineage_hash.
 
     """
     if isinstance(key, strax.DataKey):

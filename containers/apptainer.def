@@ -65,6 +65,8 @@ From: rockylinux:9
         fsspec-xrootd
 
     # 7. Install strax and straxen with scientific stack
+    # Defaults to feature/xrootd-streaming-backend prior to merge; override via STRAXEN_REF (e.g. master)
+    STRAXEN_REF="${STRAXEN_REF:-feature/xrootd-streaming-backend}"
     pip install --no-cache-dir \
         numpy \
         scipy \
@@ -73,7 +75,7 @@ From: rockylinux:9
         matplotlib \
         utilix \
         strax \
-        git+https://github.com/XENONnT/straxen.git@master#egg=straxen[xrootd]
+        "git+https://github.com/XENONnT/straxen.git@${STRAXEN_REF}#egg=straxen[xrootd]"
 
 %environment
     export LC_ALL=C.UTF-8

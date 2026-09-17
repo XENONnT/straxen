@@ -4,6 +4,7 @@ import errno
 import json
 import logging
 import os
+import threading
 import time
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
@@ -135,20 +136,28 @@ class RedirectorPool:
         self._failure_counts: Dict[str, int] = {r: 0 for r in self.raw_redirectors}
         self._last_failure_time: Dict[str, float] = {r: 0.0 for r in self.raw_redirectors}
         self._round_robin_counter = 0
+        self._lock = threading.Lock()
 
     @property
     def redirectors(self) -> List[str]:
-        return list(self.raw_redirectors)
+        with self._lock:
+            return list(self.raw_redirectors)
 
     @property
     def active_redirector(self) -> str:
-        if not self.raw_redirectors:
-            return normalize_redirector_url(DEFAULT_REDIRECTOR_URL)
-        return self.raw_redirectors[self._active_index % len(self.raw_redirectors)]
+        with self._lock:
+            if not self.raw_redirectors:
+                return normalize_redirector_url(DEFAULT_REDIRECTOR_URL)
+            return self.raw_redirectors[self._active_index % len(self.raw_redirectors)]
 
     @active_redirector.setter
     def active_redirector(self, redirector: str) -> None:
         norm = normalize_redirector_url(redirector)
+        with self._lock:
+            self._set_active_redirector(norm)
+
+    def _set_active_redirector(self, norm: str) -> None:
+        """Internal active redirector setter; assumes self._lock is held."""
         if norm in self.raw_redirectors:
             self._active_index = self.raw_redirectors.index(norm)
         else:
@@ -160,60 +169,72 @@ class RedirectorPool:
     def mark_success(self, redirector: str) -> None:
         """Mark a redirector as successful and set it as active."""
         norm = normalize_redirector_url(redirector)
-        self.active_redirector = norm
-        self._failure_counts[norm] = 0
+        with self._lock:
+            self._set_active_redirector(norm)
+            self._failure_counts[norm] = 0
 
     def mark_failure(self, redirector: str, error: Optional[Exception] = None) -> None:
         """Record a failure for the specified redirector and advance to the next candidate."""
         norm = normalize_redirector_url(redirector)
-        self._failure_counts[norm] = self._failure_counts.get(norm, 0) + 1
-        self._last_failure_time[norm] = time.time()
-        log.warning(f"Redirector {norm} failed (count: {self._failure_counts[norm]}): {error}")
-        if norm == self.active_redirector and len(self.raw_redirectors) > 1:
-            candidates = [r for r in self.raw_redirectors if r != norm]
-            if candidates:
-                candidates.sort(key=lambda r: self._failure_counts.get(r, 0))
-                self.active_redirector = candidates[0]
+        with self._lock:
+            self._failure_counts[norm] = self._failure_counts.get(norm, 0) + 1
+            self._last_failure_time[norm] = time.time()
+            log.warning(f"Redirector {norm} failed (count: {self._failure_counts[norm]}): {error}")
+            active = (
+                self.raw_redirectors[self._active_index % len(self.raw_redirectors)]
+                if self.raw_redirectors
+                else None
+            )
+            if norm == active and len(self.raw_redirectors) > 1:
+                candidates = [r for r in self.raw_redirectors if r != norm]
+                if candidates:
+                    candidates.sort(key=lambda r: self._failure_counts.get(r, 0))
+                    self._set_active_redirector(candidates[0])
 
     def get_candidates(self) -> List[str]:
         """Return candidate redirectors in order of priority or round-robin."""
-        if not self.raw_redirectors:
-            return [normalize_redirector_url(DEFAULT_REDIRECTOR_URL)]
-        if len(self.raw_redirectors) == 1:
-            return list(self.raw_redirectors)
+        with self._lock:
+            if not self.raw_redirectors:
+                return [normalize_redirector_url(DEFAULT_REDIRECTOR_URL)]
+            if len(self.raw_redirectors) == 1:
+                return list(self.raw_redirectors)
 
-        now = time.time()
-        available = []
-        in_cooldown = []
-        for r in self.raw_redirectors:
-            last_fail = self._last_failure_time.get(r, 0.0)
-            if self._failure_counts.get(r, 0) > 0 and (now - last_fail) < self.cooldown_seconds:
-                in_cooldown.append(r)
-            else:
-                available.append(r)
+            now = time.time()
+            available = []
+            in_cooldown = []
+            for r in self.raw_redirectors:
+                last_fail = self._last_failure_time.get(r, 0.0)
+                if self._failure_counts.get(r, 0) > 0 and (now - last_fail) < self.cooldown_seconds:
+                    in_cooldown.append(r)
+                else:
+                    available.append(r)
 
-        pool = available if available else list(self.raw_redirectors)
+            pool = available if available else list(self.raw_redirectors)
 
-        if self.failover_policy == "round_robin":
-            n = len(pool)
-            start = self._round_robin_counter % n
-            self._round_robin_counter += 1
-            ordered = pool[start:] + pool[:start]
-        else:  # priority
-            active = self.active_redirector
-            others = [r for r in pool if r != active]
-            others.sort(
-                key=lambda r: (
-                    self._failure_counts.get(r, 0),
-                    self.raw_redirectors.index(r),
+            if self.failover_policy == "round_robin":
+                n = len(pool)
+                start = self._round_robin_counter % n
+                self._round_robin_counter += 1
+                ordered = pool[start:] + pool[:start]
+            else:  # priority
+                active = (
+                    self.raw_redirectors[self._active_index % len(self.raw_redirectors)]
+                    if self.raw_redirectors
+                    else None
                 )
-            )
-            ordered = ([active] if active in pool else []) + others
+                others = [r for r in pool if r != active]
+                others.sort(
+                    key=lambda r: (
+                        self._failure_counts.get(r, 0),
+                        self.raw_redirectors.index(r),
+                    )
+                )
+                ordered = ([active] if (active is not None and active in pool) else []) + others
 
-        for r in in_cooldown:
-            if r not in ordered:
-                ordered.append(r)
-        return ordered
+            for r in in_cooldown:
+                if r not in ordered:
+                    ordered.append(r)
+            return ordered
 
     def swap_redirector_in_url(self, url: str, new_redirector: str) -> str:
         """Swap redirector origin in url while strictly preserving double slash '//' and subpath."""
@@ -226,18 +247,25 @@ class RedirectorPool:
             new_parsed.path.strip("/") if not new_parsed.scheme else ""
         )
 
-        # If it is a file:// URL without netloc
-        if new_scheme == "file" or old_parsed.scheme == "file":
-            matched_old = None
-            for r in self.raw_redirectors:
-                r_norm = normalize_redirector_url(r).rstrip("/")
-                if url == r_norm or url.startswith(r_norm + "/"):
-                    matched_old = r_norm
-                    break
-            if matched_old:
-                rel = url[len(matched_old) :].lstrip("/")
-                return f"{norm_new.rstrip('/')}/{rel}"
-            return url
+        with self._lock:
+            raw_candidates = list(self.raw_redirectors)
+
+        # Match against known raw redirectors if present
+        matched_old = None
+        for r in raw_candidates:
+            r_norm = normalize_redirector_url(r)
+            prefix = r_norm if r_norm.endswith("://") else r_norm.rstrip("/")
+            if url == prefix or url.startswith(prefix + "/"):
+                matched_old = prefix
+                break
+        if matched_old:
+            rel = url[len(matched_old) :].lstrip("/")
+            if new_scheme == "root":
+                netloc = new_netloc or norm_new.split("://", 1)[1].strip("/")
+                return f"root://{netloc}//{rel}"
+            if norm_new.endswith("://"):
+                return f"{norm_new}/{rel}"
+            return f"{norm_new.rstrip('/')}/{rel}"
 
         # Networked and virtual schemes (root://, memory://, http://)
         if old_parsed.netloc and new_netloc:
@@ -496,10 +524,12 @@ class XRootDBackend(strax.StorageBackend):
         self.scope_prefix = scope_prefix
         self.redirector_pool = redirector_pool
         self._metadata_cache: OrderedDict[str, dict] = OrderedDict()
+        self._cache_lock = threading.Lock()
 
     def clear_metadata_cache(self) -> None:
         """Clear the in-memory metadata cache."""
-        self._metadata_cache.clear()
+        with self._cache_lock:
+            self._metadata_cache.clear()
 
     def _get_fs_and_path(self, backend_key: str):
         """Extract filesystem instance and physical path for a backend key."""
@@ -513,9 +543,11 @@ class XRootDBackend(strax.StorageBackend):
 
         """
         key_str = str(backend_key)
-        if self.cache_metadata and key_str in self._metadata_cache:
-            self._metadata_cache.move_to_end(key_str)
-            return self._metadata_cache[key_str]
+        if self.cache_metadata:
+            with self._cache_lock:
+                if key_str in self._metadata_cache:
+                    self._metadata_cache.move_to_end(key_str)
+                    return self._metadata_cache[key_str]
 
         is_rucio = self.rucio_mode or (":" in key_str.split("/")[-1])
 
@@ -537,12 +569,12 @@ class XRootDBackend(strax.StorageBackend):
             rel_path = rucio_deterministic_path(md_did)
             candidates.append(f"{base_url}/{rel_path}")
         else:
-            fs, path = self._get_fs_and_path(key_str)
+            path = urlsplit(key_str).path
             if path.endswith(".json"):
                 candidates = [key_str]
             else:
                 clean_path = key_str.rstrip("/")
-                folder_name = clean_path.split("/")[-1].replace("_temp", "")
+                folder_name = clean_path.split("/")[-1].removesuffix("_temp")
                 if "-" in folder_name:
                     try:
                         prefix = folder_name.split("-", maxsplit=1)[1]
@@ -571,9 +603,10 @@ class XRootDBackend(strax.StorageBackend):
                         content = f.read()
                         md = json.loads(content.decode("utf-8"))
                         if self.cache_metadata:
-                            if len(self._metadata_cache) >= self.max_cache_size:
-                                self._metadata_cache.popitem(last=False)
-                            self._metadata_cache[key_str] = md
+                            with self._cache_lock:
+                                if len(self._metadata_cache) >= self.max_cache_size:
+                                    self._metadata_cache.popitem(last=False)
+                                self._metadata_cache[key_str] = md
                         if self.redirector_pool is not None and red is not None:
                             self.redirector_pool.mark_success(red)
                         return md
@@ -585,6 +618,8 @@ class XRootDBackend(strax.StorageBackend):
                     ConnectionError,
                 ) as e:
                     last_error = e
+                    if is_endpoint_failure(e):
+                        break
                     continue
                 except json.JSONDecodeError as e:
                     raise strax.DataCorrupted(
