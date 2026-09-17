@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple, Union
 from immutabledict import immutabledict
 import socket
 
@@ -147,12 +147,24 @@ def xenonnt(
     include_rucio_remote: bool = False,
     include_online_monitor: bool = False,
     include_rucio_local: bool = False,
+    include_xrootd: bool = False,
     # Frontend options
     download_heavy: bool = False,
     remove_heavy: bool = False,
     _auto_append_rucio_local: bool = True,
     _rucio_path: str = "/dali/lgrandi/rucio/",
     _rucio_local_path: Optional[str] = None,
+    _xrootd_url: Optional[str] = None,
+    _xrootd_urls: Optional[Union[List[str], Tuple[str, ...], str]] = None,
+    _xrootd_fallback_redirectors: Optional[Union[List[str], Tuple[str, ...], str]] = None,
+    _xrootd_subpath: Optional[str] = None,
+    _xrootd_token: Optional[str] = None,
+    _xrootd_token_file: Optional[str] = None,
+    _xrootd_discover_token: bool = True,
+    _xrootd_rucio_mode: bool = False,
+    _xrootd_scope_prefix: str = "xnt_",
+    _xrootd_failover_policy: str = "priority",
+    _xrootd_kwargs: Optional[dict] = None,
     _raw_paths: List[str] = ["/dali/lgrandi/xenonnt/raw"],
     _processed_paths: List[str] = [
         "/project/lgrandi/xenonnt/processed",
@@ -281,6 +293,22 @@ def xenonnt(
     if include_rucio_local:
         rucio_local_frontend = straxen.RucioLocalFrontend(path=_rucio_local_path)
         st.storage += [rucio_local_frontend]
+
+    if include_xrootd:
+        xrootd_frontend = straxen.XRootDFrontend(
+            redirector_url=_xrootd_url,
+            redirector_urls=_xrootd_urls,
+            fallback_redirectors=_xrootd_fallback_redirectors,
+            subpath=_xrootd_subpath,
+            token=_xrootd_token,
+            token_file=_xrootd_token_file,
+            discover_token=_xrootd_discover_token,
+            rucio_mode=_xrootd_rucio_mode,
+            scope_prefix=_xrootd_scope_prefix,
+            failover_policy=_xrootd_failover_policy,
+            xrootd_kwargs=_xrootd_kwargs,
+        )
+        st.storage += [xrootd_frontend]
 
     # Only the online monitor backend for the DAQ
     if _database_init and (include_online_monitor or we_are_the_daq):
