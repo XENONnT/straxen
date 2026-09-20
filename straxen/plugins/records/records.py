@@ -168,7 +168,13 @@ class PulseProcessing(strax.Plugin):
 
         # Throw away any non-TPC records; this should only happen for XENON1T
         # converted data
-        raw_records = raw_records[raw_records["channel"] < self.n_tpc_pmts]
+        if (
+            len(raw_records)
+            and raw_records["channel"].max() >= self.n_tpc_pmts
+        ):
+            raw_records = raw_records[
+                raw_records["channel"] < self.n_tpc_pmts
+            ]
 
         # Convert everything to the records data type -- adds extra fields.
         r = strax.raw_to_records(raw_records)
