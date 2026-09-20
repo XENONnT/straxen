@@ -1,3 +1,81 @@
+## For now implemented as context manager overwrite to strax io
+# Should be in strax directly
+from contextlib import contextmanager
+import functools
+import os
+
+import lz4.frame as lz4
+import strax.io
+
+
+def _lz4_decompress_v1(f):
+    """
+    Memory-efficient whole-frame LZ4 decompression for regular files.
+    Reduces memory churn by placing lz4 into buffer rather than a new 
+    buffer every time 
+    """
+    try:
+        current = f.tell()
+        file_size = os.fstat(f.fileno()).st_size
+        n_bytes = file_size - current
+    except (AttributeError, OSError, ValueError):
+        compressed = f.read()
+    else:
+        compressed = bytearray(n_bytes)
+        view = memoryview(compressed)
+
+        offset = 0
+        while offset < n_bytes:
+            n = f.readinto(view[offset:])
+
+            if not n:
+                raise EOFError(
+                    f"Unexpected EOF after {offset} of {n_bytes} bytes"
+                )
+
+            offset += n
+
+        del view
+
+    return lz4.decompress(
+        compressed,
+        return_bytearray=True,
+    )
+
+@contextmanager
+def temporary_lz4_decompressor():
+    """
+    Use ``_lz4_decompress_v1`` for strax's ``lz4`` compressor only
+    inside this context.
+
+    The original compressor registry entry is restored even if processing
+    raises an exception.
+    """
+    original = strax.io.COMPRESSORS["lz4"]
+
+    strax.io.COMPRESSORS["lz4"] = {
+        **original,
+        "_decompress": _lz4_decompress_v1,
+    }
+
+    try:
+        yield
+    finally:
+        strax.io.COMPRESSORS["lz4"] = original
+
+def use_lz4_variation_during_compute(func):
+    @functools.wraps(func)
+    def wrapped(self, *args, **kwargs):
+        # Preserve other compressor configurations 
+        if self.config["daq_compressor"] != "lz4":
+            return func(self, *args, **kwargs)
+
+        with temporary_lz4_decompressor():
+            return func(self, *args, **kwargs)
+
+    return wrapped
+
+
 import os
 import glob
 import warnings
@@ -327,6 +405,7 @@ class DAQReader(strax.Plugin):
             self.dtype_for("raw_records"),
         )
 
+    @use_lz4_variation_during_compute
     def compute(self, chunk_i):
         dt_central = self.config["daq_chunk_duration"]
         dt_overlap = self.config["daq_overlap_chunk_duration"]
