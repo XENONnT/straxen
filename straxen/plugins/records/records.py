@@ -531,7 +531,7 @@ def _check_overlaps(records, last_end):
 
 ## RAM optimized helper functions 
 # These are likely more appropriate inside strax?
-@numba.njit(nogil=True)
+@numba.njit(cache=True, nogil=True)
 def _build_hit_offsets(
     hits,
     n_records,
@@ -571,7 +571,7 @@ def _build_hit_offsets(
     return offsets
 
 
-@numba.njit(nogil=True)
+@numba.njit(cache=True, nogil=True)
 def _cut_outside_hits_inplace_core(
     records,
     hits,
