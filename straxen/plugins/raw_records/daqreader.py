@@ -335,8 +335,12 @@ class DAQReader(strax.Plugin):
         t_end = t_start + dt_central
 
         pre, current, post = self._chunk_paths(chunk_i)
-        r_pre, r_post = None, None
-        break_pre, break_post = t_start, t_end
+
+        break_pre = t_start
+        break_post = t_end
+
+        # Keep the only references in this mutable list.
+        parts = [None, None, None]
 
         if pre:
             if chunk_i == 0:
@@ -346,36 +350,59 @@ class DAQReader(strax.Plugin):
                     UserWarning,
                 )
             else:
-                r_pre, break_pre = self._load_chunk(
-                    path=pre, start=t_start - dt_overlap, end=t_start, kind="pre"
+                parts[0], break_pre = self._load_chunk(
+                    path=pre,
+                    start=t_start - dt_overlap,
+                    end=t_start,
+                    kind="pre",
                 )
 
-        r_main, _ = self._load_chunk(path=current, start=t_start, end=t_end, kind="central")
+        parts[1], _ = self._load_chunk(
+            path=current,
+            start=t_start,
+            end=t_end,
+            kind="central",
+        )
 
         if post:
-            r_post, break_post = self._load_chunk(
-                path=post, start=t_end, end=t_end + dt_overlap, kind="post"
+            parts[2], break_post = self._load_chunk(
+                path=post,
+                start=t_end,
+                end=t_end + dt_overlap,
+                kind="post",
             )
 
-        # Concatenate the result.
-        records = np.concatenate([x for x in (r_pre, r_main, r_post) if x is not None])
-
-        # Split records by channel
-        result_arrays = split_channel_ranges(
-            records, np.asarray(list(self.config["channel_map"].values()))
+        # Make this once
+        if not hasattr(self, "_channel_to_detector"):
+            self._channel_to_detector = _make_channel_to_detector(
+                self.config["channel_map"]
+            )
+        result_arrays, output_sorted = split_channel_ranges_from_parts(
+            parts,
+            self.config["channel_map"],
+            self._channel_to_detector,
+            self.dtype_for("raw_records"),
+            self.t0,
         )
-        del records
+
+        del parts
+
+        # Fallback only. Absolute time has been added and sorted
+        # If a detector output is unexpectedly unsorted, fall back to
+        # the standard allocating sort for that detector only.
+        # Could also be optimized, this path should never execute
+        subdetectors = tuple(self.config["channel_map"])
+        for i, sorted_ in enumerate(output_sorted):
+            if not sorted_:
+                warnings.warn(
+                    f"{subdetectors[i]} output was not sorted; "
+                    "falling back to strax.sort_by_time"
+                )
+                result_arrays[i] = strax.sort_by_time(result_arrays[i])
 
         # Convert to strax chunks
         result = dict()
-        for i, subd in enumerate(self.config["channel_map"]):
-            if len(result_arrays[i]):
-                # dt may differ per subdetector
-                dt = result_arrays[i]["dt"][0]
-                # Convert time to time in ns since unix epoch.
-                # Ensure the offset is a whole digitizer sample
-                result_arrays[i]["time"] += dt * (np.int64(self.t0) // dt)
-
+        for i, subd in enumerate(subdetectors):
             # Ignore data from the 'blank' channels, corresponding to
             # channels that have nothing connected
             if subd.endswith("blank"):
@@ -400,6 +427,202 @@ class DAQReader(strax.Plugin):
                 print(f"\t{r}")
         return result
 
+@numba.njit(nogil=True)
+def count_by_detector_and_get_dt(
+    records,
+    channel_to_detector,
+    counts,
+    detector_dt,
+    detector_seen,
+):
+    """
+    Count records per detector and record the first sample width for each
+
+    Unknown or unmapped channels are treated as invalid DAQ data and raise a
+    `ValueError`.
+    """
+    for i in range(len(records)):
+        ch = records[i]["channel"]
+
+        if ch < 0 or ch >= len(channel_to_detector):
+            raise ValueError("Bad data from DAQ: data in unknown channel")
+
+        d = channel_to_detector[ch]
+
+        if d < 0:
+            raise ValueError("Bad data from DAQ: data in unknown channel")
+
+        counts[d] += 1
+
+        # This becomes exactly output[d]["dt"][0]
+        if not detector_seen[d]:
+            detector_dt[d] = records[i]["dt"]
+            detector_seen[d] = True
+
+def _make_channel_to_detector(channel_map):
+    """
+    Produces a lut mapping from channel (int) to detector (tpc, nv, mv,...) 
+    """
+    max_channel = max(right for left, right in channel_map.values())
+
+    lut = np.full(max_channel + 1, -1, dtype=np.int16)
+
+    for d, (left, right) in enumerate(channel_map.values()):
+        if np.any(lut[left:right + 1] != -1):
+            raise ValueError("Overlapping channel ranges")
+
+        lut[left:right + 1] = d
+
+    return lut
+
+@numba.njit(nogil=True, cache=True)
+def scatter_part(
+    records,
+    channel_to_detector,
+    outputs,
+    positions,
+    time_offsets,
+    last_time,
+    last_channel,
+    output_sorted,
+):
+    """
+    Scatter raw records into preallocated detector outputs.
+
+    Records are routed according to ``channel_to_detector`` and copied
+    directly into their final detector-specific buffers. The detector
+    time offset is applied during the copy, avoiding a later full-array
+    pass.
+
+    Ordering state is preserved across successive calls through 
+    `positions`, `last_time`, and `last_channel`. 
+    Once an output is found to be unsorted, `output_sorted[d]` 
+    remains False.
+
+    Assumes `outputs` have already been allocated to exact final sizes 
+    and `positions` contains the next write position for each detector.
+    """
+    for i in range(len(records)):
+        ch = records[i]["channel"]
+        d = channel_to_detector[ch]
+
+        j = positions[d]
+        t = records[i]["time"]
+
+        # j > 0 means this detector has already received a record.
+        if j:
+            if output_sorted[d]:
+                lt = last_time[d]
+
+                if (
+                    t < lt
+                    or (
+                        t == lt
+                        and ch < last_channel[d]
+                    )
+                ):
+                    output_sorted[d] = False
+
+        last_time[d] = t
+        last_channel[d] = ch
+
+        # Fetch detector output once.
+        out = outputs[d]
+
+        # Full record copy.
+        out[j] = records[i]
+
+        # Fold the old later full-array time adjustment into this write.
+        out[j]["time"] = t + time_offsets[d]
+
+        positions[d] = j + 1
+
+@export
+def split_channel_ranges_from_parts(
+    parts,
+    channel_map,
+    channel_to_detector, 
+    dtype,
+    t0,
+):
+    """
+    Rewrite of split_channel_ranges to remove concatenation in compute. 
+
+    `parts` MUST be a mutable list.
+
+    The entries are cleared as soon as they have been copied into
+    their final detector arrays.
+    """
+    n_detectors = len(channel_map)
+
+    counts = np.zeros(n_detectors, dtype=np.int64)
+
+    # dt dtype in raw_records is int16 currently, 
+    # but int64 here is tiny and makes the offset 
+    # arithmetic straightforward.
+    detector_dt = np.zeros(n_detectors, dtype=np.int64)
+    detector_seen = np.zeros(n_detectors, dtype=np.bool_)
+
+    # determine final output sizes and the first dt for each
+    # detector.
+    for x in parts:
+        if x is not None:
+            count_by_detector_and_get_dt(
+                x,
+                channel_to_detector,
+                counts,
+                detector_dt,
+                detector_seen,
+            )
+
+    # Final Buffer
+    outputs = numba.typed.List()
+
+    for n in counts:
+        outputs.append(
+            np.empty(int(n), dtype=dtype)
+        )
+
+    # Time offset that compute previously applied afterwards.
+    time_offsets = np.zeros(n_detectors, dtype=np.int64)
+
+    for d in range(n_detectors):
+        if detector_seen[d]:
+            dt = detector_dt[d]
+            time_offsets[d] = dt * (np.int64(t0) // dt)
+
+    positions = np.zeros(n_detectors, dtype=np.int64)
+
+    # Sortedness maintained while copying.
+    last_time = np.zeros(n_detectors, dtype=np.int64)
+    last_channel = np.zeros(n_detectors, dtype=np.int64)
+    output_sorted = np.ones(n_detectors, dtype=np.bool_)
+
+    # copy directly to final buffers.
+    for i in range(len(parts)):
+        x = parts[i]
+
+        if x is None:
+            continue
+
+        scatter_part(
+            x,
+            channel_to_detector,
+            outputs,
+            positions,
+            time_offsets,
+            last_time,
+            last_channel,
+            output_sorted,
+        )
+
+        # Critical: caller can not retain a reference.
+        parts[i] = None
+
+    if not np.array_equal(positions, counts):
+        raise RuntimeError("Internal error while splitting records")
+
+    return outputs, output_sorted
 
 @export
 @numba.njit(nogil=True, cache=True)
