@@ -237,7 +237,7 @@ class DAQReader(strax.Plugin):
             for fn in sorted(glob.glob(f"{path}/*"))
         ]
         records = np.concatenate(records)
-        records = strax.sort_by_time(records)
+        records = sort_by_time_in_place(records)
 
         first_start, last_start, last_end = None, None, None
         if len(records):
@@ -426,6 +426,103 @@ class DAQReader(strax.Plugin):
             if r._mbs() > 0:
                 print(f"\t{r}")
         return result
+
+@numba.njit(nogil=True)
+def apply_permutation_in_place(raw_bytes, permutation):
+    """
+    Transform rows so that:
+
+        new[i] = old[permutation[i]]
+
+    permutation is destroyed in the process.
+    """
+    n, row_size = raw_bytes.shape
+    tmp = np.empty(row_size, dtype=np.uint8)
+
+    for start in range(n):
+        if permutation[start] == start:
+            continue
+
+        # Save the row that will eventually close this cycle
+        for b in range(row_size):
+            tmp[b] = raw_bytes[start, b]
+
+        j = start
+
+        while True:
+            k = permutation[j]
+
+            if k == start:
+                for b in range(row_size):
+                    raw_bytes[j, b] = tmp[b]
+
+                permutation[j] = j
+                break
+
+            for b in range(row_size):
+                raw_bytes[j, b] = raw_bytes[k, b]
+
+            permutation[j] = j
+            j = k
+
+def sort_by_time_in_place(records):
+    """
+    Same effective ordering as strax.sort_by_time for normal DAQ chunks,
+    applies the permutation to the existing record allocation.
+
+    Falls back to stock strax sorting if the packed int64 key is unsafe.
+    """
+    if len(records) < 2:
+        return records
+
+    channel = records["channel"].copy()
+
+    min_channel = int(channel.min())
+    if min_channel < 0:
+        # NOTE: Wouldn't it be more correct to do 
+        # raise ValueError("Bad data from DAQ: data in unknown channel")
+        # Since negative channels may not exist? 
+        channel -= min_channel
+
+    max_channel_plus_one = int(channel.max()) + 1
+
+    t = records["time"]
+    t_min = int(t.min())
+    t_range = int(t.max()) - t_min
+
+    # Same reason strax has a fallback for very large time ranges:
+    # packed (time, channel) key must fit in int64.
+    if (
+        max_channel_plus_one <= 0
+        or t_range > np.iinfo(np.int64).max // max_channel_plus_one
+    ):
+        return strax.sort_by_time(records)
+
+    # Build only ONE N*int64 key array.
+    sort_key = t.copy()
+    sort_key -= t_min
+    sort_key *= max_channel_plus_one
+    sort_key += channel
+
+    del channel
+
+    # Same stable ordering we already used in our earlier test.
+    sort_i = strax.stable_argsort(
+        sort_key,
+        kind="mergesort",
+    )
+
+    del sort_key
+
+    # Zero-copy byte view of the existing structured array.
+    raw_bytes = records.view(np.uint8).reshape(
+        len(records),
+        records.dtype.itemsize,
+    )
+
+    apply_permutation_in_place(raw_bytes, sort_i)
+
+    return records
 
 @numba.njit(nogil=True)
 def count_by_detector_and_get_dt(
