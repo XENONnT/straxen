@@ -5,6 +5,7 @@ import numpy as np
 
 import strax
 import straxen
+import strax.processing.pulse_processing as pulse_processing
 
 export, __all__ = strax.exporter()
 __all__.extend(["NO_PULSE_COUNTS"])
@@ -524,7 +525,7 @@ def _check_overlaps(records, last_end):
     return -9999, -9999
 
 
-## RAM optimized helper functions
+# RAM optimized helper functions
 # These are likely more appropriate inside strax?
 @numba.njit(cache=True, nogil=True)
 def _build_hit_offsets(
@@ -719,7 +720,6 @@ def cut_outside_hits_inplace(
     return records
 
 
-import strax.processing.pulse_processing as pulse_processing
 
 # Original strax Numba kernel underneath growing_result
 _FIND_HITS_BUFFER_KERNEL = pulse_processing._find_hits.__wrapped__

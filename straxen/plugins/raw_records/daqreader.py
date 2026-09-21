@@ -1,4 +1,4 @@
-## For now implemented as context manager overwrite to strax io
+# For now implemented as context manager overwrite to strax io
 # Should be in strax directly
 from contextlib import contextmanager
 import functools
@@ -7,6 +7,15 @@ import os
 import lz4.frame as lz4
 import strax.io
 
+import glob
+import warnings
+from typing import Tuple
+from collections import Counter
+from immutabledict import immutabledict
+
+import numpy as np
+import numba
+import strax
 
 def _lz4_decompress_v1(f):
     """Memory-efficient whole-frame LZ4 decompression for regular files.
@@ -74,16 +83,7 @@ def use_lz4_variation_during_compute(func):
     return wrapped
 
 
-import os
-import glob
-import warnings
-from typing import Tuple
-from collections import Counter
-from immutabledict import immutabledict
 
-import numpy as np
-import numba
-import strax
 
 export, __all__ = strax.exporter()
 __all__.extend(["ARTIFICIAL_DEADTIME_CHANNEL"])
