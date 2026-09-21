@@ -720,7 +720,6 @@ def cut_outside_hits_inplace(
     return records
 
 
-
 # Original strax Numba kernel underneath growing_result
 _FIND_HITS_BUFFER_KERNEL = pulse_processing._find_hits.__wrapped__
 

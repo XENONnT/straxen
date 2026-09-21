@@ -17,6 +17,7 @@ import numpy as np
 import numba
 import strax
 
+
 def _lz4_decompress_v1(f):
     """Memory-efficient whole-frame LZ4 decompression for regular files.
 
@@ -81,8 +82,6 @@ def use_lz4_variation_during_compute(func):
             return func(self, *args, **kwargs)
 
     return wrapped
-
-
 
 
 export, __all__ = strax.exporter()
