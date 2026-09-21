@@ -9,10 +9,10 @@ import strax.io
 
 
 def _lz4_decompress_v1(f):
-    """
-    Memory-efficient whole-frame LZ4 decompression for regular files.
-    Reduces memory churn by placing lz4 into buffer rather than a new 
-    buffer every time 
+    """Memory-efficient whole-frame LZ4 decompression for regular files.
+
+    Reduces memory churn by placing lz4 into buffer rather than a new buffer every time
+
     """
     try:
         current = f.tell()
@@ -29,9 +29,7 @@ def _lz4_decompress_v1(f):
             n = f.readinto(view[offset:])
 
             if not n:
-                raise EOFError(
-                    f"Unexpected EOF after {offset} of {n_bytes} bytes"
-                )
+                raise EOFError(f"Unexpected EOF after {offset} of {n_bytes} bytes")
 
             offset += n
 
@@ -42,14 +40,13 @@ def _lz4_decompress_v1(f):
         return_bytearray=True,
     )
 
+
 @contextmanager
 def temporary_lz4_decompressor():
-    """
-    Use ``_lz4_decompress_v1`` for strax's ``lz4`` compressor only
-    inside this context.
+    """Use ``_lz4_decompress_v1`` for strax's ``lz4`` compressor only inside this context.
 
-    The original compressor registry entry is restored even if processing
-    raises an exception.
+    The original compressor registry entry is restored even if processing raises an exception.
+
     """
     original = strax.io.COMPRESSORS["lz4"]
 
@@ -63,10 +60,11 @@ def temporary_lz4_decompressor():
     finally:
         strax.io.COMPRESSORS["lz4"] = original
 
+
 def use_lz4_variation_during_compute(func):
     @functools.wraps(func)
     def wrapped(self, *args, **kwargs):
-        # Preserve other compressor configurations 
+        # Preserve other compressor configurations
         if self.config["daq_compressor"] != "lz4":
             return func(self, *args, **kwargs)
 
@@ -453,9 +451,7 @@ class DAQReader(strax.Plugin):
 
         # Make this once
         if not hasattr(self, "_channel_to_detector"):
-            self._channel_to_detector = _make_channel_to_detector(
-                self.config["channel_map"]
-            )
+            self._channel_to_detector = _make_channel_to_detector(self.config["channel_map"])
         result_arrays, output_sorted = split_channel_ranges_from_parts(
             parts,
             self.config["channel_map"],
@@ -506,6 +502,7 @@ class DAQReader(strax.Plugin):
                 print(f"\t{r}")
         return result
 
+
 @numba.njit(nogil=True)
 def apply_permutation_in_place(raw_bytes, permutation):
     """
@@ -544,12 +541,13 @@ def apply_permutation_in_place(raw_bytes, permutation):
             permutation[j] = j
             j = k
 
+
 def sort_by_time_in_place(records):
-    """
-    Same effective ordering as strax.sort_by_time for normal DAQ chunks,
-    applies the permutation to the existing record allocation.
+    """Same effective ordering as strax.sort_by_time for normal DAQ chunks, applies the permutation
+    to the existing record allocation.
 
     Falls back to stock strax sorting if the packed int64 key is unsafe.
+
     """
     if len(records) < 2:
         return records
@@ -558,9 +556,9 @@ def sort_by_time_in_place(records):
 
     min_channel = int(channel.min())
     if min_channel < 0:
-        # NOTE: Wouldn't it be more correct to do 
+        # NOTE: Wouldn't it be more correct to do
         # raise ValueError("Bad data from DAQ: data in unknown channel")
-        # Since negative channels may not exist? 
+        # Since negative channels may not exist?
         channel -= min_channel
 
     max_channel_plus_one = int(channel.max()) + 1
@@ -571,10 +569,7 @@ def sort_by_time_in_place(records):
 
     # Same reason strax has a fallback for very large time ranges:
     # packed (time, channel) key must fit in int64.
-    if (
-        max_channel_plus_one <= 0
-        or t_range > np.iinfo(np.int64).max // max_channel_plus_one
-    ):
+    if max_channel_plus_one <= 0 or t_range > np.iinfo(np.int64).max // max_channel_plus_one:
         return strax.sort_by_time(records)
 
     # Build only ONE N*int64 key array.
@@ -603,6 +598,7 @@ def sort_by_time_in_place(records):
 
     return records
 
+
 @numba.njit(nogil=True)
 def count_by_detector_and_get_dt(
     records,
@@ -611,11 +607,11 @@ def count_by_detector_and_get_dt(
     detector_dt,
     detector_seen,
 ):
-    """
-    Count records per detector and record the first sample width for each
+    """Count records per detector and record the first sample width for each.
 
     Unknown or unmapped channels are treated as invalid DAQ data and raise a
     `ValueError`.
+
     """
     for i in range(len(records)):
         ch = records[i]["channel"]
@@ -635,21 +631,21 @@ def count_by_detector_and_get_dt(
             detector_dt[d] = records[i]["dt"]
             detector_seen[d] = True
 
+
 def _make_channel_to_detector(channel_map):
-    """
-    Produces a lut mapping from channel (int) to detector (tpc, nv, mv,...) 
-    """
+    """Produces a lut mapping from channel (int) to detector (tpc, nv, mv,...)"""
     max_channel = max(right for left, right in channel_map.values())
 
     lut = np.full(max_channel + 1, -1, dtype=np.int16)
 
     for d, (left, right) in enumerate(channel_map.values()):
-        if np.any(lut[left:right + 1] != -1):
+        if np.any(lut[left : right + 1] != -1):
             raise ValueError("Overlapping channel ranges")
 
-        lut[left:right + 1] = d
+        lut[left : right + 1] = d
 
     return lut
+
 
 @numba.njit(nogil=True, cache=True)
 def scatter_part(
@@ -662,21 +658,21 @@ def scatter_part(
     last_channel,
     output_sorted,
 ):
-    """
-    Scatter raw records into preallocated detector outputs.
+    """Scatter raw records into preallocated detector outputs.
 
     Records are routed according to ``channel_to_detector`` and copied
     directly into their final detector-specific buffers. The detector
     time offset is applied during the copy, avoiding a later full-array
     pass.
 
-    Ordering state is preserved across successive calls through 
-    `positions`, `last_time`, and `last_channel`. 
-    Once an output is found to be unsorted, `output_sorted[d]` 
+    Ordering state is preserved across successive calls through
+    `positions`, `last_time`, and `last_channel`.
+    Once an output is found to be unsorted, `output_sorted[d]`
     remains False.
 
-    Assumes `outputs` have already been allocated to exact final sizes 
+    Assumes `outputs` have already been allocated to exact final sizes
     and `positions` contains the next write position for each detector.
+
     """
     for i in range(len(records)):
         ch = records[i]["channel"]
@@ -690,13 +686,7 @@ def scatter_part(
             if output_sorted[d]:
                 lt = last_time[d]
 
-                if (
-                    t < lt
-                    or (
-                        t == lt
-                        and ch < last_channel[d]
-                    )
-                ):
+                if t < lt or (t == lt and ch < last_channel[d]):
                     output_sorted[d] = False
 
         last_time[d] = t
@@ -713,28 +703,29 @@ def scatter_part(
 
         positions[d] = j + 1
 
+
 @export
 def split_channel_ranges_from_parts(
     parts,
     channel_map,
-    channel_to_detector, 
+    channel_to_detector,
     dtype,
     t0,
 ):
-    """
-    Rewrite of split_channel_ranges to remove concatenation in compute. 
+    """Rewrite of split_channel_ranges to remove concatenation in compute.
 
     `parts` MUST be a mutable list.
 
     The entries are cleared as soon as they have been copied into
     their final detector arrays.
+
     """
     n_detectors = len(channel_map)
 
     counts = np.zeros(n_detectors, dtype=np.int64)
 
-    # dt dtype in raw_records is int16 currently, 
-    # but int64 here is tiny and makes the offset 
+    # dt dtype in raw_records is int16 currently,
+    # but int64 here is tiny and makes the offset
     # arithmetic straightforward.
     detector_dt = np.zeros(n_detectors, dtype=np.int64)
     detector_seen = np.zeros(n_detectors, dtype=np.bool_)
@@ -755,9 +746,7 @@ def split_channel_ranges_from_parts(
     outputs = numba.typed.List()
 
     for n in counts:
-        outputs.append(
-            np.empty(int(n), dtype=dtype)
-        )
+        outputs.append(np.empty(int(n), dtype=dtype))
 
     # Time offset that compute previously applied afterwards.
     time_offsets = np.zeros(n_detectors, dtype=np.int64)
@@ -799,6 +788,7 @@ def split_channel_ranges_from_parts(
         raise RuntimeError("Internal error while splitting records")
 
     return outputs, output_sorted
+
 
 @export
 @numba.njit(nogil=True, cache=True)

@@ -168,13 +168,8 @@ class PulseProcessing(strax.Plugin):
 
         # Throw away any non-TPC records; this should only happen for XENON1T
         # converted data
-        if (
-            len(raw_records)
-            and raw_records["channel"].max() >= self.n_tpc_pmts
-        ):
-            raw_records = raw_records[
-                raw_records["channel"] < self.n_tpc_pmts
-            ]
+        if len(raw_records) and raw_records["channel"].max() >= self.n_tpc_pmts:
+            raw_records = raw_records[raw_records["channel"] < self.n_tpc_pmts]
 
         # Convert everything to the records data type -- adds extra fields.
         r = strax.raw_to_records(raw_records)
@@ -234,7 +229,7 @@ class PulseProcessing(strax.Plugin):
                 right_extension=re,
             )
             del hits
-            
+
             # Probably overkill, but just to be sure...
             strax.zero_out_of_bounds(r)
 
@@ -529,7 +524,7 @@ def _check_overlaps(records, last_end):
     return -9999, -9999
 
 
-## RAM optimized helper functions 
+## RAM optimized helper functions
 # These are likely more appropriate inside strax?
 @numba.njit(cache=True, nogil=True)
 def _build_hit_offsets(
@@ -555,18 +550,13 @@ def _build_hit_offsets(
 
         offsets[r_i] = h_i
 
-        while (
-            h_i < len(hits)
-            and hits[h_i]["record_i"] == r_i
-        ):
+        while h_i < len(hits) and hits[h_i]["record_i"] == r_i:
             h_i += 1
 
     offsets[n_records] = h_i
 
     if h_i != len(hits):
-        raise ValueError(
-            "Hit record_i is outside records or hits are not ordered"
-        )
+        raise ValueError("Hit record_i is outside records or hits are not ordered")
 
     return offsets
 
@@ -582,16 +572,12 @@ def _cut_outside_hits_inplace_core(
     right_extension,
     reduction_level,
 ):
-    """
-    Zero samples outside hit-preservation windows directly in records.
-    """
+    """Zero samples outside hit-preservation windows directly in records."""
 
     if not len(records):
         return
 
-    samples_per_record = len(
-        records[0]["data"]
-    )
+    samples_per_record = len(records[0]["data"])
 
     for r_i in range(len(records)):
 
@@ -613,17 +599,11 @@ def _cut_outside_hits_inplace_core(
                 hit_offsets[prev_i + 1],
             ):
 
-                end_keep = (
-                    hits[h_i]["right"]
-                    + right_extension
-                )
+                end_keep = hits[h_i]["right"] + right_extension
 
                 if end_keep > samples_per_record:
 
-                    b = (
-                        end_keep
-                        - samples_per_record
-                    )
+                    b = end_keep - samples_per_record
 
                     if b > samples_per_record:
                         b = samples_per_record
@@ -647,17 +627,11 @@ def _cut_outside_hits_inplace_core(
                 hit_offsets[next_i + 1],
             ):
 
-                start_keep = (
-                    hits[h_i]["left"]
-                    - left_extension
-                )
+                start_keep = hits[h_i]["left"] - left_extension
 
                 if start_keep < 0:
 
-                    a = (
-                        samples_per_record
-                        + start_keep
-                    )
+                    a = samples_per_record + start_keep
 
                     if a < 0:
                         a = 0
@@ -672,24 +646,16 @@ def _cut_outside_hits_inplace_core(
 
         cursor = prefix_end
 
-        record_length = int(
-            r["length"]
-        )
+        record_length = int(r["length"])
 
         for h_i in range(
             hit_offsets[r_i],
             hit_offsets[r_i + 1],
         ):
 
-            a = (
-                hits[h_i]["left"]
-                - left_extension
-            )
+            a = hits[h_i]["left"] - left_extension
 
-            b = (
-                hits[h_i]["right"]
-                + right_extension
-            )
+            b = hits[h_i]["right"] + right_extension
 
             if a < 0:
                 a = 0
@@ -716,13 +682,10 @@ def _cut_outside_hits_inplace_core(
                 cursor = b
 
         if cursor < suffix_start:
-            r["data"][
-                cursor:suffix_start
-            ] = 0
+            r["data"][cursor:suffix_start] = 0
 
-        r["reduction_level"] = (
-            reduction_level
-        )
+        r["reduction_level"] = reduction_level
+
 
 def cut_outside_hits_inplace(
     records,
@@ -730,17 +693,12 @@ def cut_outside_hits_inplace(
     left_extension=2,
     right_extension=15,
 ):
-    """
-    In-place equivalent of strax.cut_outside_hits for the
-    PulseProcessing use case.
-    """
+    """In-place equivalent of strax.cut_outside_hits for the PulseProcessing use case."""
 
     if not len(records):
         return records
 
-    previous_record, next_record = (
-        strax.record_links(records)
-    )
+    previous_record, next_record = strax.record_links(records)
 
     hit_offsets = _build_hit_offsets(
         hits,
@@ -755,34 +713,36 @@ def cut_outside_hits_inplace(
         next_record,
         int(left_extension),
         int(right_extension),
-        int(
-            strax.ReductionLevel.HITS_ONLY
-        ),
+        int(strax.ReductionLevel.HITS_ONLY),
     )
 
     return records
 
 
 import strax.processing.pulse_processing as pulse_processing
+
 # Original strax Numba kernel underneath growing_result
 _FIND_HITS_BUFFER_KERNEL = pulse_processing._find_hits.__wrapped__
 
 FULL_HIT_DTYPE = np.dtype(strax.hit_dtype)
 
-COMPACT_HIT_DTYPE = np.dtype([
-    (
-        "record_i",
-        FULL_HIT_DTYPE.fields["record_i"][0],
-    ),
-    (
-        "left",
-        FULL_HIT_DTYPE.fields["left"][0],
-    ),
-    (
-        "right",
-        FULL_HIT_DTYPE.fields["right"][0],
-    ),
-])
+COMPACT_HIT_DTYPE = np.dtype(
+    [
+        (
+            "record_i",
+            FULL_HIT_DTYPE.fields["record_i"][0],
+        ),
+        (
+            "left",
+            FULL_HIT_DTYPE.fields["left"][0],
+        ),
+        (
+            "right",
+            FULL_HIT_DTYPE.fields["right"][0],
+        ),
+    ]
+)
+
 
 def find_hits_compact(
     records,
@@ -790,11 +750,10 @@ def find_hits_compact(
     min_height_over_noise=0,
     buffer_size=100_000,
 ):
-    """
-    Equivalent hit finding to strax.find_hits, but retain only
-    record_i, left and right.
+    """Equivalent hit finding to strax.find_hits, but retain only record_i, left and right.
 
     The strax hit-finding kernel runs exactly once.
+
     """
 
     if not len(records):
@@ -811,17 +770,13 @@ def find_hits_compact(
         min_amplitude,
         (tuple, list),
     ):
-        min_amplitude = np.array(
-            min_amplitude
-        )
+        min_amplitude = np.array(min_amplitude)
 
     if isinstance(
         min_height_over_noise,
         (tuple, list),
     ):
-        min_height_over_noise = np.array(
-            min_height_over_noise
-        )
+        min_height_over_noise = np.array(min_height_over_noise)
 
     amp_per_ch = isinstance(
         min_amplitude,
@@ -839,26 +794,16 @@ def find_hits_compact(
             n_channels = len(min_amplitude)
 
         elif hon_per_ch:
-            n_channels = len(
-                min_height_over_noise
-            )
+            n_channels = len(min_height_over_noise)
 
         else:
-            n_channels = (
-                records["channel"].max() + 1
-            )
+            n_channels = records["channel"].max() + 1
 
         if not amp_per_ch:
-            min_amplitude = (
-                min_amplitude
-                * np.ones(n_channels)
-            )
+            min_amplitude = min_amplitude * np.ones(n_channels)
 
         if not hon_per_ch:
-            min_height_over_noise = (
-                min_height_over_noise
-                * np.ones(n_channels)
-            )
+            min_height_over_noise = min_height_over_noise * np.ones(n_channels)
 
     # ------------------------------------------------------------
     # Reusable full-hit scratch buffer
@@ -891,17 +836,11 @@ def find_hits_compact(
             dtype=COMPACT_HIT_DTYPE,
         )
 
-        compact["record_i"] = (
-            scratch["record_i"][:n]
-        )
+        compact["record_i"] = scratch["record_i"][:n]
 
-        compact["left"] = (
-            scratch["left"][:n]
-        )
+        compact["left"] = scratch["left"][:n]
 
-        compact["right"] = (
-            scratch["right"][:n]
-        )
+        compact["right"] = scratch["right"][:n]
 
         compact_chunks.append(compact)
 
