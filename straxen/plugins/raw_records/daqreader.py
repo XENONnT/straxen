@@ -17,7 +17,6 @@ import numpy as np
 import numba
 import strax
 
-
 def _lz4_decompress_v1(f):
     """Memory-efficient whole-frame LZ4 decompression for regular files.
 
@@ -82,6 +81,8 @@ def use_lz4_variation_during_compute(func):
             return func(self, *args, **kwargs)
 
     return wrapped
+
+
 
 
 export, __all__ = strax.exporter()
@@ -638,10 +639,12 @@ def _make_channel_to_detector(channel_map):
     lut = np.full(max_channel + 1, -1, dtype=np.int16)
 
     for d, (left, right) in enumerate(channel_map.values()):
-        if np.any(lut[left : right + 1] != -1):
-            raise ValueError("Overlapping channel ranges")
+        section = lut[left : right + 1]
 
-        lut[left : right + 1] = d
+        # Preserve the first matching detector, as the previous
+        # split_channel_ranges implementation did. TODO This might
+        # not be the behavior we want as it can mask misconfiguration
+        section[section == -1] = d
 
     return lut
 
