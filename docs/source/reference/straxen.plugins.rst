@@ -22,6 +22,7 @@ Subpackages
    straxen.plugins.online_monitor_mv
    straxen.plugins.online_monitor_nv
    straxen.plugins.online_peak_monitor
+   straxen.plugins.online_peaklet_monitor
    straxen.plugins.peaklets
    straxen.plugins.peaklets_he
    straxen.plugins.peaks

@@ -72,3 +72,49 @@ def test_tight_coincidence(self: PluginTestCase):
 
 if __name__ == "__main__":
     run_pytest_from_main()
+
+
+@PluginTestAccumulator.register("test_online_peaklet_monitor")
+def test_online_peaklet_monitor(self: PluginTestCase):
+    """The peaklet level online monitor should conserve the peaklets it summarizes, and stay
+    consistent between its counts, rates and histograms."""
+    monitor = self.st.get_array(self.run_id, "online_peaklet_monitor", progress_bar=False)
+    peaklets = self.st.get_array(self.run_id, "peaklets", progress_bar=False)
+    assert len(monitor), "No online peaklet monitor data"
+
+    # Every peaklet is counted exactly once
+    assert monitor["n_peaklets"].sum() == len(peaklets)
+
+    # Single electrons are a subset of the S2-like peaklets
+    assert np.all(monitor["n_se"] <= monitor["n_s2_peaklets"])
+    assert np.all(monitor["n_s2_peaklets"] <= monitor["n_peaklets"])
+
+    # Histograms cannot hold more entries than there are peaklets to fill them
+    assert np.all(monitor["se_area_hist"].sum(axis=1) <= monitor["n_s2_peaklets"])
+    assert np.all(monitor["se_aft_hist"].sum(axis=1) <= monitor["n_se"])
+    assert np.all(monitor["area_vs_width_hist"].sum(axis=(1, 2)) <= monitor["n_peaklets"])
+
+    # Rates are counts per unit of livetime
+    livetime = (monitor["endtime"] - monitor["time"]) / 1e9
+    assert np.all(livetime > 0)
+    np.testing.assert_array_almost_equal(
+        monitor["peaklet_rate"], monitor["n_peaklets"] / livetime, decimal=3
+    )
+    np.testing.assert_array_almost_equal(monitor["se_rate"], monitor["n_se"] / livetime, decimal=3)
+
+    # The gain estimate is either inside the single-electron window or not set
+    se_low, se_high = self.st.config.get("se_monitor_window", (15.0, 70.0))
+    is_set = monitor["se_gain"] > 0
+    assert np.all(monitor["se_gain"][is_set] > se_low)
+    assert np.all(monitor["se_gain"][is_set] < se_high)
+
+
+@PluginTestAccumulator.register("test_online_peaklet_monitor_is_bounded")
+def test_online_peaklet_monitor_is_bounded(self: PluginTestCase):
+    """The number of rows per chunk must stay below the configured maximum, whatever the time bin,
+    since one chunk becomes one document of the online monitor database."""
+    max_rows = 3
+    st = self.st.new_context()
+    st.set_config(dict(peaklet_monitor_time_bin=int(1e6), peaklet_monitor_max_rows=max_rows))
+    for chunk in st.get_iter(self.run_id, "online_peaklet_monitor", progress_bar=False):
+        assert len(chunk.data) <= max_rows
