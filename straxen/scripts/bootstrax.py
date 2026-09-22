@@ -842,7 +842,7 @@ def infer_target(rd: dict) -> dict:
             targets = bootstrax_config["modes_definitions"][this_eb_ambe_mode]["targets"]
             post_process = bootstrax_config["modes_definitions"][this_eb_ambe_mode]["post_process"]
 
-    elif "th" in mode:
+    elif "th232" in mode:
         # We hit processing timeouts, a similar special mode to ambe is utilized to avoid failures
         # and dynamic response should it be required
         log.debug("th-mode")
