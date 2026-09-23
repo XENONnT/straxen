@@ -842,6 +842,25 @@ def infer_target(rd: dict) -> dict:
             targets = bootstrax_config["modes_definitions"][this_eb_ambe_mode]["targets"]
             post_process = bootstrax_config["modes_definitions"][this_eb_ambe_mode]["post_process"]
 
+    elif "th232" in mode:
+        # We hit processing timeouts, a similar special mode to ambe is utilized to avoid failures
+        # and dynamic response should it be required
+        log.debug("th-mode")
+
+        # get the mode from the daq_db
+        # this is a new thing from Nov 2023
+        # it overwrites the mode from the rundb
+        bootstrax_config_coll = daq_db["bootstrax_config"]
+        bootstrax_config = bootstrax_config_coll.find_one({"name": "bootstrax_config"})
+
+        this_eb_th_mode = bootstrax_config["th_modes"].get(hostname[:3], "default")
+        log.debug(f"Th mode for {hostname} is {this_eb_th_mode}")
+
+        if this_eb_th_mode != "default":
+            log.debug(f"Overwriting targets and post processing for {hostname} from daq_db")
+            targets = bootstrax_config["modes_definitions"][this_eb_th_mode]["targets"]
+            post_process = bootstrax_config["modes_definitions"][this_eb_th_mode]["post_process"]
+
     targets = strax.to_str_tuple(targets)
     post_process = strax.to_str_tuple(post_process)
 
@@ -1052,7 +1071,7 @@ def infer_mode(rd):
     log.info(f"Data rate: {data_rate:.1f} MB/s. New_eb: {is_new_eb}")
     benchmark = {
         "mbs": [0, 70, 90, 110, 150, 220, 290, 360, 390, 420, 500, 550],
-        "cores_old": [39, 35, 35, 30, 30, 20, 12, 12, 10, 10, 10, 8],
+        "cores_old": [39, 35, 35, 30, 30, 20, 12, 12, 10, 10, 8, 7],
         "cores": [24, 24, 24, 24, 18, 15, 15, 15, 15, 15, 15, 10],
         "max_messages_old": [20, 20, 15, 15, 10, 10, 10, 10, 10, 10, 8, 6],
         "max_messages": [60, 60, 35, 30, 25, 25, 25, 25, 20, 15, 12, 12],
