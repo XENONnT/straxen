@@ -5,6 +5,7 @@ import numpy as np
 
 import strax
 import straxen
+import strax.processing.pulse_processing as pulse_processing
 
 export, __all__ = strax.exporter()
 __all__.extend(["NO_PULSE_COUNTS"])
@@ -168,7 +169,8 @@ class PulseProcessing(strax.Plugin):
 
         # Throw away any non-TPC records; this should only happen for XENON1T
         # converted data
-        raw_records = raw_records[raw_records["channel"] < self.n_tpc_pmts]
+        if len(raw_records) and raw_records["channel"].max() >= self.n_tpc_pmts:
+            raw_records = raw_records[raw_records["channel"] < self.n_tpc_pmts]
 
         # Convert everything to the records data type -- adds extra fields.
         r = strax.raw_to_records(raw_records)
@@ -214,14 +216,20 @@ class PulseProcessing(strax.Plugin):
         if len(r):
             # Find hits
             # -- before filtering,since this messes with the with the S/N
-            hits = strax.find_hits(r, min_amplitude=self.hit_thresholds)
+            hits = find_hits_compact(r, min_amplitude=self.hit_thresholds)
 
             if self.pmt_pulse_filter:
                 # Filter to concentrate the PMT pulses
                 strax.filter_records(r, np.array(self.pmt_pulse_filter))
 
             le, re = self.save_outside_hits
-            r = strax.cut_outside_hits(r, hits, left_extension=le, right_extension=re)
+            cut_outside_hits_inplace(
+                r,
+                hits,
+                left_extension=le,
+                right_extension=re,
+            )
+            del hits
 
             # Probably overkill, but just to be sure...
             strax.zero_out_of_bounds(r)
@@ -515,3 +523,335 @@ def _check_overlaps(records, last_end):
             return r["channel"], r["time"]
         last_end[r["channel"]] = strax.endtime(r)
     return -9999, -9999
+
+
+# RAM optimized helper functions
+# These are likely more appropriate inside strax?
+@numba.njit(cache=True, nogil=True)
+def _build_hit_offsets(
+    hits,
+    n_records,
+):
+    """
+    Build offsets such that hits belonging to record r are in:
+
+        hits[offsets[r] : offsets[r + 1]]
+
+    Assumes hits are ordered by record_i, as produced by find_hits.
+    """
+
+    offsets = np.empty(
+        n_records + 1,
+        dtype=np.int32,
+    )
+
+    h_i = 0
+
+    for r_i in range(n_records):
+
+        offsets[r_i] = h_i
+
+        while h_i < len(hits) and hits[h_i]["record_i"] == r_i:
+            h_i += 1
+
+    offsets[n_records] = h_i
+
+    if h_i != len(hits):
+        raise ValueError("Hit record_i is outside records or hits are not ordered")
+
+    return offsets
+
+
+@numba.njit(cache=True, nogil=True)
+def _cut_outside_hits_inplace_core(
+    records,
+    hits,
+    hit_offsets,
+    previous_record,
+    next_record,
+    left_extension,
+    right_extension,
+    reduction_level,
+):
+    """Zero samples outside hit-preservation windows directly in records."""
+
+    if not len(records):
+        return
+
+    samples_per_record = len(records[0]["data"])
+
+    for r_i in range(len(records)):
+
+        r = records[r_i]
+
+        # --------------------------------------------------------
+        # Preserve beginning of this record if a hit in the
+        # previous record extends across the boundary.
+        # --------------------------------------------------------
+
+        prefix_end = 0
+
+        prev_i = previous_record[r_i]
+
+        if prev_i != -1:
+
+            for h_i in range(
+                hit_offsets[prev_i],
+                hit_offsets[prev_i + 1],
+            ):
+
+                end_keep = hits[h_i]["right"] + right_extension
+
+                if end_keep > samples_per_record:
+
+                    b = end_keep - samples_per_record
+
+                    if b > samples_per_record:
+                        b = samples_per_record
+
+                    if b > prefix_end:
+                        prefix_end = b
+
+        # --------------------------------------------------------
+        # Preserve end of this record if a hit in the next
+        # record extends backwards across the boundary.
+        # --------------------------------------------------------
+
+        suffix_start = samples_per_record
+
+        next_i = next_record[r_i]
+
+        if next_i != -1:
+
+            for h_i in range(
+                hit_offsets[next_i],
+                hit_offsets[next_i + 1],
+            ):
+
+                start_keep = hits[h_i]["left"] - left_extension
+
+                if start_keep < 0:
+
+                    a = samples_per_record + start_keep
+
+                    if a < 0:
+                        a = 0
+
+                    if a < suffix_start:
+                        suffix_start = a
+
+        # --------------------------------------------------------
+        # Preserve this record's own hit intervals and zero the
+        # samples between them.
+        # --------------------------------------------------------
+
+        cursor = prefix_end
+
+        record_length = int(r["length"])
+
+        for h_i in range(
+            hit_offsets[r_i],
+            hit_offsets[r_i + 1],
+        ):
+
+            a = hits[h_i]["left"] - left_extension
+
+            b = hits[h_i]["right"] + right_extension
+
+            if a < 0:
+                a = 0
+
+            if b > record_length:
+                b = record_length
+
+            if b <= a:
+                continue
+
+            if a >= suffix_start:
+                break
+
+            if b > suffix_start:
+                b = suffix_start
+
+            if b <= cursor:
+                continue
+
+            if a > cursor:
+                r["data"][cursor:a] = 0
+
+            if b > cursor:
+                cursor = b
+
+        if cursor < suffix_start:
+            r["data"][cursor:suffix_start] = 0
+
+        r["reduction_level"] = reduction_level
+
+
+def cut_outside_hits_inplace(
+    records,
+    hits,
+    left_extension=2,
+    right_extension=15,
+):
+    """In-place equivalent of strax.cut_outside_hits for the PulseProcessing use case."""
+
+    if not len(records):
+        return records
+
+    previous_record, next_record = strax.record_links(records)
+
+    hit_offsets = _build_hit_offsets(
+        hits,
+        len(records),
+    )
+
+    _cut_outside_hits_inplace_core(
+        records,
+        hits,
+        hit_offsets,
+        previous_record,
+        next_record,
+        int(left_extension),
+        int(right_extension),
+        int(strax.ReductionLevel.HITS_ONLY),
+    )
+
+    return records
+
+
+# Original strax Numba kernel underneath growing_result
+_FIND_HITS_BUFFER_KERNEL = pulse_processing._find_hits.__wrapped__
+
+FULL_HIT_DTYPE = np.dtype(strax.hit_dtype)
+
+COMPACT_HIT_DTYPE = np.dtype(
+    [
+        (
+            "record_i",
+            FULL_HIT_DTYPE.fields["record_i"][0],
+        ),
+        (
+            "left",
+            FULL_HIT_DTYPE.fields["left"][0],
+        ),
+        (
+            "right",
+            FULL_HIT_DTYPE.fields["right"][0],
+        ),
+    ]
+)
+
+
+def find_hits_compact(
+    records,
+    min_amplitude=15,
+    min_height_over_noise=0,
+    buffer_size=100_000,
+):
+    """Equivalent hit finding to strax.find_hits, but retain only record_i, left and right.
+
+    The strax hit-finding kernel runs exactly once.
+
+    """
+
+    if not len(records):
+        return np.empty(
+            0,
+            dtype=COMPACT_HIT_DTYPE,
+        )
+
+    # ------------------------------------------------------------
+    # Same argument normalization as public strax.find_hits
+    # ------------------------------------------------------------
+
+    if isinstance(
+        min_amplitude,
+        (tuple, list),
+    ):
+        min_amplitude = np.array(min_amplitude)
+
+    if isinstance(
+        min_height_over_noise,
+        (tuple, list),
+    ):
+        min_height_over_noise = np.array(min_height_over_noise)
+
+    amp_per_ch = isinstance(
+        min_amplitude,
+        np.ndarray,
+    )
+
+    hon_per_ch = isinstance(
+        min_height_over_noise,
+        np.ndarray,
+    )
+
+    if not (amp_per_ch and hon_per_ch):
+
+        if amp_per_ch:
+            n_channels = len(min_amplitude)
+
+        elif hon_per_ch:
+            n_channels = len(min_height_over_noise)
+
+        else:
+            n_channels = records["channel"].max() + 1
+
+        if not amp_per_ch:
+            min_amplitude = min_amplitude * np.ones(n_channels)
+
+        if not hon_per_ch:
+            min_height_over_noise = min_height_over_noise * np.ones(n_channels)
+
+    # ------------------------------------------------------------
+    # Reusable full-hit scratch buffer
+    # ------------------------------------------------------------
+
+    scratch = np.empty(
+        int(buffer_size),
+        dtype=FULL_HIT_DTYPE,
+    )
+
+    compact_chunks = []
+
+    # ------------------------------------------------------------
+    # ONE hit-finding pass
+    # ------------------------------------------------------------
+
+    for n_written in _FIND_HITS_BUFFER_KERNEL(
+        records,
+        min_amplitude,
+        min_height_over_noise,
+        _result_buffer=scratch,
+    ):
+        n = int(n_written)
+
+        if not n:
+            continue
+
+        compact = np.empty(
+            n,
+            dtype=COMPACT_HIT_DTYPE,
+        )
+
+        compact["record_i"] = scratch["record_i"][:n]
+
+        compact["left"] = scratch["left"][:n]
+
+        compact["right"] = scratch["right"][:n]
+
+        compact_chunks.append(compact)
+
+    del scratch
+
+    if not compact_chunks:
+        return np.empty(
+            0,
+            dtype=COMPACT_HIT_DTYPE,
+        )
+
+    if len(compact_chunks) == 1:
+        return compact_chunks[0]
+
+    return np.concatenate(compact_chunks)
