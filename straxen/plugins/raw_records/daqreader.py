@@ -30,6 +30,11 @@ def _lz4_decompress_v1(f):
         n_bytes = file_size - current
     except (AttributeError, OSError, ValueError):
         compressed = f.read()
+
+        # Empty files can be produced by redax 
+        # But these will not have a header
+        if not compressed:
+            return bytearray()
     else:
         compressed = bytearray(n_bytes)
         view = memoryview(compressed)
