@@ -288,9 +288,9 @@ def xenonnt(
             straxen.OnlineMonitor(
                 readonly=not we_are_the_daq,
                 take_only=(
-                    "veto_intervals",
+                    # "veto_intervals",
                     "online_peak_monitor",
-                    "event_basics",
+                    # "event_basics",
                     "online_monitor_nv",
                     "online_monitor_mv",
                     "individual_peak_monitor",
