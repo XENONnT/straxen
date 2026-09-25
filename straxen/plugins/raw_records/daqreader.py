@@ -1,87 +1,13 @@
-# For now implemented as context manager overwrite to strax io
-# Should be in strax directly
-from contextlib import contextmanager
-import functools
-import os
-
-import lz4.frame as lz4
-import strax.io
-
 import glob
 import warnings
 from typing import Tuple
 from collections import Counter
 from immutabledict import immutabledict
+import os
 
 import numpy as np
 import numba
 import strax
-
-
-def _lz4_decompress_v1(f):
-    """Memory-efficient whole-frame LZ4 decompression for regular files.
-
-    Reduces memory churn by placing lz4 into buffer rather than a new buffer every time
-
-    """
-    try:
-        current = f.tell()
-        file_size = os.fstat(f.fileno()).st_size
-        n_bytes = file_size - current
-    except (AttributeError, OSError, ValueError):
-        compressed = f.read()
-    else:
-        compressed = bytearray(n_bytes)
-        view = memoryview(compressed)
-
-        offset = 0
-        while offset < n_bytes:
-            n = f.readinto(view[offset:])
-
-            if not n:
-                raise EOFError(f"Unexpected EOF after {offset} of {n_bytes} bytes")
-
-            offset += n
-
-        del view
-
-    return lz4.decompress(
-        compressed,
-        return_bytearray=True,
-    )
-
-
-@contextmanager
-def temporary_lz4_decompressor():
-    """Use ``_lz4_decompress_v1`` for strax's ``lz4`` compressor only inside this context.
-
-    The original compressor registry entry is restored even if processing raises an exception.
-
-    """
-    original = strax.io.COMPRESSORS["lz4"]
-
-    strax.io.COMPRESSORS["lz4"] = {
-        **original,
-        "_decompress": _lz4_decompress_v1,
-    }
-
-    try:
-        yield
-    finally:
-        strax.io.COMPRESSORS["lz4"] = original
-
-
-def use_lz4_variation_during_compute(func):
-    @functools.wraps(func)
-    def wrapped(self, *args, **kwargs):
-        # Preserve other compressor configurations
-        if self.config["daq_compressor"] != "lz4":
-            return func(self, *args, **kwargs)
-
-        with temporary_lz4_decompressor():
-            return func(self, *args, **kwargs)
-
-    return wrapped
 
 
 export, __all__ = strax.exporter()
@@ -312,7 +238,7 @@ class DAQReader(strax.Plugin):
             for fn in sorted(glob.glob(f"{path}/*"))
         ]
         records = np.concatenate(records)
-        records = sort_by_time_in_place(records)
+        records = strax.sort_by_time_in_place(records)
 
         first_start, last_start, last_end = None, None, None
         if len(records):
@@ -402,7 +328,6 @@ class DAQReader(strax.Plugin):
             self.dtype_for("raw_records"),
         )
 
-    @use_lz4_variation_during_compute
     def compute(self, chunk_i):
         dt_central = self.config["daq_chunk_duration"]
         dt_overlap = self.config["daq_overlap_chunk_duration"]
@@ -500,102 +425,6 @@ class DAQReader(strax.Plugin):
             if r._mbs() > 0:
                 print(f"\t{r}")
         return result
-
-
-@numba.njit(nogil=True)
-def apply_permutation_in_place(raw_bytes, permutation):
-    """
-    Transform rows so that:
-
-        new[i] = old[permutation[i]]
-
-    permutation is destroyed in the process.
-    """
-    n, row_size = raw_bytes.shape
-    tmp = np.empty(row_size, dtype=np.uint8)
-
-    for start in range(n):
-        if permutation[start] == start:
-            continue
-
-        # Save the row that will eventually close this cycle
-        for b in range(row_size):
-            tmp[b] = raw_bytes[start, b]
-
-        j = start
-
-        while True:
-            k = permutation[j]
-
-            if k == start:
-                for b in range(row_size):
-                    raw_bytes[j, b] = tmp[b]
-
-                permutation[j] = j
-                break
-
-            for b in range(row_size):
-                raw_bytes[j, b] = raw_bytes[k, b]
-
-            permutation[j] = j
-            j = k
-
-
-def sort_by_time_in_place(records):
-    """Same effective ordering as strax.sort_by_time for normal DAQ chunks, applies the permutation
-    to the existing record allocation.
-
-    Falls back to stock strax sorting if the packed int64 key is unsafe.
-
-    """
-    if len(records) < 2:
-        return records
-
-    channel = records["channel"].copy()
-
-    min_channel = int(channel.min())
-    if min_channel < 0:
-        # NOTE: Wouldn't it be more correct to do
-        # raise ValueError("Bad data from DAQ: data in unknown channel")
-        # Since negative channels may not exist?
-        channel -= min_channel
-
-    max_channel_plus_one = int(channel.max()) + 1
-
-    t = records["time"]
-    t_min = int(t.min())
-    t_range = int(t.max()) - t_min
-
-    # Same reason strax has a fallback for very large time ranges:
-    # packed (time, channel) key must fit in int64.
-    if max_channel_plus_one <= 0 or t_range > np.iinfo(np.int64).max // max_channel_plus_one:
-        return strax.sort_by_time(records)
-
-    # Build only ONE N*int64 key array.
-    sort_key = t.copy()
-    sort_key -= t_min
-    sort_key *= max_channel_plus_one
-    sort_key += channel
-
-    del channel
-
-    # Same stable ordering we already used in our earlier test.
-    sort_i = strax.stable_argsort(
-        sort_key,
-        kind="mergesort",
-    )
-
-    del sort_key
-
-    # Zero-copy byte view of the existing structured array.
-    raw_bytes = records.view(np.uint8).reshape(
-        len(records),
-        records.dtype.itemsize,
-    )
-
-    apply_permutation_in_place(raw_bytes, sort_i)
-
-    return records
 
 
 @numba.njit(nogil=True)
@@ -703,7 +532,6 @@ def scatter_part(
         out[j]["time"] = t + time_offsets[d]
 
         positions[d] = j + 1
-
 
 @export
 def split_channel_ranges_from_parts(
