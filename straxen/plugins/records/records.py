@@ -549,6 +549,7 @@ COMPACT_HIT_DTYPE = np.dtype(
     ]
 )
 
+
 # Can be made more generic to be moved to strax
 def find_hits_compact(
     records,

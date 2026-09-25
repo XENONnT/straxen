@@ -533,6 +533,7 @@ def scatter_part(
 
         positions[d] = j + 1
 
+
 @export
 def split_channel_ranges_from_parts(
     parts,
