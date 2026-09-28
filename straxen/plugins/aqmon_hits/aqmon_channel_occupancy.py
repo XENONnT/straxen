@@ -2,8 +2,9 @@ from straxen.plugins.aqmon_hits.aqmon_hits import AqmonChannels
 
 
 class AqMonChannelOccupancy:
-    """For V1495 Firmware v10, from Feb. '25 Determines the meaning of the Acquisition Monitor
-    Channels originating from the V1495 depending on its config in the DAQ. These are start and stop
+    """For V1495 Firmware v10, from Feb.
+
+    '25 Determines the meaning of the Acquisition Monitor Channels originating from the V1495 depending on its config in the DAQ. These are start and stop
     signals of veto- or other intervals. The channels have a name according to its primary usage,
 
     but the meaning can differ.
@@ -42,7 +43,7 @@ class AqMonChannelOccupancy:
 
     def prepare_settings(self):
         self.config = {
-            k: (bool(v) if k.startswith(("is_", "_use_")) else v) for k, v in self.config.items()
+            k: bool(v) if k.startswith(("is_", "_use_")) else v for k, v in self.config.items()
         }
         self.extract_settings()
         self._settings_check_plausilble()

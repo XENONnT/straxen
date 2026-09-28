@@ -351,7 +351,6 @@ def get_sample_area_quantile(data, quantile, baseline_fpart):
     area.
 
     """
-
     area = 0
     area_tot = data.sum() + len(data) * baseline_fpart
 

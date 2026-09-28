@@ -2,7 +2,6 @@ import strax
 import straxen
 from ._peaklet_positions_base import PeakletPositionsBase
 
-
 export, __all__ = strax.exporter()
 
 

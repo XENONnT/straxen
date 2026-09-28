@@ -80,8 +80,10 @@ class VetoProximity(strax.ExhaustPlugin):
         veto_intervals: np.ndarray,
         veto_name: str,
     ) -> None:
-        """Fill the result buffer inplace. Goal is to find vetos with <veto_name> that are either
-        during, before or after the current event_window.
+        """Fill the result buffer inplace.
+
+        Goal is to find vetos with <veto_name> that are either during, before or after the current
+        event_window.
 
         :param result_buffer: The buffer to fill inplace
         :param event_window: start/stop boundaries of the event to consider. Should be an array with

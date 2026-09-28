@@ -6,8 +6,9 @@ from immutabledict import immutabledict
 
 
 class EventStats(param.Parameterized):
-    """Class which displays all events in a user defined data space. Marks position of single
-    selected event depending on the passed index or index widget.
+    """Class which displays all events in a user defined data space.
+
+    Marks position of single selected event depending on the passed index or index widget.
 
     :param events: Events for which histogram should be plotted.
     :param default_config: Dictionary containing the default settings
