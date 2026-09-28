@@ -157,10 +157,9 @@ class RucioRemoteBackend(strax.FileSytemBackend):
     def _get_rse(self, dset_did, **filters):
         """Determine the appropriate Rucio Storage Element (RSE) for a dataset.
 
-        :param dset_did (str) :The dataset identifier.
-        :return (str) : The selected RSEs.
-        ------
-        Uses self.rses_only to filter available RSEs if set.
+        :param dset_did (str) : The dataset identifier.
+        :return (str) : The selected RSEs. ------ Uses self.rses_only to filter available RSEs if
+            set.
 
         """
         rses = admix.rucio.get_rses(dset_did, **filters)

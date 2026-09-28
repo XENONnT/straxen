@@ -148,8 +148,9 @@ class nVETOEventDisplay:
         return event_display
 
     def plot_hitlet_matrix(self, hitlets, _hitlet_points=None):
-        """Function which plots the hitlet matrix for the specified hitlets. The hitlet matrix is
-        something equivalent to the record matrix for the TPC.
+        """Function which plots the hitlet matrix for the specified hitlets.
+
+        The hitlet matrix is something equivalent to the record matrix for the TPC.
 
         :param hitlets: Hitlets to be plotted if called directly.
         :param _hitlet_points: holoviews.Points created by the event display. Only internal use.
@@ -191,8 +192,9 @@ class nVETOEventDisplay:
         pmt_distance=0.5,
         _hitlet_points=None,
     ):
-        """Plots the nveto pmt pattern map for the specified hitlets. Expects hitlets to be sorted
-        in time.
+        """Plots the nveto pmt pattern map for the specified hitlets.
+
+        Expects hitlets to be sorted in time.
 
         :param hitlets: Hitlets to be plotted if called directly.
         :param pmt_size: Base size of a PMT for 1 pe.
@@ -357,7 +359,6 @@ class nVETOEventDisplay:
         :param index: Which event to plot.
 
         """
-
         x = (0, np.real(np.exp(self.event_df.loc[index, "angle"] * 1j)) * 400)
         y = (0, np.imag(np.exp(self.event_df.loc[index, "angle"] * 1j)) * 400)
         angle = self.hv.Curve((x, y)).opts(
@@ -516,8 +517,9 @@ def plot_nveto_reflector():
 def _compute_lateral_reflector_xy_edges(
     xy_center_angle, long_side_length=2018, short_side_length=1224
 ):
-    """Function which computes the position of the lateral reflector panels. Input in mm return in
-    cm.
+    """Function which computes the position of the lateral reflector panels.
+
+    Input in mm return in cm.
 
     :param xy_center_angle: Center xy coordinate and angle of each panel.
     :param long_side_length: Full length of the long panels in mm.

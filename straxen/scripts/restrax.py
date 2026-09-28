@@ -1,6 +1,5 @@
-"""
-Restrax: Rechunking live data
-=============================================
+"""Restrax: Rechunking live data =============================================
+
 How to use
 ----------------
     <activate conda environment>
@@ -10,6 +9,7 @@ How to use
 
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/scripts.html
+
 """
 
 __version__ = "0.3.1"
@@ -248,9 +248,7 @@ def run_process_per_run_supervisor(args: argparse.Namespace) -> None:
 
 
 class ReStrax(daq_core.DataBases):
-    """
-    Restrax: rechunking the data from bootstrax and prepare it for admix/rucio
-    """
+    """Restrax: rechunking the data from bootstrax and prepare it for admix/rucio."""
 
     # Typing is important because of the overwrite_settings
     log: logging.Logger
@@ -481,7 +479,6 @@ class ReStrax(daq_core.DataBases):
 
     def set_restrax_failed(self, run_doc: dict, reason: str) -> None:
         """Update the rundoc with the restrax fail state."""
-
         update = {
             "restrax.state": "failed",
             "restrax.ended": now(),
@@ -713,7 +710,6 @@ class ReStrax(daq_core.DataBases):
         :param data_doc: data document
 
         """
-
         # Skipp all when in bypass mode - don't log messages for each data_doc separately
         if self.is_in_bypass_mode:
             return True

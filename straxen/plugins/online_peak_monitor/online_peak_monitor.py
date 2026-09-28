@@ -7,8 +7,9 @@ export, __all__ = strax.exporter()
 
 @export
 class OnlinePeakMonitor(strax.Plugin):
-    """Plugin to write data to the online-monitor. Data that is written by this plugin should be
-    small such as to not overload the runs- database.
+    """Plugin to write data to the online-monitor.
+
+    Data that is written by this plugin should be small such as to not overload the runs- database.
 
     This plugin takes 'peak_basics' and 'lone_hits'. Although they are not strictly related, they
     are aggregated into a single data_type in order to minimize the number of documents in the

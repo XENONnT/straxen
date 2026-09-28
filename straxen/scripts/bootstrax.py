@@ -1,6 +1,5 @@
-"""
-Bootstrax: XENONnT online processing manager
-=============================================
+"""Bootstrax: XENONnT online processing manager =============================================
+
 How to use
 ----------------
     <activate conda environment>
@@ -13,6 +12,7 @@ How to use
 
 For more info, see the documentation:
 https://straxen.readthedocs.io/en/latest/bootstrax.html
+
 """
 
 __version__ = "3.0.0"
@@ -937,8 +937,9 @@ def log_warning(message, priority="warning", run_id=None):
 
 
 def eb_can_process():
-    """The new ebs (eb3-5) should be sufficient to process all data. In exceptional circumstances
-    eb3-5 cannot keep up. Only let eb0-2 also process data in such cases.
+    """The new ebs (eb3-5) should be sufficient to process all data.
+
+    In exceptional circumstances eb3-5 cannot keep up. Only let eb0-2 also process data in such cases.
 
     Before eb0-2 are also used for processing two criteria have to be fulfilled:
         - There should be runs waiting to be processed
@@ -946,7 +947,6 @@ def eb_can_process():
     :return: bool if this host should process a run
 
     """
-
     # eb3-5 always process.
     if hostname in ["eb3.xenon.local", "eb4.xenon.local", "eb5.xenon.local"]:
         return True
@@ -1111,15 +1111,16 @@ def infer_mode(rd):
 
 
 def infer_records_compressor(rd, datarate, n_fails):
-    """
-    Get a compressor for the (raw)records. This takes two things in consideration:
-    1. Do we store the data fast enough (high write speed)
+    """Get a compressor for the (raw)records.
+
+    This takes two things in consideration: 1. Do we store the data fast enough (high write speed)
     2. Does the data fit into the buffer
 
     Used compressors:
         bz2: slow but very good compression -> use for low datarate
         zstd: fast & decent compression, max chunk size of ??? GB
         lz4: fast & not no chunk size limit, use if all ese fails
+
     """
     if n_fails or datarate is None:
         # Cannot infer datarate or failed before, go for fast & safe
@@ -1189,7 +1190,6 @@ def delete_live_data(rd, live_data_path):
 
 def _delete_data(rd, path, data_type):
     """After completing the processing and updating the RunDB, remove the live_data."""
-
     if data_type == "live" and not args.delete_live and args.production:
         message = "Unsafe operation. Trying to delete live data!"
         log_warning(message, priority="fatal")
@@ -1339,8 +1339,10 @@ def check_data_written(rd):
 
 
 def all_files_saved(rd, wait_max=600, wait_per_cycle=10):
-    """Check that all files are written. It might be that the savers are still in the process of
-    renaming from folder_temp to folder. Hence allow some wait time to allow the savers to finish.
+    """Check that all files are written.
+
+    It might be that the savers are still in the process of renaming from folder_temp to folder.
+    Hence allow some wait time to allow the savers to finish.
 
     :param rd: rundoc
     :param wait_max: max seconds to wait for data to save
@@ -1686,7 +1688,6 @@ def run_strax(
         # This way, it can also be run inside a wrapper to profile strax
         def st_make():
             """Run strax."""
-
             if debug:
                 hb = logging.getLogger("bootstrax.mailbox")
                 hb.propagate = False

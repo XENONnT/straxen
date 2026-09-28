@@ -7,7 +7,6 @@ from strax.processing.general import _touching_windows
 from strax.dtypes import DIGITAL_SUM_WAVEFORM_CHANNEL
 import straxen
 
-
 export, __all__ = strax.exporter()
 
 
@@ -508,7 +507,6 @@ def peak_saturation_correction(
         waveform in the peak.
 
     """
-
     if not len(records):
         return
     if not len(peaks):
