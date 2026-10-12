@@ -83,13 +83,15 @@ class DataBases:
         warning_message = {
             "message": message,
             "user": user,
-            "priority": dict(
-                debug=0,
-                info=1,
-                warning=2,
-                error=3,
-                fatal=4,
-            ).get(priority.lower(), 3),
+            "priority": (
+                dict(
+                    debug=0,
+                    info=1,
+                    warning=2,
+                    error=3,
+                    fatal=4,
+                ).get(priority.lower(), 3)
+            ),
         }
         if run_id is not None:
             warning_message.update({"runid": int(run_id)})

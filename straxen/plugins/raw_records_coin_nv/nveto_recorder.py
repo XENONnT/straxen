@@ -354,8 +354,9 @@ def _compute_lone_records(lone_record, res, lone_ids, n, nveto_channels):
 
 @numba.njit(cache=True, nogil=True)
 def pulse_in_interval(raw_records, record_links, start_times, end_times):
-    """Checks if a records is in one of the intervals. If yes the entire pulse ist flagged as to be
-    stored.
+    """Checks if a records is in one of the intervals.
+
+    If yes the entire pulse ist flagged as to be stored.
 
     :param raw_records: raw_records or records
     :param record_links: position of the previous and next record if pulse is made of many fragments

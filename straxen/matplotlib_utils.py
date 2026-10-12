@@ -27,8 +27,8 @@ def plot_pmts(
     :param extend: same as plt.colorbar(extend=...)
     :param vmin: Minimum of color scale
     :param vmax: maximum of color scale
-    :param show_axis_labels: if True it will show x and y labels
-    Other arguments are passed to plot_on_single_pmt_array.
+    :param show_axis_labels: if True it will show x and y labels Other arguments are passed to
+        plot_on_single_pmt_array.
 
     """
     if vmin is None:
@@ -88,14 +88,12 @@ def plot_on_single_pmt_array(
 
     :param c: Array of colors to use. Must be len() of the number of TPC PMTs
     :param label: Label for the color bar
-    :param pmt_label_size: Fontsize for the PMT number labels.
-    Set to 0 to disable.
+    :param pmt_label_size: Fontsize for the PMT number labels. Set to 0 to disable.
     :param pmt_label_color: Text color of the PMT number labels.
     :param log_scale: If True, use a logarithmic color scale
     :param extend: same as plt.colorbar(extend=...)
     :param vmin: Minimum of color scale
-    :param vmax: maximum of color scale
-    Other arguments are passed to plt.scatter.
+    :param vmax: maximum of color scale Other arguments are passed to plt.scatter.
 
     """
     if vmin is None:

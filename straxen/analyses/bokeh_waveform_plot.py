@@ -359,8 +359,9 @@ def plot_pmt_arrays_and_positions(
 
 
 def plot_event(peaks, signal, labels, event, colors, yscale="linear"):
-    """Wrapper for plot peaks to highlight main/alt. S1/S2.
+    """Wrapper for plot peaks to highlight main/alt.
 
+    S1/S2.
     :param peaks: Peaks in event
     :param signal: Dictionary containing main/alt. S1/S2
     :param labels: dict with labels to be used
@@ -564,8 +565,9 @@ def plot_peak_detail(
     colors=("gray", "blue", "green"),
     fig=None,
 ):
-    """Function which makes a detailed plot for the given peak. As in the main/alt S1/S2 plots of
-    the event display.
+    """Function which makes a detailed plot for the given peak.
+
+    As in the main/alt S1/S2 plots of the event display.
 
     :param peak: Peak to be plotted.
     :param time_scalar: Factor to rescale the time from ns to other scale. E.g. =1000 scales to µs.
@@ -960,8 +962,9 @@ def _make_peaks_title(peaks, run_id, width=1600):
 
 
 def bokeh_set_x_range(plot, x_range, debug=False):
-    """Function which adjust java script call back for x_range of a bokeh plot. Required to link
-    bokeh and holoviews x_range.
+    """Function which adjust java script call back for x_range of a bokeh plot.
+
+    Required to link bokeh and holoviews x_range.
 
     Note:
         This is somewhat voodoo + some black magic,
