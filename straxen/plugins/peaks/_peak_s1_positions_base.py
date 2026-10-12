@@ -1,5 +1,5 @@
-"""S1 Position reconstruction for Xenon-nT
-Author and maintainer: Matteo Guida (guidam@mpi-hd.mpg.de)"""
+"""S1 Position reconstruction for Xenon-nT Author and maintainer: Matteo Guida (guidam@mpi-
+hd.mpg.de)"""
 
 from typing import Optional
 

@@ -8,7 +8,6 @@ import straxen
 from straxen.plugins.defaults import DEFAULT_POSREC_ALGO, FAR_XYPOS_S2_TYPE, WIDE_XYPOS_S2_TYPE
 from straxen.plugins.peaklets.peaklets import drop_data_field
 
-
 export, __all__ = strax.exporter()
 
 
@@ -595,7 +594,6 @@ class MergedS2s(strax.OverlapWindowPlugin):
         2. Normal merging: merge peaklets based on the gap between the peaklets
 
         """
-
         # (x, y) positions of the peaklets
         positions = np.vstack([_peaks[f"x_{posrec_algo}"], _peaks[f"y_{posrec_algo}"]]).T
         if uncertainty_weights:

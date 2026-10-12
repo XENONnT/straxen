@@ -1,6 +1,5 @@
 import re
 
-
 _pattern_type = type(re.compile(""))
 
 

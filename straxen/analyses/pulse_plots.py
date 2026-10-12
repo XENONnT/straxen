@@ -18,8 +18,9 @@ def plot_pulses_tpc(
     store_pdf=False,
     path="",
 ):
-    """Mini-analyis to plot pulses for the specified list of records. You have to provide a a run-id
-    for which pulses should be plotted. You can use the same arguments as for get_array to select a
+    """Mini-analyis to plot pulses for the specified list of records.
+
+    You have to provide a a run-id for which pulses should be plotted. You can use the same arguments as for get_array to select a
     specific time range or data (see also further ).
 
     In addition you can provide the following arguments:
@@ -54,8 +55,9 @@ def plot_pulses_mv(
     store_pdf=False,
     path="",
 ):
-    """Mini-analyis to plot pulses for the specified list of records. You have to provide a a run-id
-    for which pulses should be plotted. You can use the same arguments as for get_array to select a
+    """Mini-analyis to plot pulses for the specified list of records.
+
+    You have to provide a a run-id for which pulses should be plotted. You can use the same arguments as for get_array to select a
     specific time range or data (see also further ).
 
     In addition you can provide the following arguments:
@@ -99,8 +101,9 @@ def plot_pulses_nv(
     store_pdf=False,
     path="",
 ):
-    """Mini-analyis to plot pulses for the specified list of records. You have to provide a a run-id
-    for which pulses should be plotted. You can use the same arguments as for get_array to select a
+    """Mini-analyis to plot pulses for the specified list of records.
+
+    You have to provide a a run-id for which pulses should be plotted. You can use the same arguments as for get_array to select a
     specific time range or data (see also further ).
 
     In addition you can provide the following arguments:

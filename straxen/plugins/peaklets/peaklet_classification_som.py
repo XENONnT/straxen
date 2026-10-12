@@ -134,7 +134,6 @@ def recall_populations(dataset, weight_cube, som_cls_img, norm_factors, som_data
     normfactos:       A set of 11 numbers to normalize the data so we can preform a recall
 
     """
-
     xdim, ydim, zdim = weight_cube.shape
     img_xdim, img_ydim, img_zdim = som_cls_img.shape
     unique_colors = np.unique(np.reshape(som_cls_img, [xdim * ydim, 3]), axis=0)
@@ -264,7 +263,6 @@ def compute_quantiles(peaks: np.ndarray, n_samples: int):
     :return: quantiles
 
     """
-
     data = peaks["data"].copy()
     data[data < 0.0] = 0.0
     dt = peaks["dt"]

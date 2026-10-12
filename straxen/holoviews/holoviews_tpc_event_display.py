@@ -10,10 +10,11 @@ from .holoviews_pmt_array import PlotPMTArrayTPC
 
 
 class InteractiveTPCEventDisplay:
-    """Interactive event display for the TPC. Can be used for waveform watching/inspection. For
-    waveform inspection the user can provide a subset of peak data which only belongs to the peaks
-    of interest. In this case the inspector plot plots all events, but only the selected events with
-    peaks can be choosen with the event slider.
+    """Interactive event display for the TPC.
+
+    Can be used for waveform watching/inspection. For waveform inspection the user can provide a
+    subset of peak data which only belongs to the peaks of interest. In this case the inspector plot
+    plots all events, but only the selected events with peaks can be choosen with the event slider.
 
     :param events:
     :param peaks:
@@ -50,7 +51,6 @@ class InteractiveTPCEventDisplay:
         row_width=900,
     ):
         """Function which plots interactive event display."""
-
         plots = self._get_display_componnts(
             inspector_config=inspector_config,
             exclude_fields=exclude_fields,
