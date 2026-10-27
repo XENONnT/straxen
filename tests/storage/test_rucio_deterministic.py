@@ -301,7 +301,10 @@ class TestRucioDeterministic(unittest.TestCase):
     def test_contexts_rucio_mode_wiring(self):
         st = straxen.contexts.xenonnt(
             include_xrootd=True,
-            _xrootd_urls=["root://xrootd.mwt2.org/", "root://xrootd.grid.uchicago.edu/"],
+            _xrootd_urls=[
+                "root://xenon-gridftp.grid.uchicago.edu:1094/",
+                "root://shared-xrootd.rcc.uchicago.edu:1094/",
+            ],
             _xrootd_rucio_mode=True,
             _xrootd_subpath="rucio",
             _xrootd_failover_policy="priority",
