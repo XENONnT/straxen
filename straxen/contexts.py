@@ -104,8 +104,8 @@ common_config = dict(
 # they consume quite a lot of RAM and are not used for the online monitor
 common_config_vanilla = {
     **common_config,
-    "store_data_start": False,
-    "store_data_top": False,
+    "store_data_start": True,
+    "store_data_top": True,
 }
 
 
