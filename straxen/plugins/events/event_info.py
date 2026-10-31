@@ -20,7 +20,7 @@ class EventInfo(strax.MergeOnlyPlugin):
     __version__ = "0.0.2"
 
     event_info_function = straxen.URLConfig(
-        default="pre_apply_function",
+        default="blinding_sr3_v0",
         infer_type=False,
         help="Function that must be applied to all event_info data. Do not change.",
     )
