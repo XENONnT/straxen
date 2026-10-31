@@ -17,7 +17,7 @@ class EventInfo(strax.MergeOnlyPlugin):
     )
     save_when = strax.SaveWhen.ALWAYS
     provides = "event_info"
-    __version__ = "0.0.2"
+    __version__ = "0.0.3"
 
     event_info_function = straxen.URLConfig(
         default="blinding_sr3_v0",
