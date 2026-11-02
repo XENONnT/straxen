@@ -118,7 +118,6 @@ def peak_tool_tip(peak_type):
     :return: dictionary of tooltips. Can be converted to a list for bokeh.models.HoverTool.
 
     """
-
     tool_tip = dict()
     tool_tip["type"] = ("type", "@type")
 
