@@ -13,8 +13,9 @@ export, __all__ = strax.exporter()
 
 @export
 class PeakShadow(strax.OverlapWindowPlugin):
-    """This plugin can find and calculate the time & position shadow from previous peaks in time. It
-    also gives the area and (x, y) of the previous peaks.
+    """This plugin can find and calculate the time & position shadow from previous peaks in time.
+
+    It also gives the area and (x, y) of the previous peaks.
 
     References:
         * v0.1.5 reference: xenon:xenonnt:ac:prediction:shadow_ambience
@@ -244,7 +245,6 @@ class PeakShadow(strax.OverlapWindowPlugin):
     @staticmethod
     def merge_peaks(peaks, weights, dt, dr, replace=True, last=True):
         """Merge peaks in time and space."""
-
         # Prepare the dtype for the merged peaks
         dtype = []
         needed_fileds = "time endtime center_time area x y".split()

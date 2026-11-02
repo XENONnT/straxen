@@ -228,7 +228,6 @@ def objects_to_array(objects: list):
     :param objects: Any list of objects
 
     """
-
     if not isinstance(objects, Iterable):
         raise TypeError(
             f"The list-to-array protocol expects an "
@@ -242,8 +241,7 @@ def objects_to_array(objects: list):
 def read_rundoc(path, run_id=None, default=None):
     """Read a path from the json rundoc metadata.
 
-    :param path: keys of json rundoc metada.
-        e.g. `comments` for reading comments for a specific run
+    :param path: keys of json rundoc metada. e.g. `comments` for reading comments for a specific run
 
     """
     if run_id is None:
