@@ -17,10 +17,10 @@ class EventInfo(strax.MergeOnlyPlugin):
     )
     save_when = strax.SaveWhen.ALWAYS
     provides = "event_info"
-    __version__ = "0.0.2"
+    __version__ = "0.0.3"
 
     event_info_function = straxen.URLConfig(
-        default="pre_apply_function",
+        default="blinding_sr3_v0",
         infer_type=False,
         help="Function that must be applied to all event_info data. Do not change.",
     )
