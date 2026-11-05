@@ -1,3 +1,10 @@
+4.1.2 / 2026-11-05
+-------------------
+* Update to the context (to save start of waveform with minimal dt) and to event_info
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v4.1.1...v4.1.2
+
+
 4.1.1 / 2026-09-03
 -------------------
 * Update veto proximity and intervals for new channel occupancy on the aquisition monitor (see https://github.com/XENONnT/straxen/pull/1576)
