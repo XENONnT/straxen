@@ -290,6 +290,7 @@ def xenonnt(
                 take_only=(
                     "veto_intervals",
                     "online_peak_monitor",
+                    "online_peaklet_monitor",
                     "event_basics",
                     "online_monitor_nv",
                     "online_monitor_mv",
