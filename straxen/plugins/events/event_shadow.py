@@ -6,8 +6,9 @@ export, __all__ = strax.exporter()
 
 @export
 class EventShadow(strax.Plugin):
-    """This plugin can calculate shadow for main S1 and main S2 in events. It also gives the
-    position information of the previous peaks.
+    """This plugin can calculate shadow for main S1 and main S2 in events.
+
+    It also gives the position information of the previous peaks.
 
     References:
         * v0.1.4 reference: xenon:xenonnt:ac:prediction:shadow_ambience

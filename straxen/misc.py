@@ -297,11 +297,12 @@ class TimeWidgets:
 
 @strax.Context.add_method
 def extract_latest_comment(self):
-    """Extract the latest comment in the runs-database. This just adds info to st.runs.
+    """Extract the latest comment in the runs-database.
 
-    Example:
-        st.extract_latest_comment()
-        st.select_runs(available=('raw_records'))
+    This just adds info to st.runs.
+        Example:
+            st.extract_latest_comment()
+            st.select_runs(available=('raw_records'))
 
     """
     if self.runs is None or "comments" not in self.runs.keys():

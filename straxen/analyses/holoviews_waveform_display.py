@@ -327,8 +327,9 @@ def _in_window(polys, x_range):
 def hvdisp_plot_peak_waveforms(
     t_reference, time_range, peaks, width=600, show_largest=None, time_dim=None
 ):
-    """Plot the sum waveforms of peaks. Holoviews time dimension; will create new one if not
-    provided.
+    """Plot the sum waveforms of peaks.
+
+    Holoviews time dimension; will create new one if not provided.
 
     :param width: Plot width in pixels
     :param show_largest: Maximum number of peaks to show
