@@ -301,7 +301,6 @@ class CorrectedAreas(strax.Plugin):
 
     def rel_light_yield_correction(self, events):
         """Compute relative light yield correction (z- and t-dependent)."""
-
         a = self.slope_rel_light_yield * (self.rel_light_yield - 1)
         b = self.b_rel_light_yield
 
@@ -322,8 +321,9 @@ class CorrectedAreas(strax.Plugin):
         rel_cy_correction,
         elife_correction,
     ):
-        """Apply S2 corrections and return various corrected areas. To study the impact of
-        individual corrections, parameters of this function can be set to 1, thereby excluding the
+        """Apply S2 corrections and return various corrected areas.
+
+        To study the impact of individual corrections, parameters of this function can be set to 1, thereby excluding the
         corresponding correction.
 
         Returns:

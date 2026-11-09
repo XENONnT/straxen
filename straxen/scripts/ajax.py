@@ -1,18 +1,14 @@
 #!/usr/bin/env python
-"""
-AJAX: XENON-nT
-Aggregate Junking Ancient Xenon-data
-cleaning tool to remove old data from event builders.
-=============================================
-Joran Angevaare, 2020
+"""AJAX: XENON-nT Aggregate Junking Ancient Xenon-data cleaning tool to remove old data from event
+builders. ============================================= Joran Angevaare, 2020.
 
-This tool keeps the event builders clean by performing any of the cleaning modes
-(try 'ajax --help' for a complete description).
+This tool keeps the event builders clean by performing any of the cleaning modes (try 'ajax --help'
+for a complete description).
 
-Some of these modes also affect the live_data rather than the processed data. As there can
-be multiple instances of ajax running there is a dedicated machine 'eb_can_clean_ceph'
-that may delete the live_data such that we prevent multiple attempts to perform a single
-action.
+Some of these modes also affect the live_data rather than the processed data. As there can be
+multiple instances of ajax running there is a dedicated machine 'eb_can_clean_ceph' that may delete
+the live_data such that we prevent multiple attempts to perform a single action.
+
 """
 
 __version__ = "0.5.0"
@@ -422,8 +418,10 @@ def clean_production_folder():
 
 
 def clean_unregistered(delete_live=False, _clean_from=pre_folder):
-    """Clean data that is not in the database. To do this check the output folder and remove files
-    if there is no corresponding entry in the rundoc.
+    """Clean data that is not in the database.
+
+    To do this check the output folder and remove files if there is no corresponding entry in the
+    rundoc.
 
     :param delete_live: bool, if true delete unregistered live data.
     :param _clean_from: which production (not live) folder to clean from
@@ -491,8 +489,9 @@ def clean_old_hash():
 
 
 def clean_abandoned(delete_live=False):
-    """Recursively delete data associated to abandoned runs. If deleting live data, submit multiple
-    threads at the same time.
+    """Recursively delete data associated to abandoned runs.
+
+    If deleting live data, submit multiple threads at the same time.
 
     :param delete_live: bool, if true also delete the live_data of these runs.
 
@@ -598,9 +597,10 @@ def clean_database(delete_live=False):
 
 
 def _rmtree(path):
-    """Wrapper for shutil.rmtree. All deletion statements in this script go through this function in
-    order to make sure that the args.production statement is always double (tripple) checked before
-    deleting data.
+    """Wrapper for shutil.rmtree.
+
+    All deletion statements in this script go through this function in order to make sure that the
+    args.production statement is always double (tripple) checked before deleting data.
 
     :param path: path to delete
 
@@ -625,7 +625,6 @@ def threaded_delete_data(rd, path, data_type, test=True, ignore_low_data_check=F
         can specify this e.g. if we know this is data associated to some abandoned run.
 
     """
-
     thread_name = thread_prefix + path.split("/")[-1]
     delete_thread = threading.Thread(
         name=thread_name,
@@ -856,8 +855,8 @@ def remove_if_unregistered(number, delete_live=False, clean_from=pre_folder):
 
 
 def _remove_unregistered_run(base_folder, run_id, checked_db=False):
-    """NB: The check that this run is not registered should be performed first!
-    Deletes any folder from base_folder that matches run_id.
+    """NB: The check that this run is not registered should be performed first! Deletes any folder
+    from base_folder that matches run_id.
 
     :param base_folder: folder to check
     :param run_id: run_id to remove from folder

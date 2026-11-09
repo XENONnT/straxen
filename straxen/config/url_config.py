@@ -128,7 +128,6 @@ class URLConfig(strax.Config):
         :return: (Any) The return value of the protocol on these arguments
 
         """
-
         if protocol is not None and arg is None:
             protocol, arg, kwargs = cls.url_to_ast(protocol)
 
@@ -200,7 +199,6 @@ class URLConfig(strax.Config):
         returned as is.
 
         """
-
         if isinstance(value, list):
             return [cls.lookup_value(v, **namespace) for v in value]
 
@@ -342,7 +340,6 @@ class URLConfig(strax.Config):
         kwargs: Optional[dict] = None,
     ):
         """Convert a protocol abstract syntax tree to a valid URL."""
-
         if isinstance(protocol, tuple):
             protocol, arg, kwargs = protocol
 

@@ -112,8 +112,9 @@ def compute_nveto_event_properties(
     contained_hitlets_ids: np.ndarray,
     start_channel: int = 2000,
 ):
-    """Computes properties of the neutron-veto events. Writes results directly to events.
+    """Computes properties of the neutron-veto events.
 
+    Writes results directly to events.
     :param events: Events for which properties should be computed
     :param hitlets: hitlets which were used to build the events.
     :param contained_hitlets_ids: numpy array of the shape n x 2 which holds the indices of the
