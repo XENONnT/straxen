@@ -1,3 +1,11 @@
+4.2.0 / 2026-11-13
+-------------------
+* Change store_data_start and store_data_stop to True
+* Move URL config from straxen to strax
+
+**Full Changelog**: https://github.com/XENONnT/straxen/compare/v4.1.1...v4.2.0
+
+
 4.1.1 / 2026-09-03
 -------------------
 * Update veto proximity and intervals for new channel occupancy on the aquisition monitor (see https://github.com/XENONnT/straxen/pull/1576)
