@@ -18,7 +18,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
-  "strax>=2.2.1",
+  "strax>=2.3.0",
   "bokeh",
   "commentjson",
   "gitpython",
