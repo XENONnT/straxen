@@ -63,6 +63,7 @@ Depending on the current settings, selected datatypes are stored in the database
 At the time of writing, these were:
 
   - ``online_peak_monitor``
+  - ``online_peaklet_monitor``
   - ``event_basics``
   - ``veto_regions``
   - ``online_monitor_nv``

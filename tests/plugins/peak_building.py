@@ -72,3 +72,42 @@ def test_tight_coincidence(self: PluginTestCase):
 
 if __name__ == "__main__":
     run_pytest_from_main()
+
+
+@PluginTestAccumulator.register("test_online_peaklet_monitor")
+def test_online_peaklet_monitor(self: PluginTestCase):
+    """The monitor must summarize the peaklets without losing any, and must not need
+    peaklet_classification: it exists for live processing that does not make it."""
+    assert "peaklet_classification" not in strax.to_str_tuple(
+        self.st._plugin_class_registry["online_peaklet_monitor"].depends_on
+    )
+    monitor = self.st.get_array(self.run_id, "online_peaklet_monitor", progress_bar=False)
+    peaklets = self.st.get_array(self.run_id, "peaklets", progress_bar=False)
+
+    assert monitor["n_peaklets"].sum() == len(peaklets)
+    assert np.all(monitor["n_se"] <= monitor["n_se_width"])
+    assert np.all(monitor["n_se_width"] <= monitor["n_peaklets"])
+    assert np.all(monitor["se_aft_hist"].sum(axis=1) <= monitor["n_se"])
+
+    livetime = (monitor["endtime"] - monitor["time"]) / 1e9
+    np.testing.assert_array_almost_equal(monitor["se_rate"], monitor["n_se"] / livetime, decimal=3)
+
+
+@PluginTestAccumulator.register("test_online_peaklet_monitor_chunking")
+def test_online_peaklet_monitor_chunking(self: PluginTestCase):
+    """One chunk becomes one document of the online monitor database, so the rows per chunk must
+    stay bounded, and the time bins must tile the chunk exactly.
+
+    The latter is not free: nanosecond timestamps do not fit in a float64 mantissa, so edges
+    computed in floating point can start before the chunk does, which strax rejects.
+
+    """
+    max_rows = 3
+    st = self.st.new_context()
+    st.set_config(dict(peaklet_monitor_time_bin=int(1e6), peaklet_monitor_max_rows=max_rows))
+    for chunk in st.get_iter(self.run_id, "online_peaklet_monitor", progress_bar=False):
+        rows = chunk.data
+        assert len(rows) <= max_rows
+        assert rows["time"][0] == chunk.start
+        assert rows["endtime"][-1] == chunk.end
+        np.testing.assert_array_equal(rows["time"][1:], rows["endtime"][:-1])
