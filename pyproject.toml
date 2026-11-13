@@ -46,6 +46,9 @@ refresh_raw_records = "straxen.scripts.refresh_raw_records:main"
 restrax = "straxen.scripts.restrax:main"
 straxen_print_versions = "straxen.scripts.straxen_print_versions:main"
 straxer = "straxen.scripts.straxer:main"
+straxen_benchmark_io = "straxen.scripts.benchmark_io:main"
+straxen_benchmark_slurm = "straxen.scripts.benchmark_slurm:main"
+straxen_validate_environment = "straxen.scripts.validate_environment:main"
 
 [project.optional-dependencies]
 docs = [
@@ -54,6 +57,10 @@ docs = [
   "sphinx>=7,<9",
   "sphinx-rtd-theme>=3,<4",
   "lxml-html-clean",
+]
+xrootd = [
+  "fsspec",
+  "fsspec-xrootd",
 ]
 
 [build-system]
