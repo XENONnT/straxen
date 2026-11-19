@@ -42,6 +42,10 @@ class nVeto_reflectivity(strax.Plugin):
     def compute(self, raw_records_nv, hitlets_nv):
         split_time = 5000
 
+        # Early return if there is no hitlets
+        if not len(hitlets_nv):
+            return np.zeros(0, dtype=self.dtype)
+
         # find the trigger times
         time_unique = np.unique(raw_records_nv["time"])
         time_diff = np.diff(time_unique, prepend=time_unique[0])
