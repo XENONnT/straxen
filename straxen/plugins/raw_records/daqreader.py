@@ -124,6 +124,16 @@ class DAQReader(strax.Plugin):
     )
 
     data_kind = immutabledict(zip(provides, provides))
+    save_when = immutabledict(
+        raw_records=strax.SaveWhen.ALWAYS,
+        raw_records_he=strax.SaveWhen.ALWAYS,
+        raw_records_aqmon=strax.SaveWhen.ALWAYS,
+        raw_records_nv=strax.SaveWhen.TARGET,
+        raw_records_aqmon_nv=strax.SaveWhen.ALWAYS,
+        raw_records_aux_mv=strax.SaveWhen.ALWAYS,
+        raw_records_sc=strax.SaveWhen.TARGET,
+        raw_records_mv=strax.SaveWhen.ALWAYS,
+    )
     depends_on: Tuple = tuple()
     parallel = "process"
     rechunk_on_load = True
